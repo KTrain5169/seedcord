@@ -1,6 +1,9 @@
 {
-    "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
-    "changelog": "@changesets/cli/changelog",
+    "$schema": "https://unpkg.com/@changesets/config@4.0.0/schema.json",
+    "changelog": [
+        "../scripts/src/release/changelog.ts",
+        { "repo": "seedcord/seedcord", "maintainers": ["materwelonDhruv"] }
+    ],
     "commit": false,
     "fixed": [],
     "linked": [],
@@ -8,6 +11,7 @@
     "baseBranch": "main",
     "updateInternalDependencies": "patch",
     "ignore": [],
+    "privatePackages": { "version": true, "tag": false },
     "___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH": {
         "onlyUpdatePeerDependentsWhenOutOfRange": true
     }

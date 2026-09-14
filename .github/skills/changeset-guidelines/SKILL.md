@@ -9,6 +9,12 @@ A changeset becomes a changelog entry, which someone scans while deciding whethe
 
 This skill decides what a changeset says. `writing-voice` covers how any sentence in this repo sounds. `release-version` covers cutting the release itself.
 
+The shape is fixed, and `pnpm lint:changesets` rejects anything else:
+
+- One paragraph on one line. No second paragraph, list, heading, quote, or code block.
+- One sentence for a patch, three at most otherwise.
+- `**BREAKING:**` plus a space opens the summary when the change breaks. The changeset bumps no package as a patch, and a `major` bump is only for a package already past 1.0.
+
 ---
 
 ## 1. Behavior decides the release type
@@ -21,9 +27,9 @@ A durable store keyed on the old behavior changes silently. In the worked exampl
 
 ## 2. Open with what kind of entry this is
 
-A bug fix opens with `Fixed`. A second fix in the same changeset opens its own sentence with `Also fixed`.
+A bug fix opens with `Fixed`. A second fix gets its own changeset.
 
-Why: a changelog gets scanned, so the first word has to say what kind of entry this is.
+Why: a changelog gets scanned, so the first word has to say what kind of entry this is. `pnpm lint:changesets` holds a patch changeset to one sentence, and each changeset becomes one changelog entry.
 
 ---
 

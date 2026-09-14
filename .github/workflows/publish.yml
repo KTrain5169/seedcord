@@ -11,7 +11,7 @@ permissions:
     contents: read
 
 concurrency:
-    # head_branch (not ref_name) tells main from next: workflow_run sets ref_name to the default branch.
+    # workflow_run sets ref_name to the default branch. head_branch holds the branch checks ran on.
     group: release-${{ github.event.workflow_run.head_branch || github.ref_name }}
     cancel-in-progress: false
 
@@ -20,7 +20,7 @@ env:
 
 jobs:
     eligibility:
-        if: ${{ (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && github.repository == 'seedcord/seedcord' }}
+        if: ${{ github.repository == 'seedcord/seedcord' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)) }}
         runs-on: ubuntu-latest
         outputs:
             publish: ${{ steps.gate.outputs.publish }}
@@ -41,11 +41,10 @@ jobs:
         timeout-minutes: 30
         outputs:
             published: ${{ steps.changesets.outputs.published }}
-            publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
+            publishedPackages: ${{ steps.changesets.outputs['published-packages'] }}
         permissions:
             contents: write
             id-token: write
-            pull-requests: write
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -61,26 +60,30 @@ jobs:
               uses: ./.github/actions/setup
               with:
                   registry-url: https://registry.npmjs.org
-            # changesets 2.31.0 misreads npm 12 json output, unpin when changesets supports npm 12
-            - run: npm i -g npm@11
-            - run: node -v && npm -v
-            - run: npm config get registry && npm ping
-
             - name: Build prettier config dependency
               run: pnpm exec turbo run build --filter=@seedcord/eslint-config
 
             - id: changesets
-              uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+              uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
               with:
-                  version: pnpm run release:version
-                  publish: pnpm run release
-                  commit: 'chore(release): version packages'
-                  title: 'chore: release packages'
-                  branch: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  publish-script: pnpm run release
+                  create-github-releases: false
+                  push-git-tags: false
               env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   NPM_CONFIG_PROVENANCE: 'true'
                   HUSKY: 0
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    github-release:
+        needs: npm-publish
+        if: ${{ needs.npm-publish.outputs.published == 'true' && (github.event.workflow_run.head_branch || github.ref_name) == 'main' }}
+        permissions:
+            contents: write
+        uses: ./.github/workflows/github-release.yml
+        with:
+            published: ${{ needs.npm-publish.outputs.publishedPackages }}
+        secrets: inherit
 
     docs-publish:
         needs: npm-publish
