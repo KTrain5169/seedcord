@@ -24,11 +24,13 @@ jobs:
     release:
         runs-on: ubuntu-latest
         timeout-minutes: 10
-        permissions:
-            contents: write
+        concurrency:
+            group: github-release
+            cancel-in-progress: false
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
+                  persist-credentials: false
                   ref: ${{ inputs.sha || github.event.workflow_run.head_sha || github.sha }}
                   fetch-depth: 0
             - name: Setup workspace
@@ -39,26 +41,28 @@ jobs:
               run: |
                   pnpm release:notes --published "$PUBLISHED" --out release-body.md > names.txt
                   cat names.txt
-                  for key in tag title tagged prerelease; do
+                  for key in tag title prerelease; do
                     echo "$key=$(sed -n "s/^$key: //p" names.txt)" >> "$GITHUB_OUTPUT"
                   done
               env:
                   PUBLISHED: ${{ inputs.published }}
 
-            - name: Push the tag
-              if: ${{ steps.notes.outputs.prerelease != 'true' && steps.notes.outputs.tagged != 'true' }}
-              run: |
-                  git tag "$TAG"
-                  git push origin "$TAG"
-              env:
-                  TAG: ${{ steps.notes.outputs.tag }}
-
-            - name: Create the release
+            - name: Create the tag and the release
               if: ${{ steps.notes.outputs.prerelease != 'true' }}
               run: |
-                  if gh release view "$TAG" > /dev/null 2>&1; then exit 0; fi
-                  gh release create "$TAG" --title "$TITLE" --notes-file release-body.md
+                  if [ -z "$GH_TOKEN" ]; then
+                    echo "::error::Add a RELEASE_TOKEN repository secret, a fine-grained token with Contents and Workflows read and write on this repo."
+                    exit 1
+                  fi
+                  head=$(git rev-parse HEAD)
+                  existing=$(gh release view "$TAG" --json isDraft,targetCommitish --jq '"\(.isDraft) \(.targetCommitish)"' 2> /dev/null || true)
+                  if [ "$existing" = "false $head" ]; then exit 0; fi
+                  if [ -n "$existing" ]; then
+                    echo "::error::$TAG already exists as a release (draft and target: $existing), expected a published release on $head."
+                    exit 1
+                  fi
+                  gh release create "$TAG" --target "$head" --title "$TITLE" --notes-file release-body.md
               env:
                   TAG: ${{ steps.notes.outputs.tag }}
                   TITLE: ${{ steps.notes.outputs.title }}
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}

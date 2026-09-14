@@ -54,12 +54,36 @@ const notes = (): string =>
     }).body();
 
 describe('ReleaseNotes', () => {
+    it('ends with links to the diff and the previous release', () => {
+        const body = new ReleaseNotes({
+            repo: 'seedcord/seedcord',
+            tag: 'release-2026.09.20',
+            previousTag: 'release-2026.09.11',
+            published,
+            entries: new ReleaseEntries(published)
+        }).body();
+
+        expect(
+            body.endsWith(
+                '\n\n---\n\n<sub>[See what changed](https://github.com/seedcord/seedcord/compare/release-2026.09.11...release-2026.09.20) since the [last release](https://github.com/seedcord/seedcord/releases/tag/release-2026.09.11)</sub>\n'
+            )
+        ).toBe(true);
+    });
+
+    it('leaves the links off when no release came before', () => {
+        expect(notes()).not.toContain('See what changed');
+    });
+
     it('tables every package that carries its own entries', () => {
         const body = notes();
 
         expect(body).toContain(
-            '| [@seedcord/core](https://github.com/seedcord/seedcord/blob/release-2026.09.11/packages/core/CHANGELOG.md) | 0.6.0 → 0.7.0 |'
+            '| [@seedcord/core](https://github.com/seedcord/seedcord/blob/release-2026.09.11/packages/core/CHANGELOG.md#070) | 0.6.0 → 0.7.0 |'
         );
+    });
+
+    it('links a changelog to the heading github renders for its version', () => {
+        expect(notes()).toContain('/packages/gateway/CHANGELOG.md#060) | 0.5.1 → 0.6.0 |');
     });
 
     it('marks a first publish as new', () => {
@@ -77,7 +101,7 @@ describe('ReleaseNotes', () => {
             entries: new ReleaseEntries([kit])
         }).body();
 
-        expect(body).toContain('/packages/kit/CHANGELOG.md) | 0.1.0 (new) |');
+        expect(body).toContain('/packages/kit/CHANGELOG.md#010) | 0.1.0 (new) |');
     });
 
     it('collapses the dependency-only packages behind a summary', () => {

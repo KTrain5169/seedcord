@@ -58,6 +58,33 @@ describe('ReleaseName', () => {
         expect(() => ReleaseName.fromTag('v1.2.3')).toThrow(/v1\.2\.3/);
     });
 
+    it('picks the newest release tag before its own as the previous release', () => {
+        const name = ReleaseName.fromTag('release-2026.09.20');
+        const tags = [
+            'release-2026.09.25',
+            'release-2026.09.11a',
+            'v1.2.3',
+            'release-2026.09.20',
+            'release-2026.09.11'
+        ];
+
+        expect(name.previousIn(tags)).toBe('release-2026.09.11a');
+    });
+
+    it('picks the earlier lettered tag from the same day', () => {
+        const name = ReleaseName.fromTag('release-2026.09.11b');
+
+        expect(name.previousIn(['release-2026.09.11b', 'release-2026.09.11', 'release-2026.09.11a'])).toBe(
+            'release-2026.09.11a'
+        );
+    });
+
+    it('finds no previous release when none came before', () => {
+        const name = ReleaseName.fromTag('release-2026.09.11');
+
+        expect(name.previousIn(['release-2026.09.11', 'release-2026.09.12', '@seedcord/core@0.7.0'])).toBeUndefined();
+    });
+
     it('leaves tags from other days out of the count', () => {
         const name = ReleaseName.next(AT, ['release-2026.09.10', 'release-2025.09.11', 'v1.2.3']);
 

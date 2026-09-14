@@ -35,6 +35,14 @@ export class ReleaseName {
         return `${baseTag(this.day)}${this.letter}`;
     }
 
+    // plain string order matches release order while the day's suffix stays a single letter
+    previousIn(tags: readonly string[]): string | undefined {
+        return tags
+            .filter((one) => TAG.test(one) && one < this.tag)
+            .sort()
+            .at(-1);
+    }
+
     get title(): string {
         const date = TITLE.format(new Date(this.day.toString()));
         if (this.letter === '') return date;

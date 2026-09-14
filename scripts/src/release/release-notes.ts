@@ -38,17 +38,21 @@ async function main(): Promise<void> {
     const repo = parsed.repo ?? 'seedcord/seedcord';
     const published = await resolvePackages(await Workspace.load(import.meta.dirname), await readPublished(parsed));
 
+    const tags = await releaseTags();
     const [onCommit] = await releaseTags('--points-at', 'HEAD');
-    const name = onCommit
-        ? ReleaseName.fromTag(onCommit)
-        : ReleaseName.next(Temporal.Now.instant(), await releaseTags());
-    const notes = new ReleaseNotes({ repo, tag: name.tag, published, entries: new ReleaseEntries(published) });
+    const name = onCommit ? ReleaseName.fromTag(onCommit) : ReleaseName.next(Temporal.Now.instant(), tags);
+    const notes = new ReleaseNotes({
+        repo,
+        tag: name.tag,
+        previousTag: name.previousIn(tags),
+        published,
+        entries: new ReleaseEntries(published)
+    });
     const body = notes.body();
 
     if (parsed.out !== undefined) await writeFile(parsed.out, body, 'utf8');
     console.log(`tag: ${name.tag}`);
     console.log(`title: ${name.title}`);
-    console.log(`tagged: ${String(onCommit !== undefined)}`);
     console.log(`prerelease: ${String(!published.every((pkg) => isStable(pkg.version)))}`);
     if (parsed.out === undefined) console.log(`\n${body}`);
 }

@@ -11,6 +11,7 @@ export interface ReleasePackage {
 interface NotesConfig {
     repo: string;
     tag: string;
+    previousTag?: string | undefined;
     published: readonly ReleasePackage[];
     entries: ReleaseEntries;
 }
@@ -27,17 +28,28 @@ export class ReleaseNotes {
             dependencyBlock(this.config.published.filter((pkg) => quiet.has(pkg.name))),
             section('💥 Breaking changes', this.config.entries.breaking),
             section('✨ Minor changes', this.config.entries.minor),
-            section('🩹 Patch changes', this.config.entries.patch)
+            section('🩹 Patch changes', this.config.entries.patch),
+            this.footer()
         ];
 
         return `${parts.filter((part) => part !== '').join('\n\n')}\n`;
+    }
+
+    private footer(): string {
+        const { repo, tag, previousTag } = this.config;
+        if (previousTag === undefined) return '';
+
+        const diff = `https://github.com/${repo}/compare/${previousTag}...${tag}`;
+        const release = `https://github.com/${repo}/releases/tag/${previousTag}`;
+
+        return `---\n\n<sub>[See what changed](${diff}) since the [last release](${release})</sub>`;
     }
 
     private table(packages: readonly ReleasePackage[]): string {
         if (packages.length === 0) return '';
 
         const rows = packages.map((pkg) => {
-            const url = `https://github.com/${this.config.repo}/blob/${this.config.tag}/${pkg.directory}/CHANGELOG.md`;
+            const url = `https://github.com/${this.config.repo}/blob/${this.config.tag}/${pkg.directory}/CHANGELOG.md#${headingAnchor(pkg.version)}`;
 
             const versions =
                 pkg.oldVersion === undefined ? `${pkg.version} (new)` : `${pkg.oldVersion} → ${pkg.version}`;
@@ -47,6 +59,11 @@ export class ReleaseNotes {
 
         return ['## 📦 Packages', '', '| package | version |', '| --- | --- |', ...rows].join('\n');
     }
+}
+
+// github renders the anchor for `## 0.16.0` as `#0160`
+function headingAnchor(version: string): string {
+    return version.toLowerCase().replaceAll('.', '');
 }
 
 function dependencyBlock(packages: readonly ReleasePackage[]): string {
