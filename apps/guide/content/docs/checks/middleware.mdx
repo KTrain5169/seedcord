@@ -1,0 +1,234 @@
+---
+title: Interaction middleware
+description: Run code before your interaction handlers with middleware. Covers which interactions it runs for, the order, stopping a dispatch, replying, and cleaning up in after().
+---
+
+A middleware runs before your handler. Write one when several handlers all need the same thing done first, like loading the caller's record, or when you want to refuse an interaction before it reaches your code.
+
+A middleware runs for every handler of the kinds it lists, without being attached to any of them. A [gate](/checks/gates) runs _only_ on the handlers you put it on. Put work that every [dispatch](/checks#what-a-dispatch-is) needs in a middleware. Put a check that only some commands need in a gate on those commands.
+
+A middleware's `execute()` runs after seedcord builds your handler and before any gate.
+
+The smallest middleware is a class with the decorator and an `execute()`. `Trace` logs the route every dispatch matched.
+
+```ts twoslash title="src/handlers/middlewares/Trace.ts"
+import {
+    InteractionMiddleware,
+    RegisterInteractionMiddleware
+} from '@seedcord/gateway';
+
+@RegisterInteractionMiddleware()
+export class Trace extends InteractionMiddleware {
+    public async execute(): Promise<void> {
+        this.logger.debug(`reached ${this.dispatch.routeId}`);
+        await Promise.resolve();
+    }
+}
+```
+
+You can omit the options object on [`@RegisterInteractionMiddleware`](ref:core/RegisterInteractionMiddleware) entirely, the way `Trace` does. Both of its keys are optional on their own too. If you omit both, the middleware runs on every kind that carries a reply target.
+
+## Which interactions it runs for
+
+You write the kinds twice, once in `{ kinds }` and once in the generic on [`InteractionMiddleware`](ref:gateway/InteractionMiddleware). The two have to agree. If they differ, the decorator line fails to compile. The error says which side is missing a kind.
+
+```ts twoslash title="src/handlers/middlewares/ClickLog.ts"
+import {
+    InteractionKind,
+    InteractionMiddleware,
+    RegisterInteractionMiddleware
+} from '@seedcord/gateway';
+// ---cut---
+@RegisterInteractionMiddleware({ kinds: [InteractionKind.Button] })
+export class ClickLog extends InteractionMiddleware<InteractionKind.Button> {
+    public async execute(): Promise<void> {
+        const clicked = this.event;
+        //    ^?
+        this.logger.debug(`clicked ${clicked.customId}`);
+        await Promise.resolve();
+    }
+}
+```
+
+`this.event` follows the generic, which is why `customId` is there to read. Naming several kinds gives you a union of those payloads.
+
+```ts twoslash title="src/handlers/middlewares/ComponentTrace.ts"
+import {
+    InteractionKind,
+    InteractionMiddleware,
+    RegisterInteractionMiddleware
+} from '@seedcord/gateway';
+// ---cut---
+@RegisterInteractionMiddleware({
+    kinds: [InteractionKind.Button, InteractionKind.Modal]
+})
+export class ComponentTrace extends InteractionMiddleware<
+    InteractionKind.Button | InteractionKind.Modal
+> {
+    public async execute(): Promise<void> {
+        this.logger.debug(`component on ${this.dispatch.routeId}`);
+        await Promise.resolve();
+    }
+}
+```
+
+`ComponentTrace` runs for buttons and modals, and its `this.event` is a union of those two payloads. Every kind seedcord routes is a member of [`InteractionKind`](ref:core/InteractionKind).
+
+```ts twoslash
+// @noErrors
+import { InteractionKind } from '@seedcord/gateway';
+// ---cut---
+InteractionKind.
+//              ^|
+```
+
+`Autocomplete` is the one a middleware can't list, since Discord accepts only a list of choices in reply to one.
+
+<Callout type="transport">
+
+`this.event` is a discord.js interaction on gateway and the payload Discord posted on http. A button's id reads `this.event.customId` on the first and `this.event.data.custom_id` on the second. A union narrows through the discord.js guards on gateway, and through `type` and `data.component_type` on http.
+
+</Callout>
+
+## Order
+
+`priority` takes any finite number. The middleware with the lower number runs first. If you leave `priority` out, the middleware gets `0`.
+
+If two middleware share a number, they run in the order seedcord loaded them. That order can change when you add, rename, or move a middleware file, so give anything order-dependent a distinct priority.
+
+A negative priority puts a middleware ahead of every one that took the default.
+
+## Stopping the dispatch
+
+If you throw from `execute()`, the dispatch ends before the handler or its gates run.
+
+What you throw decides what the caller sees. A [`Notice`](ref:core/Notice) renders its card. A [`Silence`](ref:core/Silence) drops the interaction without replying, so the caller sees Discord's own failed-interaction message. Anything else reports as a fault, the same as a throw from a handler.
+
+```ts twoslash title="src/handlers/middlewares/Maintenance.ts"
+import {
+    InteractionMiddleware,
+    RegisterInteractionMiddleware
+} from '@seedcord/gateway';
+
+import type { Notice } from '@seedcord/gateway';
+
+declare const Closed: new () => Notice;
+declare function underMaintenance(): Promise<boolean>;
+// ---cut---
+@RegisterInteractionMiddleware({ priority: -10 })
+export class Maintenance extends InteractionMiddleware {
+    public async execute(): Promise<void> {
+        if (await underMaintenance()) throw new Closed();
+    }
+}
+```
+
+`Closed` is a [`Notice` you write yourself](/replying/throwing), with its own `render()`.
+
+## Replying from a middleware
+
+A middleware uses the same reply methods as its handler. `reply`, `defer`, `followUp`, `edit`, `send`, and `delete` all share one record of whether the interaction has been answered yet.
+
+**If a middleware acks, its handler gets an interaction that's already acknowledged.** Keep track of what the middleware called, so the handler uses a method that fits. After a middleware calls `defer()`, the handler can `edit()` or `followUp()`. If the handler calls `reply()` there, it throws [`ReplyIllegalAckState`](/replying/ack-states). If you'd rather not track that, call `send()`. It checks what already happened, then replies, edits, or follows up to match.
+
+<Callout type="warning">
+
+seedcord builds your handler first, before any middleware or gate runs. If your constructor queries your database, that query runs even when a middleware or a gate refuses the interaction afterwards. Only set fields in the constructor. Put database calls and other work in `execute()`, which runs only after every middleware and gate has passed.
+
+</Callout>
+
+## After the handler runs
+
+A middleware can also have an `after()` method. seedcord calls it once the whole dispatch is over, after your handler's `execute()` has finished or something stopped the dispatch early.
+
+A middleware gets its `after()` call as long as its own `execute()` started, even if that `execute()` threw. Say middleware `A` runs before middleware `B`.
+
+- If both ran, `B.after()` runs first, then `A.after()`.
+- If `A` threw, only `A.after()` runs. `B` never started, so it doesn't get one.
+
+Those calls always run. They run after a gate refuses, after a handler throws, and even after the `render()` of a refusal card throws. Use `after()` to release whatever `execute()` held open, a lock or a tracing span.
+
+```ts twoslash hovers title="src/handlers/middlewares/Span.ts"
+import {
+    InteractionMiddleware,
+    RegisterInteractionMiddleware
+} from '@seedcord/gateway';
+
+import type { DispatchResult } from '@seedcord/gateway';
+// ---cut-start---
+
+declare const tracer: {
+    open(route: string): { end(status: string): void };
+};
+// ---cut-end---
+
+@RegisterInteractionMiddleware()
+export class Span extends InteractionMiddleware {
+    private span?: ReturnType<(typeof tracer)['open']>;
+
+    public async execute(): Promise<void> {
+        this.span = tracer.open(this.dispatch.routeId);
+        await Promise.resolve();
+    }
+
+    public override async after(
+        result: DispatchResult
+    ): Promise<void> {
+        this.span?.end(result.outcome);
+        await Promise.resolve();
+    }
+}
+```
+
+The base class declares `after()`, so your version overrides it. Mark it `override`, since leaving that off is a compile error under TypeScript's `noImplicitOverride`.
+
+`after()` receives a [`DispatchResult`](ref:core/DispatchResult) that says how the dispatch ended. The `Span` sample ends its tracing span with `result.outcome`.
+
+{/* prettier-ignore-start */}
+
+| `outcome` | when | `caught` |
+| --- | --- | --- |
+| `'handled'` | the handler finished without throwing | not present |
+| `'refused'` | something threw a `Silence`, or a `Notice` with `report` false | the thrown value |
+| `'failed'` | something threw a reported `Notice` or any other error | the thrown value |
+
+{/* prettier-ignore-end */}
+
+An `after()` that throws doesn't stop the other `after()` calls. If `B.after()` throws, seedcord logs the error and still calls `A.after()`.
+
+## Where to put middleware
+
+seedcord loads middleware from `bot.interactions.middlewares`. The key is optional.
+
+```ts twoslash title="src/bot.ts"
+import { resolve } from 'node:path';
+
+import { Seedcord } from '@seedcord/gateway';
+import { GatewayIntentBits } from 'discord.js';
+
+const rest = {
+    commands: { path: null },
+    events: { path: null }
+} as const;
+// ---cut---
+export const seedcord = new Seedcord({
+    bot: {
+        ...rest,
+        clientOptions: { intents: [GatewayIntentBits.Guilds] },
+        interactions: {
+            path: resolve(import.meta.dirname, './handlers'),
+            middlewares: resolve(
+                import.meta.dirname,
+                './handlers/middlewares'
+            )
+        }
+    },
+    subscribers: { path: null }
+});
+```
+
+If a class in that directory doesn't have the decorator, seedcord loads it and never runs it. A handler missing its route decorator behaves the same way. seedcord's `middleware-missing-register-decorator` lint rule flags that class while you write it.
+
+If two middleware classes share a name, seedcord throws `DuplicateMiddleware` when it loads the second one. Give every class a unique name.
+
+A middleware passes values to the handler and its gates through [the dispatch context](/checks/dispatch-context).

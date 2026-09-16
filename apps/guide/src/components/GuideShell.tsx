@@ -15,12 +15,13 @@ import {
     matchActiveHref,
     tw
 } from '@seedcord/ui';
-import { AnchorProvider, useActiveAnchor, useActiveAnchors } from 'fumadocs-core/toc';
+import { AnchorProvider, useActiveAnchor } from 'fumadocs-core/toc';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 import { DOCS_URL, HOME_URL, REPO_URL, SITE_URL } from '#lib/site';
+import { useVisibleHeadingIds } from '#lib/visibleHeadings';
 
 import { CopyPageButton } from './CopyPageButton';
 import { DocsSidebar } from './DocsSidebar';
@@ -75,7 +76,7 @@ function NavActions({
 }
 
 function ContentsBar({ items, pageTitle }: Omit<TocBarProps, 'activeIds' | 'currentId' | 'className'>): ReactElement {
-    const activeIds = useActiveAnchors();
+    const activeIds = useVisibleHeadingIds(items);
     const currentId = useActiveAnchor();
 
     return (
@@ -99,7 +100,7 @@ function ContentsColumn({
     items: readonly TOCItemType[];
     markdownPath: string | undefined;
 }): ReactElement {
-    const activeIds = useActiveAnchors();
+    const activeIds = useVisibleHeadingIds(items);
 
     return (
         <div className={cn(contentsColumnClassName)}>

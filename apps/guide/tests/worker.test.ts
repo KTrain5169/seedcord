@@ -209,4 +209,37 @@ describe('the guide worker', () => {
         expect(response.status).toBe(308);
         expect(response.headers.get('location')).toBe('/tooling/');
     });
+
+    it('sends a renamed page to where it moved', async () => {
+        const assets = recording();
+
+        const response = await get('https://guide.seedcord.org/throwing/faults/', assets);
+
+        expect(response.status).toBe(308);
+        expect(response.headers.get('location')).toBe('/replying/faults/');
+    });
+
+    it('answers a renamed page without asking for the file', async () => {
+        const assets = recording();
+
+        await get('https://guide.seedcord.org/utilities/', assets);
+
+        expect(assets.asked).toEqual([]);
+    });
+
+    it('leaves a live page alone', async () => {
+        const response = await get('https://guide.seedcord.org/commands/options/', serving(html()));
+
+        expect(response.status).toBe(200);
+    });
+
+    it('sends a renamed page twin to the new twin without asking for the file', async () => {
+        const assets = recording();
+
+        const response = await get('https://guide.seedcord.org/gates/permissions.md', assets);
+
+        expect(response.status).toBe(308);
+        expect(response.headers.get('location')).toBe('/checks/permissions.md');
+        expect(assets.asked).toEqual([]);
+    });
 });
