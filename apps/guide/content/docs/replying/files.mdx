@@ -3,7 +3,9 @@ title: Files and attachments
 description: Upload files with a reply and show them in the message. Covers the component that has to reference the upload, and the four fields.
 ---
 
-A seedcord reply is made of components, so a file you upload needs two things: the bytes in `files`, and a component that points at them. Both transports take a [`ReplyFile`](ref:types/ReplyFile), the bytes plus the name Discord shows.
+Discord renders an attachment where a component references it. If you send the bytes with nothing pointing at them, the upload reaches Discord and stays invisible.
+
+That component is the second half of every upload. A seedcord reply is made of components, so a file you upload needs two things: the bytes in `files`, and a component that points at them. Both transports take a [`ReplyFile`](ref:types/ReplyFile), the bytes plus the name Discord shows.
 
 ```ts twoslash title="src/handlers/Ban.ts"
 import {

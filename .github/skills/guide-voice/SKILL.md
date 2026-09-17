@@ -9,10 +9,11 @@ A guide page teaches. Someone reads it on purpose, having chosen to spend their 
 
 This skill sits on top of [`writing-voice`](../writing-voice/SKILL.md), which still applies in full. Plain words over compressed abstractions, a verb in place of an invented noun, the anthropomorphism test, the punctuation bans, and the ban-list all hold here.
 
-Two rules in it change on a guide page, and both changes are stated where they apply.
+Three rules in it change on a guide page, and every change is stated where it applies.
 
 1. **One claim per sentence, cut at the connective.** Right for a comment, a changeset, and a commit. On a guide page it deletes the reason, because a reason attaches at a connective by construction. Effective Go reads "This rule arises because pointer methods can modify the receiver," and cutting at the connective leaves half of it.
 2. **`and` as a splice repair.** `writing-voice` lists it among the connectors that name a real relation. On a guide page `and` leaves the relation unstated, so the prose review reads every connector against the relation it promises and the writer picks the one that says how the halves relate.
+3. **Present tense for everything.** Right for behavior, which is most of a page. A complaint the page's feature takes away belongs in past tense, since that is what tells the reader it is over. Section 1 has the test.
 
 ---
 
@@ -35,6 +36,20 @@ The emoji section opened on "Name each custom emoji in your config, then read it
 Write it as the thing they have already done, in the words they would use for it. The maintainer's note on the first attempt, which stated the same facts flatly: the reader has to recognise themselves in it.
 
 Ground every cost you name. A re-upload really does mint a new id. A rename leaves a hardcoded id working, so the cost there is a stale label, and claiming a broken message would be overclaiming.
+
+Ground it in the guide or in the code, never in what you remember about another library. A commands-tab opener claimed plain discord.js splits a command across two places, and discord.js's own guide puts the builder and the `execute` function in one file. The claim collapsed the moment anyone opened the source, and an opener that gets a reader's daily tool wrong costs more than no opener at all.
+
+**Write the complaint flat.** The reader already has the problem, so a conditional hands it back to them as a suggestion. "You'd write your own wording onto that card" reads as advice. "The wording on that card is yours to replace" states what is true. Reserve `would` and `might` for a case the reader may never hit.
+
+**Name who does the failing.** seedcord is the only name on the page, so a complaint with nobody in front of the verb gets read as seedcord's doing, and the page opens by blaming the framework for the thing it is about to fix. "A second reply on the same interaction comes back rejected" says who did the rejecting, which is Discord, and the ack-states page read as though seedcord turned the reply away. Hand the verb to whoever acts: Discord, the reader's own code, the reader. Where the mistake is the reader's, `if` says so, as in "If you get the reply order wrong, the call fails."
+
+**Say whether the complaint is over, in the tense.** A complaint in flat present reads as the way things simply are, so the reader gets to the end of it without knowing whether this page fixes the thing or teaches them to live with it. They find out one paragraph later, which is a paragraph too late. Where the feature takes the complaint away, write it in past tense and let the flip back to present be the answer arriving. The options page ran "`getString('query')` still handed back `string | null`. Every read opened with a check whose answer you already knew", answered by "Every option you declare becomes a getter on `this.options`".
+
+The test is whether the reader still lives with it after this page. Discord still allows three seconds, still hands a click back as one string, still lists commands flat. Those stay in present, because past tense would promise a fix nobody is shipping.
+
+A frame word does the same job, and about twenty openers use one: `by hand`, `yourself`, `Without`, `With plain discord.js`, or an `if` that makes the sentence a hypothetical. An opener with neither a frame nor a past tense is the one to look at.
+
+Then leave the rest of the paragraph alone. The first repair cut that complaint down to a line, which fixed the actor and threw away the reason anyone would read on. A misaimed complaint is aimed again at full length.
 
 **Then answer the problem in the next breath.** A why-paragraph opens a new seam in the section, between the work the reader does today and the line telling them what to type. The first words after that break point back at the complaint. "Some emojis come from your app and some from one guild, so each of those is its own lookup" is answered by "seedcord does those lookups for you", where the repeated noun is what carries the reader across. The first draft of that section ended the problem and opened the next paragraph on "Name each custom emoji in your config", which leaves the reader to make the join themselves. The maintainer caught it as a failure mode of its own.
 
@@ -237,7 +252,7 @@ The prose review covers these fourteen. It reads the page and nothing else.
 
 1. **A sentence about the page instead of a sentence with a fact.** A line restating its heading. Announcing a list and not delivering one. Test: delete the first sentence under a heading and see whether anything is lost. A line naming what a fence shows survives that test, and so does a sentence setting up a problem the section then solves.
 2. **Overclaiming, or a reason that does not hold.** `Everything`, `always`, `never` where the truth is narrower. A list of three reading as the complete set. A because-clause that falls apart when you check it, which is worse than giving no reason at all, because the reader takes it as settled. Also any count a non-breaking release could change, and any promise about future releases the project does not make. An opener and a first sample that read as the whole surface count too. The modals page opened on text and showed one text input, so a reader stopped there thinking a modal holds only text.
-3. **Explaining what the reader already knows.** Defending why a requirement is a requirement. Spelling out a consequence that is the next sentence anyway. An argument for the design is never this finding.
+3. **Explaining what the reader already knows.** Defending why a requirement is a requirement. Spelling out a consequence that is the next sentence anyway. An argument for the design is never this finding. The same shape runs at page scale, where a paragraph says what a later heading is for. A why added to the top of the hot-reload page announced which saves need a restart, which is what the paragraph below it closes on and what a heading further down covers in full. Read a new paragraph against the headings under it before it ships.
 4. **A rhetorical shape standing in for the thing.** Verbless fragments as beats. Wordplay. Any sentence that would be shorter and clearer said plainly.
 5. **Written from the framework's side instead of the reader's.** The deepest one, and it comes from writing what seedcord does before asking what the reader is trying to build. Gates once led with the catalog seedcord ships, where the point is that you write your own.
 6. **Content that does not earn its space.** An error a reader will rarely hit. Anything that does not serve the one thing this page is for. An argument the page is responsible for under section 1 always earns its space.
@@ -286,6 +301,7 @@ Run these one at a time and apply each pass's fixes before starting the next. Ea
 8. **The garden path.** Read every sentence once at speed. Stopping and starting over means rewriting it. Four shapes cause it.
     - A clause wedged between a subject and its verb.
     - A cleft that parks the verb behind an `is`.
+    - Two question-word clauses fronted as one subject, with the verb last. "Which of your calls answered it, and which method works from here, are both yours to work out" makes the reader hold both before learning what they are for. Open on the handoff: "That leaves you to work out which of your calls answered it, and which method works from here."
     - A trailing participle whose subject the reader has to guess.
     - A connector naming a relation the sentence does not have. See below, since this one has its own section.
 
@@ -368,7 +384,11 @@ A count tells you which word to look at. It never decides whether one sentence i
 
 **A correction is a count too.** Being corrected on one sentence tells you which construction to go and look at. It never says every instance of it is wrong. Run that construction's own test on each one you find, since the rule catching the bad instance usually carries the exception protecting the good one.
 
-`instead` came out of "Handler files go under the `interactions` path instead", where the reader held no alternative for it to point at. The same cut then landed on "Instead, just handle both in a single handler class", where the sentence before it had described the two handler classes and the shared helper. The maintainer put that one back. `writing-voice` states the test in the same breath as the ban: an `instead` naming a swap the reader is actually making stays.
+`instead` came out of "Handler files go under the `interactions` path instead", where the reader held no alternative for it to point at. The same cut then landed on "Instead, just handle both in a single handler class", where the sentence before it had described the two handler classes and the shared helper. The maintainer put that one back, then put it back a second time after a later sweep cut it again. `writing-voice` states the test in the same breath as the ban: an `instead` naming a swap the reader is actually making stays. Read `instead` as a transition first, since a word joining two paragraphs is doing a job no wordlist can see.
+
+`just` came off that same sentence both times, and it belongs there too. `writing-voice` bans the `just` that rates how hard a step is for someone whose keyboard you are not at. In "just handle both in a single handler class" the step really is one class, and the word says how little is left once seedcord holds the rest. Keep it where the sentence above has already shown the work it replaces.
+
+**Say how little is left.** A paragraph answering a complaint earns a few words naming what the reader does now. [`getConfirmation`](ref:gateway/getConfirmation) "does all of that in one `await`". `mergeRoles` "does that in one call". The scaffold's eslint file "is one call instead". `CustomId` "declares what the string carries, once". Where the answer states the mechanism and stops, the reader works the saving out on their own. Vary the words. `for you` already runs about twenty times across the guide, so the twenty-first turns it into a chant.
 
 **A repeated phrase is a count too.** Finding the same words twice tells you to go and look. It never says the second one is wrong. Ask what job each sentence is doing first, because two sentences doing different jobs can need the same words, and the repeat is the cheapest part of either one.
 

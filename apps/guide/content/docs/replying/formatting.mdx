@@ -3,7 +3,9 @@ title: Formatting helpers
 description: Helpers for the text your bot sends, so a raw id or a millisecond count reaches the user as something readable. Covers snowflake timestamps, durations, big numbers, ranks, names a reader scans, random picks, and objects that won't stringify.
 ---
 
-Your transport package re-exports `@seedcord/utils`. Everything here imports from `@seedcord/gateway` or `@seedcord/http` alongside the rest.
+Your handler works in ids, milliseconds, and raw numbers. The person reading the message works in dates, durations, and figures they can take in at a glance, so every value crossing between the two needs a conversion.
+
+Those conversions are in `@seedcord/utils`, which your transport package re-exports. Everything here imports from `@seedcord/gateway` or `@seedcord/http` alongside the rest.
 
 ## A snowflake carries its own timestamp
 

@@ -3,9 +3,9 @@ title: Sources
 description: Decide where a paginator's items come from, whether that's an array you already hold or one page at a time from your database. Covers a source without a total, the page every source returns, and writing one of your own.
 ---
 
-A source decides which items belong on page N. [Pagination](/components/pagination) used the simpler of the two sources seedcord ships. This page covers the other one, plus writing your own.
+A fifty-thousand-row mod log costs fifty thousand reads per click, to show ten rows.
 
-[`ArraySource`](ref:gateway/ArraySource) loads the whole list on every click and slices it. For a mod log with fifty thousand rows, that's fifty thousand rows read to show ten.
+What you pay per click comes down to the source. A source decides which items belong on page N. [Pagination](/components/pagination) used [`ArraySource`](ref:gateway/ArraySource), which loads the whole list on every click and slices it.
 
 [`CursorSource`](ref:gateway/CursorSource) fetches one page at a time and reports whether another follows, which is what a SQL `LIMIT`/`OFFSET` query or a paged HTTP API gives you.
 

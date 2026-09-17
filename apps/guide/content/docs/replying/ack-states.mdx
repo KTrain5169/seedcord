@@ -3,7 +3,9 @@ title: When a reply throws
 description: Discord tracks what state an interaction is in, and that decides which reply methods still work. Covers the states, the methods each one allows, and three errors a reply call throws.
 ---
 
-seedcord checks the method against the interaction's current state before it calls Discord. An illegal call throws without reaching the API, where Discord would reject it with an error that doesn't say which method to use. The message says which method you called, why it can't run, and which method works in that state.
+If you get the reply order wrong, the call fails. Discord's error says the interaction was already answered and stops there. That leaves you to work out which of your calls answered it, and which method works from here.
+
+seedcord checks that method against the interaction's current state _before_ it calls Discord. An illegal call throws without reaching the API. The message says which method you called, why it can't run, and which method works in that state.
 
 ```txt output
 reply() was called when this interaction was already replied to.
