@@ -3,7 +3,9 @@ title: Buttons
 description: Answer a button click with ButtonHandler, reading the values its custom id carries. Covers rewriting the message the click came from, and one handler serving several buttons.
 ---
 
-A click arrives as its own interaction carrying the custom id your component minted. [`ButtonHandler`](ref:gateway/ButtonHandler) decodes that id and puts the values on [`this.params`](ref:gateway/ComponentHandler.params).
+Discord hands your bot one string when someone clicks, so which button they pressed and what it was pointed at both have to be inside it.
+
+A click arrives as its own interaction carrying that string, the custom id your component minted. [`ButtonHandler`](ref:gateway/ButtonHandler) decodes that id and puts the values on [`this.params`](ref:gateway/ComponentHandler.params).
 
 ```ts twoslash title="src/handlers/Appeal.ts"
 import {

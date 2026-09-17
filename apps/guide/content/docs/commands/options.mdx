@@ -3,7 +3,9 @@ title: Options
 description: Declare options on a slash command and read them back through getters typed from what you declared. Covers the option kinds, required options dropping the null, choices, channel types, and a getter that goes missing.
 ---
 
-Every option you declare becomes a getter on [`this.options`](ref:gateway/SlashHandler.options), typed from what you declared. Let's take this command as an example.
+You marked the option required when you registered it, and `getString('query')` still handed back `string | null`. Every read opened with a check whose answer you already knew, or a `!` you hoped was right. A misspelled name compiled fine, then handed null to whoever ran the command.
+
+Both of those come from the same gap, where nothing connects your declaration to the getter that reads it. Every option you declare becomes a getter on [`this.options`](ref:gateway/SlashHandler.options), typed from what you declared.
 
 ```ts twoslash title="src/commands/Maintenance.ts"
 import {

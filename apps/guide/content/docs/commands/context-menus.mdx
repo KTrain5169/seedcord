@@ -3,7 +3,9 @@ title: Context menu commands
 description: Add a right-click command on a user or a message, and read what someone ran it on. Covers the base class each kind has, reaching the member, serving several commands from one handler, and the separate names each kind keeps.
 ---
 
-Discord shows a context menu command when someone right-clicks. It takes a name and a kind, and the click itself is its only input.
+Reporting a message through a slash command means getting its id in front of the caller somehow, then having them paste it into an option. A context menu command puts the action on the message itself, so the right-click carries the target.
+
+Discord shows one of these when someone right-clicks. It takes a name and a kind, and that click is its only input.
 
 ```ts twoslash title="src/commands/ViewProfile.ts"
 import {

@@ -1,9 +1,22 @@
 ---
 title: Start here
-description: The guide to seedcord, a TypeScript framework for Discord bots built on discord.js. Covers what the framework does, the thinking behind it, what a project looks like, commands that type your handlers, errors you can act on, the two transports, and what you need installed.
+description: The guide to seedcord, a TypeScript framework for Discord bots built on discord.js. Covers what the framework does, the thinking behind it, errors you can act on, commands that type your handlers, what a project looks like, the two transports, and what you need installed.
 ---
 
-Commands, events, components, gates, replies, and the lifecycle all come with the framework. You write your bot's features. A wrong route or a wrong option name is a compile error, before the bot ever connects.
+If you have built a Discord bot, you have written the routing yourself. A switch on the command name, a tree of if/else on the custom id, one controller per interaction kind, all of it extended by hand each time you add a command. I wrote that too, and I copied it into every bot I started.
+
+TypeScript couldn't help with the routing, and it couldn't help once you were inside the handler either. You registered the option yourself, and `getString` still handed back `string | null`. A custom id arrived as a plain string you parsed and cast into the thing you encoded. Every read opened with a check whose answer you already knew.
+
+Then I'd run it. Every time I needed to test my bot and tweak it while doing so, I had to restart it. That meant waiting for it to log in, register its commands, and finish every other startup step before I could see my change in Discord.
+
+Frameworks take that switch statement off you. Most put the routing, the checks, and the work in one handler, though. Each of those changes for a different reason, and a file holding all three gets edited every time any of them moves. This leads to tight coupling between the routing, the checks, and the work, making maintenance harder.
+
+I built seedcord to fix all of that, on two principles:
+
+1. seedcord automates what it reliably can, and still lets you stay in control.
+2. Types cover everything seedcord can work out before your bot runs.
+
+A bot with three commands and a bot with three hundred are written the same way.
 
 <Callout type="note">
     seedcord is pre-1.0, so a minor version can break. Read the
@@ -13,86 +26,15 @@ Commands, events, components, gates, replies, and the lifecycle all come with th
 
 ## What seedcord covers
 
+Commands, replies, components, checks, events, plugins, and the dev tooling all come with the framework. You write your bot's features. A wrong route or a wrong option name is a compile error, before the bot ever connects.
+
 - **Commands.** Slash commands, subcommands and groups, user and message context menus, autocomplete. seedcord sends every command it finds to Discord when the bot starts.
+- **Replying.** Discord allows one first response per interaction, then edits and follow-ups. seedcord tracks which one you already sent and throws a readable error when you call the wrong one. One `throw` from a handler stops the command, shows the user your message, logs it, and publishes it for telemetry.
 - **Components.** Buttons, select menus, modals, and pagination. Discord hands a click back as the `custom_id` string you built, and parsing it is on you. In seedcord you declare the fields once, and the handler gets them back typed. seedcord packs those fields, so more of them fit inside Discord's 100 characters.
-- **Replying.** Discord allows one first response per interaction, then edits and follow-ups. seedcord tracks which one you already sent and throws a readable error when you call the wrong one.
-- **Gates.** A check that runs before your handler and refuses by throwing. [`@Gated`](ref:gateway/Gated) puts one on a handler. You write your own with [`defineGate`](ref:core/defineGate). Combine them with [`and`](ref:core/and) when a command needs two things at once, or [`or`](ref:core/or) when either will do. seedcord ships a catalog of gates you can import and use directly, like cooldowns and permission checks.
-- **Throwing.** One `throw` stops the command, shows the user your message, logs it, and publishes it for telemetry. It picks the right reply method for whatever state the interaction is already in. [`Notice`](ref:core/Notice) is the one you subclass with your own message. [`Fault`](ref:core/Fault) shows a generic failure and posts the real error to a Discord channel you configure. [`Silence`](ref:core/Silence) stops the command and does nothing else.
+- **Checks.** A gate runs before your handler and refuses by throwing. [`@Gated`](ref:gateway/Gated) puts one on a handler, [`defineGate`](ref:core/defineGate) writes your own, and [`and`](ref:core/and) or [`or`](ref:core/or) combines them. seedcord ships a catalog you can import directly, like cooldowns and permission checks. Middleware runs around every dispatch, and a rate limiter counts uses against any key you build.
 - **Events.** On the gateway you get every event discord.js emits, and you can publish and subscribe to your own alongside them. Your own pub/sub works on http too.
-- **The dev loop.** Edit a handler and the running bot loads it without a restart. Change a command and it asks whether to re-register. On http it opens a tunnel and points your app at it.
-
-## Philosophy
-
-If you have built a Discord bot, you have written the routing yourself. A switch on the command name, a tree of if/else on the custom id, one controller per interaction kind, all of it extended by hand each time you add a command. I wrote that too, and I copied it into every bot I started.
-
-TypeScript couldn't help with any of it. You registered the option yourself, and `getString` still hands back `string | null`. A custom id arrives as a plain string you parse and cast into the thing you encoded. Every read opens with a check whose answer you already know.
-
-Every time I needed to test my bot and tweak it while doing so, I had to restart it. That meant waiting for it to log in, register its commands, and finish every other startup step before I could see my change in Discord.
-
-Most frameworks put the routing, the checks, and the work in one handler. Each of those changes for a different reason, and a file holding all three gets edited every time any of them moves.
-
-I built seedcord to fix all of that, on two principles:
-
-1. seedcord automates what it reliably can, and still lets you stay in control.
-2. Types cover everything seedcord can work out before your bot runs.
-
-A bot with three commands and a bot with three hundred are written the same way.
-
-## What a seedcord project looks like
-
-```txt title="my-bot" output
-my-bot/
-├─ src/
-│  ├─ commands/
-│  │  └─ Ping.ts
-│  ├─ handlers/
-│  │  └─ Ping.ts
-│  ├─ events/
-│  │  └─ Ready.ts
-│  ├─ bot.ts
-│  ├─ index.ts
-│  └─ seedcord-gen.d.ts
-├─ seedcord.config.ts
-├─ .env
-└─ package.json
-```
-
-`src/commands/` holds what a command looks like on Discord. `src/handlers/` holds the code that runs when someone uses one. `src/events/` holds everything else happening in a server. `bot.ts` is your config, and `seedcord-gen.d.ts` is written by the CLI.
-
-One command sets this up, along with the tsconfig, lint, and formatter files.
-
-<Shell create="seedcord" />
-
-## Your commands type your handlers
-
-You declare an option once, on the command. The handler asks for it by name and gets back the type you declared.
-
-```ts twoslash title="src/handlers/Ban.ts"
-// @errors: 2345
-import { SlashHandler, SlashRoute } from '@seedcord/gateway';
-
-@SlashRoute('ban')
-export class Ban extends SlashHandler<'ban'> {
-    public async execute(): Promise<void> {
-        const target = this.options.getUser('target');
-        //    ^?
-
-        await this.reply(`Banned ${target.username}`);
-
-        this.options.getString('resaon');
-    }
-}
-```
-
-`target` is required on the command, so it arrives as a plain `User`. An optional option comes back as `string | null`. The typo on the last line stops the build.
-
-<Callout type="transport">
-
-The sample is gateway, where `getUser` returns a discord.js `User`. On http the same call returns an `APIUser`, which is Discord's raw payload. Both carry `username` and `id`, and only the discord.js one has methods.
-
-</Callout>
-
-[`seedcord codegen`](/tooling/codegen) imports your command files, constructs each command, and writes what the builders produced to `seedcord-gen.d.ts`. Run it again after you change a command, or say yes when `seedcord dev` offers to re-register.
+- **Plugins.** A database, a cache, or a client for another API, started and stopped with your bot and reachable from every handler as `this.core`, typed.
+- **Tooling.** When you save a handler, the running bot loads it without a restart. `seedcord dev` offers to re-register a command you changed, and on http it opens a tunnel and points your Discord application at it. The same CLI runs codegen and your production build, and the scaffold writes lint rules that catch a missing route decorator in your editor.
 
 ## Errors that tell you what to do
 
@@ -126,6 +68,64 @@ ButtonBuilder or ThumbnailBuilder, got nothing.
 ```
 
 Over a hundred more errors carry the same shape.
+
+## Your commands type your handlers
+
+You declare an option once, on the command. The handler asks for it by name and gets back the type you declared.
+
+```ts twoslash title="src/handlers/Ban.ts"
+// @errors: 2345
+import { SlashHandler, SlashRoute } from '@seedcord/gateway';
+
+@SlashRoute('ban')
+export class Ban extends SlashHandler<'ban'> {
+    public async execute(): Promise<void> {
+        const target = this.options.getUser('target');
+        //    ^?
+
+        await this.reply(`Banned ${target.username}`);
+
+        this.options.getString('resaon');
+    }
+}
+```
+
+`target` is required on the command, so it arrives as a plain `User`. If it wasn't required, it would have come back as `User | null`. All your options are fully typed, so a type would stop the build entirely, like that last line above.
+
+<Callout type="transport">
+
+The sample is gateway, where `getUser` returns a discord.js `User`. On http the same call returns an `APIUser`, which is Discord's raw payload. Both carry `username` and `id`, and only the discord.js one has methods.
+
+</Callout>
+
+[`seedcord codegen`](/tooling/codegen) imports your command files, constructs each command, and writes what the builders produced to `seedcord-gen.d.ts`. Run it again after you change a command, or say yes when `seedcord dev` offers to re-register.
+
+## What a seedcord project looks like
+
+That generated file sits beside your own, in a tree the scaffold lays out for you.
+
+```txt title="my-bot" output
+my-bot/
+├─ src/
+│  ├─ commands/
+│  │  └─ Ping.ts
+│  ├─ handlers/
+│  │  └─ Ping.ts
+│  ├─ events/
+│  │  └─ Ready.ts
+│  ├─ bot.ts
+│  ├─ index.ts
+│  └─ seedcord-gen.d.ts
+├─ seedcord.config.ts
+├─ .env
+└─ package.json
+```
+
+`src/commands/` holds what a command looks like on Discord. `src/handlers/` holds the code that runs when someone uses one. `src/events/` holds everything else happening in a server. `bot.ts` is your config, and `seedcord-gen.d.ts` is written by the CLI.
+
+One command sets this up, along with the tsconfig, lint, and formatter files.
+
+<Shell create="seedcord" />
 
 ## Two transports
 

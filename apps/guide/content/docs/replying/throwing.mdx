@@ -3,9 +3,9 @@ title: Throwing
 description: Refuse from a handler by throwing a Notice, so the user gets a reason rather than silence. Covers what each kind of throw produces, the fields on a Notice, and what render receives.
 ---
 
-A handler refuses by throwing. seedcord catches the throw at one boundary and sends the reply through the handler, so the class you throw sets what the reply says. A gate throws into the same boundary, and its refusal reaches the user the same way.
-
 Say your ban handler checks for an open case in a helper. Returning a flag means `execute()` has to check it, and every caller of every helper that can refuse has to check one too. Throw from the helper and the handler stops at the line that found the problem.
+
+seedcord catches that throw at one boundary and sends the reply through the handler, so the class you throw sets what the reply says. A gate throws into the same boundary, and its refusal reaches the user the same way.
 
 You write a refusal as a [`Notice`](ref:core/Notice) subclass.
 

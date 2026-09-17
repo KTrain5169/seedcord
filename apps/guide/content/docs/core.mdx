@@ -48,7 +48,7 @@ The rest of your code reaches the same object. A gate reads it as `ctx.core`. A 
 
 Suppose your bot opens a cache of its own. Something has to fill it before the first command runs, then close it again when the bot stops. Doing that yourself means racing your own startup on one end and wiring up `SIGTERM` on the other.
 
-[`startup.addTask`](ref:core/CoordinatedStartup.addTask) and [`shutdown.addTask`](ref:core/CoordinatedShutdown.addTask) put that work in a phase, and seedcord runs the phases in order. Although, it's better to write a small [plugin](/plugins/) for yourself instead. It provides hooks for startup and shutdown tasks, timeouts, and more, keeping your initialization and cleanup logic organized and consistent with the framework's lifecycle.
+[`startup.addTask`](ref:core/CoordinatedStartup.addTask) and [`shutdown.addTask`](ref:core/CoordinatedShutdown.addTask) put that work in a phase, and seedcord runs the phases in order. A small [plugin](/plugins/) is usually the better home for it, since a plugin starts and stops at those same points, takes its own options, and logs on its own channel.
 
 ```ts twoslash title="src/bot.ts"
 import { resolve } from 'node:path';

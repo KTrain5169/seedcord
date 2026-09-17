@@ -5,7 +5,7 @@ description: Page through a long list with Paginator, so a user walks it with bu
 
 A list longer than one message needs a Next button, and that button has to know which page comes next. If you keep the page number in memory, every button stops working the next time your bot restarts. If you write it into the id by hand, the bounds checks and disabled buttons are yours to write too.
 
-A [`Paginator`](ref:gateway/Paginator) sends one page of a list and routes the clicks on its nav buttons. Every button carries its target page inside the custom id, so a click still works after your bot restarts.
+A [`Paginator`](ref:gateway/Paginator) sends one page of a list and routes the clicks on its nav buttons. Every button carries its target page inside the custom id, so a click still works after your bot restarts. It disables **Prev** on page one and **Next** on the last page.
 
 ```ts twoslash hovers title="src/handlers/Roles.ts"
 import {

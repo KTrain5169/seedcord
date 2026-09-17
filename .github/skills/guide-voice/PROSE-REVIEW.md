@@ -78,6 +78,12 @@ finding, and a tic is a habit rather than a single sentence.
    finding. A reader who knows what a switch does still does not know why a
    route is written twice.
 
+   The same shape runs at page scale. Read every paragraph against the headings
+   below it and report one that announces what a later section covers. A why
+   added to the top of the hot-reload page named which saves need a restart,
+   which the paragraph under it closes on and a heading further down covers in
+   full.
+
 4. A rhetorical shape standing in for the thing. Verbless fragments used as
    beats. Wordplay. Any sentence that would be shorter and clearer said plainly.
 
@@ -95,6 +101,29 @@ finding, and a tic is a habit rather than a single sentence.
 5. Written from the framework's side instead of the reader's. Naming a framework
    feature the reader has not met yet as though it means something to them.
    Answering what the framework does when the reader asked what they should do.
+
+   Read the seam under every why-paragraph. A why splits a section in two, and
+   the paragraph after it has to pick the complaint up by name, through a
+   repeated noun or a line saying what the problem came down to. Report a
+   paragraph that opens on a fresh subject and leaves the reader to make the
+   join. Four of fourteen new openers did this in one sweep.
+
+   A complaint stated in the conditional is the same finding. "You'd write your
+   own wording onto that card" hands the reader a suggestion. "The wording on
+   that card is yours to replace" states what is true.
+
+   Report a complaint the page takes away that is written in flat present with
+   no frame word. The reader reaches the end of it without knowing whether this
+   page fixes the thing or teaches them to live with it. Past tense says it is
+   over, and so does `by hand`, `yourself`, `Without`, or an `if`. Leave a
+   complaint the reader still lives with after this page in present, since
+   Discord's three seconds and its one string per click outlive the page.
+
+   Report a complaint with nobody in front of the verb. seedcord is the only
+   name on the page, so "a second reply comes back rejected" reads as seedcord
+   rejecting it, and the page opens by blaming the framework for the thing it
+   fixes. Name the actor in your report, since the fix is handing the verb to
+   Discord, to the reader's own code, or to the reader through `if`.
 
 6. Content that does not earn its space. Anything a reader will rarely hit, or
    that does not serve the one thing this page is for.

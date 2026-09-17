@@ -5,7 +5,7 @@ description: Run code when a discord.js event fires, with an event handler class
 
 A member joins, someone posts a message, someone edits it. Each one is a discord.js event. With plain discord.js you'd call `client.on` for each event in a startup file. That file grows with every listener you add. When an async listener throws, nothing catches the rejection unless you wrap every listener yourself.
 
-seedcord gives each listener its own class. It finds those classes in your events folder, attaches one `client.on` per event, and catches a throw from each handler separately.
+Instead, seedcord gives each listener its own class. It finds those classes in your events folder, attaches one `client.on` per event, and catches a throw from each handler separately.
 
 ```ts twoslash title="src/events/Welcome.ts"
 import { EventHandler, RegisterEvent } from '@seedcord/gateway';
