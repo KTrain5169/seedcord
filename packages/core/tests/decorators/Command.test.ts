@@ -45,6 +45,12 @@ describe('RegisterCommand', () => {
         });
     });
 
+    it('stores config scope metadata when it takes no scope', () => {
+        const Cmd = freshCommand();
+        RegisterCommand()(Cmd);
+        expect(Reflect.getOwnMetadata(CommandMetadataKey, Cmd) as CommandMeta).toEqual({ scope: 'config' });
+    });
+
     it('throws when the same class is registered twice', () => {
         const Cmd = freshCommand();
         RegisterCommand('global')(Cmd);
@@ -55,6 +61,21 @@ describe('RegisterCommand', () => {
             caught = error;
         }
         expect(isSeedcordError(caught, undefined, SeedcordErrorCode.DecoratorCommandAlreadyRegistered)).toBe(true);
+    });
+
+    it('prints both decorator calls when a class is registered twice', () => {
+        const Cmd = freshCommand();
+        RegisterCommand('global')(Cmd);
+        let caught: unknown;
+        try {
+            RegisterCommand()(Cmd);
+        } catch (error) {
+            caught = error;
+        }
+
+        const message = Error.isError(caught) ? caught.message : '';
+        expect(message).toContain("@RegisterCommand('global')");
+        expect(message).toContain('@RegisterCommand()');
     });
 
     it('throws when global scope carries guild ids', () => {

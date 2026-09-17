@@ -64,6 +64,10 @@ export enum SeedcordErrorCode {
     CoreLifecycleUnavailable = 1211,
     /** `emit` was called on the bus. It reaches listeners and skips every subscriber. */
     CoreBusEmitUnavailable = 1212,
+    /** A command decorator passed `'config'` while `commands.guilds` is empty. */
+    CoreCommandGuildsEmpty = 1213,
+    /** Discord refused the command deploy for one guild. */
+    CoreCommandGuildDeployFailed = 1214,
 
     /** A command decorator attempted to re-register an existing command scope. */
     DecoratorCommandAlreadyRegistered = 1301,
