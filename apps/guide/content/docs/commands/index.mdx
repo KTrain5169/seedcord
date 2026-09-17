@@ -3,7 +3,9 @@ title: Commands
 description: Create a slash command from two files, one that declares it to Discord and one that answers it. Covers the command file, deploying globally or to one server, codegen, the handler file, a command with no handler, and a constructor that throws.
 ---
 
-A command file declares what Discord shows people. A handler file runs when someone uses it.
+Slash commands are the way Discord gives people to reach your bot, and they run without a privileged intent. Discord needs your command's shape before anyone can run one, and when someone does, the interaction it sends back names that command. Uploading a shape and routing a name are different jobs.
+
+Each of those gets a file. A command file declares what Discord shows people. A handler file runs when someone uses it.
 
 ## The command file
 
