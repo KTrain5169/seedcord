@@ -1,5 +1,11 @@
 # @seedcord/types
 
+## 0.14.0
+
+### ✨ Minor
+
+- Added `commands.guilds`. Every `@RegisterCommand()` command deploys to the ids you list there. ([#316](https://github.com/seedcord/seedcord/pull/316))
+
 ## 0.13.0
 
 ### ✨ Minor

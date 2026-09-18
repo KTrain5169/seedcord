@@ -1,7 +1,7 @@
 {
     "name": "create-seedcord",
     "type": "module",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "Scaffold a new seedcord bot",
     "keywords": [
         "discord",

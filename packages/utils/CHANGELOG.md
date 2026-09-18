@@ -1,5 +1,16 @@
 # @seedcord/utils
 
+## 0.8.12
+
+### 🩹 Patch
+
+- Fixed `renderTable` hanging when a single character is wider than `maxWidth`, like an emoji with `maxWidth: 1`. ([#305](https://github.com/seedcord/seedcord/pull/305), thanks [@ramsquishnaaa](https://github.com/ramsquishnaaa))
+
+#### 📦 Seedcord packages
+
+- `@seedcord/errors` 0.8.0 → 0.9.0
+- `@seedcord/types` 0.13.0 → 0.14.0
+
 ## 0.8.11
 
 ### 🩹 Patch

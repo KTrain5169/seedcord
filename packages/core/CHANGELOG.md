@@ -1,5 +1,25 @@
 # @seedcord/core
 
+## 0.8.0
+
+### ✨ Minor
+
+- A plugin key takes one dot, so `attach('services.users', Users)` reads back as `core.services.users`. The compiler rejects a key that collides with a plugin, a group, or a member the bot already carries. ([#318](https://github.com/seedcord/seedcord/pull/318))
+- `@RegisterCommand()` with no arguments deploys a command to the guilds in `commands.guilds`. With no ids there, it deploys globally. `@RegisterCommand('guild', ['config', '123'])` deploys to those same guilds plus `123`. ([#316](https://github.com/seedcord/seedcord/pull/316))
+
+### 🩹 Patch
+
+- `DecoratorCommandAlreadyRegistered` now prints both decorator calls written on the class. ([#316](https://github.com/seedcord/seedcord/pull/316))
+- Added `CoreCommandGuildDeployFailed` (1214). A guild command deploy Discord refuses now prints that guild id, with Discord's own error kept as the cause. ([#316](https://github.com/seedcord/seedcord/pull/316))
+
+#### 📦 Seedcord packages
+
+- `@seedcord/errors` 0.8.0 → 0.9.0
+- `@seedcord/types` 0.13.0 → 0.14.0
+- `@seedcord/utils` 0.8.11 → 0.8.12
+- `@seedcord/custom-id` 0.2.1 → 0.2.2
+- `@seedcord/logger` 0.3.2 → 0.3.3
+
 ## 0.7.0
 
 ### 💥 Breaking

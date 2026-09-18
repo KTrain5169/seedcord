@@ -1,5 +1,17 @@
 # @seedcord/errors
 
+## 0.9.0
+
+### ✨ Minor
+
+- Added `CoreCommandGuildsEmpty` (1213), thrown at startup when `@RegisterCommand('guild', [...])` passes `'config'` while `commands.guilds` is empty. ([#316](https://github.com/seedcord/seedcord/pull/316))
+- Added `CoreCommandGuildDeployFailed` (1214). A guild command deploy Discord refuses now prints that guild id, with Discord's own error kept as the cause. ([#316](https://github.com/seedcord/seedcord/pull/316))
+- Added `CorePluginGroupTaken` (1215) for nesting under a name the bot already uses, `CorePluginKeyHoldsGroup` (1216) for attaching a plugin where a group sits, and `CorePluginKeyMalformed` (1217) for a key with an empty part or a second dot. A repeated key still throws `CorePluginKeyExists`. ([#318](https://github.com/seedcord/seedcord/pull/318))
+
+### 🩹 Patch
+
+- `DecoratorCommandAlreadyRegistered` now prints both decorator calls written on the class. ([#316](https://github.com/seedcord/seedcord/pull/316))
+
 ## 0.8.0
 
 ### 💥 Breaking

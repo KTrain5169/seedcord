@@ -1,5 +1,11 @@
 # create-seedcord
 
+## 0.3.0
+
+### ✨ Minor
+
+- A scaffolded project now carries an `AGENTS.md`, with a `CLAUDE.md` pointing at it. ([#320](https://github.com/seedcord/seedcord/pull/320))
+
 ## 0.2.0
 
 ### ✨ Minor

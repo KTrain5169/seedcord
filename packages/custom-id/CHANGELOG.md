@@ -1,5 +1,13 @@
 # @seedcord/custom-id
 
+## 0.2.2
+
+### 🩹 Patch
+
+#### 📦 Seedcord packages
+
+- `@seedcord/errors` 0.8.0 → 0.9.0
+
 ## 0.2.1
 
 ### 🩹 Patch

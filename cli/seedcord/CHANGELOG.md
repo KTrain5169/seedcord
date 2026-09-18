@@ -1,5 +1,21 @@
 # seedcord
 
+## 0.20.0
+
+### ✨ Minor
+
+- `seedcord codegen` writes one `Core` row per plugin group, so `services.users` and `services.tickets` share a single `services` row. ([#318](https://github.com/seedcord/seedcord/pull/318))
+
+### 🩹 Patch
+
+#### 📦 Seedcord packages
+
+- `@seedcord/errors` 0.8.0 → 0.9.0
+- `@seedcord/core` 0.7.0 → 0.8.0
+- `@seedcord/types` 0.13.0 → 0.14.0
+- `@seedcord/utils` 0.8.11 → 0.8.12
+- `@seedcord/logger` 0.3.2 → 0.3.3
+
 ## 0.19.5
 
 ### 🩹 Patch
