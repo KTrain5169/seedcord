@@ -63,13 +63,19 @@ export function takeWidth(text: string, maxColumns: number): string {
 
 function hardBreak(token: string, maxColumns: number): string[] {
     const pieces: string[] = [];
-    let rest = token;
-    while (displayWidth(rest) > maxColumns) {
-        const head = takeWidth(rest, maxColumns);
-        pieces.push(head);
-        rest = rest.slice(head.length);
+    let current = '';
+    let width = 0;
+    for (const segment of segments(token)) {
+        const segWidth = segmentWidth(segment);
+        if (current !== '' && width + segWidth > maxColumns) {
+            pieces.push(current);
+            current = '';
+            width = 0;
+        }
+        current += segment;
+        width += segWidth;
     }
-    if (rest.length > 0) pieces.push(rest);
+    if (current !== '') pieces.push(current);
     return pieces;
 }
 
