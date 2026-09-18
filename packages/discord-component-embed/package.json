@@ -1,18 +1,28 @@
 {
-    "name": "{{ name }}",
+    "name": "discord-component-embed",
     "type": "module",
     "version": "0.0.0",
-    "description": "{{ description }}",
-    "keywords": [],
+    "description": "Build Discord component embed link previews with React.",
+    "keywords": [
+        "discord",
+        "link-preview",
+        "component-embed",
+        "components-v2",
+        "cv2",
+        "open-graph",
+        "unfurl",
+        "react",
+        "jsx"
+    ],
     "engines": {
         "node": ">=24.11"
     },
     "repository": {
         "type": "git",
         "url": "https://github.com/seedcord/seedcord.git",
-        "directory": "{{ dir }}/{{ folder dir name }}"
+        "directory": "packages/discord-component-embed"
     },
-    "homepage": "https://seedcord.org",
+    "homepage": "https://github.com/seedcord/seedcord/tree/next/packages/discord-component-embed#readme",
     "bugs": "https://github.com/seedcord/seedcord/issues",
     "license": "Apache-2.0",
     "author": "Dhruv <materwelondhruv@gmail.com> (https://materwelon.dev)",
@@ -45,16 +55,23 @@
         "coverage": "vitest run --coverage"
     },
     "peerDependencies": {
-        "typescript": "catalog:peer"
+        "react": "catalog:react"
     },
     "devDependencies": {
         "@seedcord/eslint-config": "workspace:^",
         "@seedcord/tsconfig": "workspace:^",
         "@seedcord/tsdown-config": "workspace:^",
-        "@seedcord/vitest-config": "workspace:^"
+        "@seedcord/vitest-config": "workspace:^",
+        "@types/react": "catalog:react",
+        "@types/react-dom": "catalog:react",
+        "react": "catalog:react",
+        "react-dom": "catalog:react"
     },
     "publishConfig": {
         "access": "public",
         "provenance": true
+    },
+    "dependencies": {
+        "discord-api-types": "catalog:deps"
     }
 }
