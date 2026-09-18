@@ -1,6 +1,6 @@
-import type { Skill } from '../skills';
+import { DOCS_URL, GUIDE_URL as GUIDE } from '../sites';
 
-const GUIDE = 'https://guide.seedcord.org';
+import type { Skill } from '../skills';
 
 const DESCRIPTION =
     'Build a Discord bot with seedcord, a TypeScript framework on top of discord.js. Covers picking a transport, declaring slash commands with generated option types, replying, gates, components, and the CLI.';
@@ -9,17 +9,12 @@ const DESCRIPTION =
 const BODY = `---
 name: seedcord
 description: ${DESCRIPTION}
-license: MIT
+license: Apache-2.0
 compatibility: TypeScript projects on Node 24.11 or newer.
 metadata:
     documentation: ${GUIDE}
-    reference: https://docs.seedcord.org
+    reference: ${DOCS_URL}
     llms_txt: ${GUIDE}/llms.txt
-allowed-tools:
-    - Bash
-    - Read
-    - Edit
-    - Write
 ---
 
 # Building a bot with seedcord
@@ -42,7 +37,7 @@ Run \`seedcord codegen\` after you add or change a command. The handler generics
 
 ## 5. Check every claim before you write it
 
-Fetch the page for the surface you are using. Every page answers at its own url plus \`.md\`, so ${GUIDE}/gates.md is the Gates page.
+Fetch the page for the surface you are using. Every page answers at its own url plus \`.md\`, so ${GUIDE}/checks/gates.md is the Gates page.
 `;
 
 export const SEEDCORD_SKILL: Skill = { name: 'seedcord', description: DESCRIPTION, body: BODY };

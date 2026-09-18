@@ -94,17 +94,18 @@
     /* Popover/Tooltip surface */
     --bg-popover: color-mix(in oklab, var(--bg) 98%, var(--color-base-dark) 2%);
 
-    /* Shadows */
-    --shadow-soft-token: 0 28px 60px -36px color-mix(in oklab, var(--color-text) 28%, transparent);
+    /* Shadows. a shadow stays dark in both themes. --color-text flips and paints a pale line on dark */
+    --shadow-ink: var(--color-base-dark);
+    --shadow-soft-token: 0 28px 60px -36px color-mix(in oklab, var(--shadow-ink) 28%, transparent);
     --shadow-card:
-        0 1px 2px color-mix(in oklab, var(--color-text) 4%, transparent),
-        0 1px 1px color-mix(in oklab, var(--color-text) 4%, transparent);
+        0 1px 2px color-mix(in oklab, var(--shadow-ink) 4%, transparent),
+        0 1px 1px color-mix(in oklab, var(--shadow-ink) 4%, transparent);
     --shadow-card-md:
-        0 4px 12px color-mix(in oklab, var(--color-text) 6%, transparent),
-        0 1px 2px color-mix(in oklab, var(--color-text) 4%, transparent);
+        0 4px 12px color-mix(in oklab, var(--shadow-ink) 6%, transparent),
+        0 1px 2px color-mix(in oklab, var(--shadow-ink) 4%, transparent);
     --shadow-card-lg:
-        0 12px 32px color-mix(in oklab, var(--color-text) 10%, transparent),
-        0 2px 6px color-mix(in oklab, var(--color-text) 4%, transparent);
+        0 12px 32px color-mix(in oklab, var(--shadow-ink) 10%, transparent),
+        0 2px 6px color-mix(in oklab, var(--shadow-ink) 4%, transparent);
 
     /* Badge tones */
     --badge-package-border: color-mix(in oklab, var(--rind) 38%, var(--border));
@@ -126,7 +127,8 @@
     --text-accent-b-strong: color-mix(in oklab, var(--color-text) 65%, var(--rind) 35%);
     --text-accent-b-intense: color-mix(in oklab, var(--rind) 80%, var(--color-text) 20%);
 
-    --bg-surface-subtle: color-mix(in oklab, var(--bg) 95%, var(--surface) 5%);
+    /* the opaque twin of --surface-subtle. mixing --surface in would carry its alpha through */
+    --bg-surface-subtle: color-mix(in oklab, var(--bg) 98%, var(--text) 2%);
     --bg-surface-moderate: color-mix(in oklab, var(--bg) 90%, var(--surface) 10%);
     --bg-code: color-mix(in oklab, var(--bg) 96%, var(--text) 4%);
     --bg-code-header: color-mix(in oklab, var(--bg) 94%, var(--text) 6%);
@@ -134,6 +136,8 @@
     --bg-accent-b-subtle: color-mix(in oklab, var(--bg) 94%, var(--rind) 6%);
     --bg-accent-b-moderate: color-mix(in oklab, var(--bg) 85%, var(--rind) 15%);
     --bg-accent-b-strong: color-mix(in oklab, var(--bg) 76%, var(--rind) 24%);
+    /* the --surface-accent-a pair is see-through. this one tints an element that floats over text */
+    --bg-accent-a-moderate: color-mix(in oklab, var(--bg) 85%, var(--flesh) 15%);
 
     --surface-accent-b-subtle: color-mix(in oklab, var(--surface) 92%, var(--rind) 8%);
     --surface-accent-a-subtle: color-mix(in oklab, var(--surface) 92%, var(--flesh) 8%);
@@ -164,11 +168,22 @@
     --command-overlay: color-mix(in oklab, var(--bg) 55%, var(--seed-dark) 45%);
     --overlay-dim: color-mix(in oklab, var(--bg) 72%, color-mix(in srgb, var(--color-base-slate), transparent 20%) 28%);
     --bg-dim-subtle: color-mix(in oklab, var(--bg) 96%, var(--color-base-slate) 4%);
+
+    /* ScrollToTopButton sets its own size and bottom offset. a page pads its end by the clearance */
+    --jump-size: 3rem;
+    --jump-bottom: 2.5rem;
+    --jump-clearance: calc(var(--jump-bottom) + var(--jump-size) + 1.5rem);
+
+    /* pulls a ghost row's box left so its icon lands on the column edge. 12px of px-3 plus the 2px lucide leaves blank */
+    --ghost-row-pull: 0.875rem;
 }
 
 [data-theme='dark'] {
     --text-muted: color-mix(in oklab, var(--color-text) 70%, transparent);
     --text-faint: color-mix(in oklab, var(--color-text) 28%, transparent);
+
+    /* --surface is white at 4% here against black at 2% in light. the opaque twin follows */
+    --bg-surface-subtle: color-mix(in oklab, var(--bg) 95.5%, var(--text) 4.5%);
 
     /* plain black reads deeper than the brand ink on the dark ground */
     --command-overlay: color-mix(in oklab, var(--bg) 55%, black 45%);
