@@ -45,6 +45,12 @@ const messages = {
         `${controllerName} was instantiated without a ${pathKind} path.`,
     [SeedcordErrorCode.CoreDirectoryImportFailed]: (file: string) => `${file} threw while importing.`,
     [SeedcordErrorCode.CoreDirectoryUnreadable]: (dir: string) => `${dir} could not be read.`,
+    [SeedcordErrorCode.CorePluginGroupTaken]: (head: string, key: string) =>
+        `${paint.sky(head)} is already taken on this bot, so ${paint.sky(key)} cannot nest under it. Pick another group name.`,
+    [SeedcordErrorCode.CorePluginKeyMalformed]: (key: string, reason: string) =>
+        `${paint.sky(key)} ${reason} Write a group and a plugin name around one dot, like 'services.users'.`,
+    [SeedcordErrorCode.CorePluginKeyHoldsGroup]: (key: string) =>
+        `${paint.sky(key)} already holds a group of plugins. Attach this one under a name of its own.`,
     [SeedcordErrorCode.CorePluginReservedChannel]: (key: string) =>
         `Plugin key "${key}" is a channel the framework logs on. Pick another key.`,
     [SeedcordErrorCode.CoreApplicationUnavailable]: () =>

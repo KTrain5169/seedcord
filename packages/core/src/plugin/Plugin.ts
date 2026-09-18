@@ -10,7 +10,7 @@ import { resolveLifecycleSpec } from './lifecycle';
 import type { CoreBase } from '#interfaces/CoreBase';
 import type { ResolvedPluginLifecycleSpec, PluginLifecycleSpec } from './lifecycle';
 import type { TransportOf, PluginOptions, RuntimeOf } from './options';
-import type { Tail, HmrAware, HmrUpdateEvent } from '@seedcord/types';
+import type { Tail, FrameworkChannel, HmrAware, HmrUpdateEvent } from '@seedcord/types';
 
 export interface Initializeable {
     init(): Promise<void>;
@@ -156,6 +156,49 @@ export type PluginCtor<TPlugin extends PluginLike = PluginLike> = new (...args: 
 
 /** @internal */
 export type PluginArgs<Ctor extends PluginCtor> = Tail<ConstructorParameters<Ctor>>;
+
+/** @internal */
+export type Attached<Key extends string, Instance> = Key extends `${infer Group}.${infer Leaf}`
+    ? Record<Group, Record<Leaf, Instance>>
+    : Record<Key, Instance>;
+
+// attach writes the key onto the host, so a key like toString would shadow the one on Object.prototype
+// eslint-disable-next-line @typescript-eslint/no-wrapper-object-types -- lint:fix swaps this for `keyof object`, which is never
+type HostMember<Host> = keyof Host | keyof Object;
+
+// a string argument against an object type renders only as `string is not assignable`
+/** @internal */
+export type AttachKeyAssert<Key extends string, Host> = Key extends ''
+    ? 'A plugin key needs a name.'
+    : Key extends `${infer Group}.${infer Leaf}`
+      ? Leaf extends `${string}.${string}`
+          ? `'${Key}' has more than one dot. A plugin key takes one dot at most.`
+          : '' extends Group | Leaf
+            ? `'${Key}' has an empty part. Write a group and a plugin name around the dot, like 'services.users'.`
+            : Group extends FrameworkChannel
+              ? `'${Group}' is a channel the framework logs on. Pick another group name.`
+              : Group extends keyof Host
+                ? Host[Group] extends PluginLike
+                    ? `'${Group}' already holds a plugin, so '${Leaf}' cannot nest inside it.`
+                    : Host[Group] extends Record<string, PluginLike>
+                      ? Leaf extends keyof Host[Group]
+                          ? `'${Key}' is already attached.`
+                          : Key
+                      : `'${Group}' is already a member on the bot. Pick another group name.`
+                : Group extends HostMember<Host>
+                  ? `'${Group}' is already a member on the bot. Pick another group name.`
+                  : Key
+      : Key extends FrameworkChannel
+        ? `'${Key}' is a channel the framework logs on. Pick another plugin key.`
+        : Key extends keyof Host
+          ? Host[Key] extends PluginLike
+              ? `'${Key}' is already attached.`
+              : Host[Key] extends Record<string, PluginLike>
+                ? `'${Key}' already holds a group of plugins. Attach this one under a name of its own.`
+                : `'${Key}' is already a member on the bot. Pick another plugin key.`
+          : Key extends HostMember<Host>
+            ? `'${Key}' is already a member on the bot. Pick another plugin key.`
+            : Key;
 
 type CoreParamTooNarrow = Record<
     'this plugin constructor must take CoreBase as its first parameter and read the transport Core off this.core',

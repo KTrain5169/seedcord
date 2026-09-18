@@ -68,6 +68,12 @@ export enum SeedcordErrorCode {
     CoreCommandGuildsEmpty = 1213,
     /** Discord refused the command deploy for one guild. */
     CoreCommandGuildDeployFailed = 1214,
+    /** A plugin was attached under a group name the bot already uses. */
+    CorePluginGroupTaken = 1215,
+    /** A plugin was attached at a name that holds a group of plugins. */
+    CorePluginKeyHoldsGroup = 1216,
+    /** A plugin key is empty, has an empty part, or carries more than one dot. */
+    CorePluginKeyMalformed = 1217,
 
     /** A command decorator attempted to re-register an existing command scope. */
     DecoratorCommandAlreadyRegistered = 1301,

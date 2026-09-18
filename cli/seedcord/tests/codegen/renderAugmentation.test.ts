@@ -11,7 +11,6 @@ function renderWithTarget(registry: Parameters<typeof renderAugmentation>[0]): s
     return renderAugmentation(registry, AUGMENT_TARGET);
 }
 
-// most assertions only exercise the option tables, so wrap each route as a guild-only row
 function guildRows(tables: Record<string, RouteOptions>): SlashTables {
     return Object.fromEntries(
         Object.entries(tables).map(([route, options]) => [route, { options, cache: 'cached' as const }])
@@ -127,7 +126,6 @@ export {};
             path: { dir: { kind: 'string', required: true, choices: [String.raw`C:\Users`] } }
         });
 
-        // input is C:\Users (one backslash); output literal doubles it to C:\\Users
         expect(output).toContain(String.raw`choices: ['C:\\Users']`);
     });
 
@@ -136,7 +134,6 @@ export {};
             weird: { val: { kind: 'string', required: false, choices: [String.raw`it's a \test`] } }
         });
 
-        // input: it's a \test  ->  literal: 'it\'s a \\test'
         expect(output).toContain(String.raw`choices: ['it\'s a \\test']`);
     });
 
@@ -500,6 +497,17 @@ export {};
         expect(output).toBe(renderAugmentation(empty, AUGMENT_TARGET));
         expect(output).not.toContain('import type');
         expect(output).not.toContain('interface Core');
+    });
+
+    it('writes one row per group when keys nest', () => {
+        const output = renderAugmentation(empty, AUGMENT_TARGET, {
+            specifier: './bot',
+            keys: ['db', 'services.users', 'services.tickets']
+        });
+
+        expect(output).toContain("        db: (typeof Bot)['db'];");
+        expect(output).toContain("        services: (typeof Bot)['services'];");
+        expect(output).not.toContain('services.users');
     });
 
     it('is byte-stable across attach-key order', () => {
