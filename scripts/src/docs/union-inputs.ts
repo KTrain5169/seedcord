@@ -1,3 +1,5 @@
+import { newestStable } from '@seedcord/docs-engine';
+
 import type { IndexJson, PackageVersionsInput } from '@seedcord/docs-engine';
 
 export interface EmittedEntry {
@@ -53,7 +55,9 @@ export function buildUnionInputs(remote: IndexJson | null, emitted: readonly Emi
             workspace: undefined
         };
         current.versions.add(e.version);
-        current.entities = e.entities;
+        // the docs site reads this map as the symbols the newest stable version documents. a prerelease
+        // or a backport to an older minor leaves the remote map alone
+        if (e.version === newestStable([...current.versions])) current.entities = e.entities;
         current.description = e.description;
         current.workspace = e.workspace;
         byFolder.set(e.folder, current);

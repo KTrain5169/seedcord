@@ -33,9 +33,12 @@ You pick one of two transports when you scaffold. `@seedcord/gateway` holds a we
 - Gates that refuse before the handler runs
 - One `throw` that replies, logs, and reports
 - Middlewares that run around your handler
+- A typed pub/sub bus, on both transports
 - The same handlers on both gateway and http
 - Vite HMR that holds the Discord connection
+- A dev terminal that shows startup phases and reply timings
 - Startup and shutdown that run in ordered phases
+- Pagination that survives a restart
 - Typed plugins with `init`, `ready`, and `dispose`
 - and much more...
 
@@ -84,6 +87,7 @@ From `pnpm create seedcord` to a running bot.
 | [`eslint-plugin-discordjs`](tooling/eslint-plugin-discordjs) | [![version](https://img.shields.io/npm/v/eslint-plugin-discordjs?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](tooling/eslint-plugin-discordjs/CHANGELOG.md) | ESLint rules for discord.js bots |
 | [`@seedcord/eslint-config`](tooling/eslint-config) | [![version](https://img.shields.io/npm/v/%40seedcord%2Feslint-config?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](tooling/eslint-config/CHANGELOG.md) | shared ESLint config |
 | [`@seedcord/tsconfig`](tooling/tsconfig) | [![version](https://img.shields.io/npm/v/%40seedcord%2Ftsconfig?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](tooling/tsconfig/CHANGELOG.md) | shared TypeScript config |
+| [`discord-component-embed`](packages/discord-component-embed) | [![version](https://img.shields.io/npm/v/discord-component-embed?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](packages/discord-component-embed/CHANGELOG.md) | Discord link previews built from JSX |
 
 <!-- prettier-ignore-end -->
 

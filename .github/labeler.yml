@@ -52,6 +52,9 @@
 '📦 eslint-plugin-discordjs':
   - changed-files:
       - any-glob-to-any-file: 'tooling/eslint-plugin-discordjs/**'
+'📦 discord-component-embed':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/discord-component-embed/**'
 '📦 eslint-utils':
   - changed-files:
       - any-glob-to-any-file: 'tooling/eslint-utils/**'
@@ -85,6 +88,7 @@
 '🧪 tests':
   - changed-files:
       - any-glob-to-any-file: '**/*.test.ts'
+      - any-glob-to-any-file: '**/*.test.tsx'
       - any-glob-to-any-file: '**/*.spec.ts'
       - any-glob-to-any-file: '**/__tests__/**/*'
 '🤖 ci':

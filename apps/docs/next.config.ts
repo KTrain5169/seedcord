@@ -1,5 +1,8 @@
 import path from 'node:path';
 
+// next loads this file under the require condition. ./agents exports a bare default to match
+import { agentLinkHeader, canonicalSkillHeader } from '@seedcord/ui/agents';
+
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -20,12 +23,24 @@ const nextConfig: NextConfig = {
         '@microsoft/tsdoc',
         '@microsoft/tsdoc-config'
     ],
+    // afterFiles keeps a real file in public/ ahead of these two
+    rewrites() {
+        return {
+            afterFiles: [
+                { source: '/:path*.md', destination: '/llms/:path*' },
+                { source: '/:path*.png', destination: '/og/:path*' }
+            ]
+        };
+    },
     headers() {
         return [
             {
-                // rfc 8288 alternate link
-                source: '/((?!_next/|og/|llms/|llms.txt|sitemap.xml|robots.txt).*)',
-                headers: [{ key: 'Link', value: '</llms.txt>; rel="alternate"; type="text/plain"' }]
+                source: '/((?!_next/|og/|llms/|\\.well-known/|llms.txt|sitemap.xml|robots.txt).*(?<!\\.md|\\.png))',
+                headers: [{ key: 'Link', value: agentLinkHeader('docs') }]
+            },
+            {
+                source: '/.well-known/:spec(skills|agent-skills)/:name/SKILL.md',
+                headers: [{ key: 'Link', value: canonicalSkillHeader() }]
             }
         ];
     },

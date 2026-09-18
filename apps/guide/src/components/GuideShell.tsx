@@ -8,6 +8,7 @@ import {
     MobilePanel,
     Navbar,
     NavTabs,
+    ScrollToTopButton,
     SearchIconButton,
     SiteSwitcher,
     ThemeToggle,
@@ -23,14 +24,15 @@ import { useMemo, useState } from 'react';
 import { DOCS_URL, HOME_URL, REPO_URL, SITE_URL } from '#lib/site';
 import { useVisibleHeadingIds } from '#lib/visibleHeadings';
 
-import { CopyPageButton } from './CopyPageButton';
 import { DocsSidebar } from './DocsSidebar';
 import { GuideSearch, SEARCH_LABEL } from './GuideSearch';
 import { MobileNav } from './MobileNav';
+import { PageActions } from './PageActions';
 import { TableOfContents } from './TableOfContents';
 import { TocBar } from './TocBar';
 
 import type { GuideTab, SidebarsByTab } from '#lib/nav';
+import type { PageActionProps } from '#lib/pageActions';
 import type { SiteDestination } from '@seedcord/ui';
 import type { TocBarProps } from './TocBar';
 import type { TOCItemType } from 'fumadocs-core/toc';
@@ -93,22 +95,23 @@ function ContentsBar({ items, pageTitle }: Omit<TocBarProps, 'activeIds' | 'curr
 // 214px is the column width in the guide layouts mock
 const contentsColumnClassName = tw`sticky top-(--nav-h) hidden max-h-[calc(100dvh-var(--nav-h))] w-53.5 shrink-0 flex-col gap-4 self-start py-10 lg:flex`;
 
+// a ghost row spans the column with its icon on the left edge
+const ghostRow = tw`-ms-(--ghost-row-pull) self-stretch`;
+
 function ContentsColumn({
     items,
-    markdownPath
+    actions
 }: {
     items: readonly TOCItemType[];
-    markdownPath: string | undefined;
+    actions: PageActionProps | undefined;
 }): ReactElement {
     const activeIds = useVisibleHeadingIds(items);
 
     return (
         <div className={cn(contentsColumnClassName)}>
-            {markdownPath === undefined ? null : (
-                // 14px is the button's px-3 plus the blank lucide leaves inside the icon
-                <CopyPageButton source={markdownPath} className={cn('-ms-3.5 self-start')} />
-            )}
+            {actions === undefined ? null : <PageActions {...actions} className={cn(ghostRow)} />}
             <TableOfContents items={items} activeIds={activeIds} className={cn('min-h-0')} />
+            <ScrollToTopButton variant="inline" className={cn(ghostRow, 'justify-start')} />
         </div>
     );
 }
@@ -118,7 +121,7 @@ export interface GuideShellProps {
     sidebars: SidebarsByTab;
     toc?: readonly TOCItemType[] | undefined;
     pageTitle?: string | undefined;
-    markdownPath?: string | undefined;
+    actions?: PageActionProps | undefined;
     pathname?: string | undefined;
     children: ReactNode;
 }
@@ -128,7 +131,7 @@ export function GuideShell({
     sidebars,
     toc = NO_TOC,
     pageTitle = '',
-    markdownPath,
+    actions,
     pathname: override,
     children
 }: GuideShellProps): ReactElement {
@@ -165,7 +168,7 @@ export function GuideShell({
             <AnchorProvider toc={anchors}>
                 <div className={cn('pt-(--nav-h)')}>
                     {hasContents ? <ContentsBar items={toc} pageTitle={pageTitle} /> : null}
-                    <div className={cn('mx-auto flex w-full max-w-(--content-max) gap-10 px-4 md:px-6')}>
+                    <div className={cn('mx-auto flex w-full max-w-(--content-max) gap-10 px-(--page-gutter)')}>
                         {sections.length > 0 ? (
                             <DocsSidebar
                                 sections={sections}
@@ -175,12 +178,15 @@ export function GuideShell({
                                 )}
                             />
                         ) : null}
-                        <main id="main-content" className={cn('min-w-0 flex-1 py-10')}>
+                        {/* below lg the floating button would cover PageNav */}
+                        <main id="main-content" className={cn('min-w-0 flex-1 pt-10 pb-(--jump-clearance) lg:pb-10')}>
                             {children}
                         </main>
-                        {hasContents ? <ContentsColumn items={toc} markdownPath={markdownPath} /> : null}
+                        {hasContents ? <ContentsColumn items={toc} actions={actions} /> : null}
                     </div>
                 </div>
+                {/* the contents column carries its own from lg up */}
+                <ScrollToTopButton className={cn('right-(--page-gutter) lg:hidden')} />
             </AnchorProvider>
 
             <MobilePanel

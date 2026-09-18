@@ -49,11 +49,12 @@
             "project": ["src/**/*.{ts,tsx,css}"]
         },
         "packages/core": {
-            "entry": ["**/*.types-test.ts"]
+            "entry": ["**/*.types-test.ts", "tests/**/fixtures/**"]
         },
         "packages/custom-id": {
             "entry": ["**/*.types-test.ts"]
         },
+        "packages/discord-component-embed": {},
         "packages/errors": {
             "entry": ["**/*.types-test.ts"]
         },
