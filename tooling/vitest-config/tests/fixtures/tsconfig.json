@@ -3,7 +3,9 @@
     "compilerOptions": {
         "paths": {
             "#src/*": ["./src/*"],
-            "#flat": ["./src/flat.ts"]
+            "#src/nested/*": ["./nested/*"],
+            "#flat": ["./src/flat.ts"],
+            "#flat/sub": ["./src/sub.ts"]
         }
     }
 }

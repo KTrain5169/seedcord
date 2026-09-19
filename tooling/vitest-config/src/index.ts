@@ -20,17 +20,28 @@ const base = defineConfig({
     }
 });
 
+type Alias = Extract<NonNullable<NonNullable<ViteUserConfig['resolve']>['alias']>, readonly unknown[]>[number];
+
 // configUrl is expected to be the caller's import.meta.url
-export function aliasFromTsconfig(configUrl: string): Record<string, string> {
+export function aliasFromTsconfig(configUrl: string): Alias[] {
     // parseTsconfig because tsconfig can be jsonc
     const paths = parseTsconfig(fileURLToPath(new URL('tsconfig.json', configUrl))).compilerOptions?.paths ?? {};
-    return Object.fromEntries(
-        Object.entries(paths).flatMap(([key, targets]) =>
-            targets
-                .slice(0, 1)
-                .map((target) => [key.replace('*', ''), fileURLToPath(new URL(target.replace('*', ''), configUrl))])
-        )
+    // vite takes the first alias that matches. tsc takes an exact key first, then the longest wildcard prefix
+    const byMatchOrder = Object.entries(paths).toSorted(
+        ([a], [b]) => wildcardPrefixLength(b) - wildcardPrefixLength(a)
     );
+    return byMatchOrder.flatMap(([key, targets]) =>
+        targets.slice(0, 1).map((target) => {
+            const replacement = fileURLToPath(new URL(target.replace('*', ''), configUrl));
+            if (key.includes('*')) return { find: key.replace('*', ''), replacement };
+            // vite also matches a string find as a prefix. '#flat' would catch '#flat/sub'
+            return { find: new RegExp(`^${RegExp.escape(key)}$`), replacement };
+        })
+    );
+}
+
+function wildcardPrefixLength(key: string): number {
+    return key.includes('*') ? key.indexOf('*') : Number.MAX_SAFE_INTEGER;
 }
 
 export function createVitestConfig(configUrl: string, overrides: ViteUserConfig = {}): ViteUserConfig {
