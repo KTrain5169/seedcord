@@ -4,6 +4,7 @@
     "compilerOptions": {
         "rootDir": "./",
         "outDir": "./dist",
+        "allowImportingTsExtensions": true,
         "paths": {
             "#src/*": ["./src/*"]
         }
