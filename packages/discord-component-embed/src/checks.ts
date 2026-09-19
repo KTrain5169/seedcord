@@ -1,6 +1,6 @@
 import { ComponentEmbedError } from './ComponentEmbedError';
 
-import type { ReactNode } from 'react';
+import type { EmbedNode } from './element';
 
 export function describeValue(value: unknown): string {
     if (typeof value === 'bigint') return `${String(value)}n`;
@@ -19,7 +19,7 @@ export function messageOf(thrown: unknown): string {
     return Error.isError(thrown) ? thrown.message : describeValue(thrown);
 }
 
-export function isIterable(value: unknown): value is Iterable<ReactNode> {
+export function isIterable(value: unknown): value is Iterable<EmbedNode> {
     return (
         typeof value === 'object' &&
         value !== null &&
@@ -53,7 +53,7 @@ function orList(words: readonly string[]): string {
 
 export function checkUrl(what: string, url: string, schemes: readonly string[], max: number): void {
     checkType(what, url, 'string');
-    // URL.parse ignores whitespace that the raw url still carries
+    // URL.parse strips or encodes whitespace that discord still receives
     if (/\s/.test(url)) {
         throw new ComponentEmbedError('InvalidProp', `${what} has whitespace in it, got ${describeValue(url)}.`);
     }

@@ -1,4 +1,7 @@
-import { toComponentEmbed } from './toComponentEmbed';
+import { createElement } from 'react';
+
+import { SCRIPT_ID } from './scriptId';
+import { toComponentEmbedJson } from './toComponentEmbedJson';
 
 import type { ReactElement } from 'react';
 
@@ -9,7 +12,7 @@ export interface ComponentEmbedProps {
 
 /**
  * Renders the `<script>` tag Discord reads for a component embed. Discord does not run JavaScript, so render this on
- * the server. Discord's docs say to put it in the page, typically in the `<head>`.
+ * the server or at build time. It works in the `<head>` or the `<body>`.
  *
  * @example
  * ```tsx
@@ -30,10 +33,11 @@ export interface ComponentEmbedProps {
  * ```
  */
 export function ComponentEmbed({ children }: ComponentEmbedProps): ReactElement {
-    // react 19 escapes <script and </script inside a script's text
-    return (
-        <script id="discord:component-embed" type="application/json">
-            {JSON.stringify(toComponentEmbed(children))}
-        </script>
-    );
+    // no JSX in this file. react 17 has no exports map for react/jsx-runtime
+    return createElement('script', {
+        id: SCRIPT_ID,
+        type: 'application/json',
+        // react 18 and older HTML-escape a script's text children
+        dangerouslySetInnerHTML: { __html: toComponentEmbedJson(children) }
+    });
 }
