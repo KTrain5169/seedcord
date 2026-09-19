@@ -15,6 +15,19 @@ export interface Violation {
 // the Next apps pin eslint 9 until eslint-config-next supports eslint 10
 const IGNORED: ReadonlySet<string> = new Set(['eslint']);
 
+// peer ranges a package publishes wider than the version the workspace installs
+const WIDENED_PEERS: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+    ['discord-component-embed', new Set(['react'])]
+]);
+
+function isWidenedPeer(depName: string, ref: DepRef): boolean {
+    return (
+        ref.field === 'peerDependencies' &&
+        ref.packageName !== undefined &&
+        (WIDENED_PEERS.get(ref.packageName)?.has(depName) ?? false)
+    );
+}
+
 export class CatalogRule {
     static fromWorkspaceFile(filePath: string): CatalogRule {
         return CatalogRule.fromYaml(readFileSync(filePath, 'utf8'));
@@ -40,7 +53,7 @@ export class CatalogRule {
             const refs = index.refsFor(depName);
             if (distinctPackages(refs) < 2) continue;
 
-            if (refs.some((one) => !isInternal(one.version))) {
+            if (refs.some((one) => !isInternal(one.version) && !isWidenedPeer(depName, one))) {
                 found.push({ depName, refs, reason: 'duplicate-literal' });
                 flagged.add(depName);
                 continue;

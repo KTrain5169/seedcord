@@ -7,14 +7,12 @@ import type { DepRef } from '#src/catalog/DependencyIndex';
 
 const ref = (packageJsonPath: string, field: DepRef['field'], version = 'catalog:peer'): DepRef => ({
     packageJsonPath,
+    packageName: undefined,
     field,
     version
 });
 
-const manifest = (path: string, deps: Record<string, Record<string, string>>): { path: string; json: object } => ({
-    path,
-    json: deps
-});
+const manifest = (path: string, json: object): { path: string; json: object } => ({ path, json });
 
 const names = (violations: readonly { depName: string }[]): string[] => violations.map((one) => one.depName).sort();
 
@@ -119,6 +117,34 @@ describe('CatalogRule', () => {
         ]);
 
         expect(noEntries.violations(index)).toEqual([]);
+    });
+
+    it('allows the literal react peer range of discord-component-embed', () => {
+        const index = new DependencyIndex([
+            manifest('apps/guide/package.json', { dependencies: { react: 'catalog:react' } }),
+            manifest('tooling/ui/package.json', { peerDependencies: { react: 'catalog:react' } }),
+            manifest('packages/discord-component-embed/package.json', {
+                name: 'discord-component-embed',
+                peerDependencies: { react: '^17.0.0 || ^18.0.0 || ^19.0.0' },
+                devDependencies: { react: 'catalog:react' }
+            })
+        ]);
+
+        expect(new CatalogRule(new Set(['react'])).violations(index)).toEqual([]);
+    });
+
+    it.each([
+        ['react in another package', 'react', 'packages/other', '^17.0.0 || ^18.0.0 || ^19.0.0'],
+        ['discord.js in a plugin', 'discord.js', 'plugins/mongoose', '^14.27.0']
+    ])('flags a literal peer range for %s', (_label, depName, dir, range) => {
+        const index = new DependencyIndex([
+            manifest('apps/guide/package.json', { dependencies: { [depName]: 'catalog:peer' } }),
+            manifest(`${dir}/package.json`, { name: dir, peerDependencies: { [depName]: range } })
+        ]);
+
+        expect(new CatalogRule(new Set([depName])).violations(index)).toEqual([
+            expect.objectContaining({ depName, reason: 'duplicate-literal' })
+        ]);
     });
 
     it('skips eslint, which the Next apps pin a major behind', () => {

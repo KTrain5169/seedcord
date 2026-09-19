@@ -4,6 +4,7 @@ type DepField = 'dependencies' | 'devDependencies' | 'peerDependencies' | 'optio
 
 export interface DepRef {
     packageJsonPath: string;
+    packageName: string | undefined;
     field: DepField;
     version: string;
 }
@@ -32,6 +33,7 @@ export class DependencyIndex {
 
     constructor(manifests: readonly PackageManifest[]) {
         for (const { path, json } of manifests) {
+            const packageName = 'name' in json && typeof json.name === 'string' ? json.name : undefined;
             for (const field of FIELDS) {
                 // justified: npm keeps each dependency field as a name to range map
                 const block = (json as Record<string, unknown>)[field];
@@ -39,7 +41,7 @@ export class DependencyIndex {
 
                 for (const [name, version] of Object.entries(block as Record<string, string>)) {
                     const refs = this.byName.get(name) ?? [];
-                    refs.push({ packageJsonPath: path, field, version });
+                    refs.push({ packageJsonPath: path, packageName, field, version });
                     this.byName.set(name, refs);
                 }
             }
