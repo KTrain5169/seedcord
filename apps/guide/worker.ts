@@ -68,7 +68,8 @@ const handler = {
         const { pathname } = new URL(request.url);
 
         const moved = redirectFor(pathname);
-        if (moved !== undefined) return new Response(null, { status: PERMANENT_REDIRECT, headers: { location: moved } });
+        if (moved !== undefined)
+            return new Response(null, { status: PERMANENT_REDIRECT, headers: { location: moved } });
 
         const asset = await fromAssets(env, request, pathname);
 

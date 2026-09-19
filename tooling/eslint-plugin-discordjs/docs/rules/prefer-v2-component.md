@@ -15,7 +15,5 @@ const embed = new EmbedBuilder().setTitle('Stats');
 ## Correct
 
 ```ts
-const container = new ContainerBuilder().addTextDisplayComponents(
-    new TextDisplayBuilder().setContent('## Stats')
-);
+const container = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent('## Stats'));
 ```
