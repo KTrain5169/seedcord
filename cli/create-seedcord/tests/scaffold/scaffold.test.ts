@@ -257,6 +257,18 @@ describe('scaffold cleanup', () => {
         await expect(readdir(target)).rejects.toThrow();
     });
 
+    it('leaves a pre-existing empty directory standing when writing fails', async () => {
+        const target = await scratchTarget();
+        await mkdir(target, { recursive: true });
+        const { runner } = recorder();
+
+        await expect(
+            scaffold({ ...baseInput(target), templatesRoot: join(target, 'missing-templates') }, runner)
+        ).rejects.toThrow();
+        // claimTarget rejects a non-empty target, so existed means empty and restoring it is leaving it alone
+        await expect(readdir(target)).resolves.toEqual([]);
+    });
+
     it('refuses a target with anything in it before writing', async () => {
         const target = await scratchTarget();
         const { runner, calls } = recorder();
