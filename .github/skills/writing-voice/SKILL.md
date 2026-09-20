@@ -189,6 +189,16 @@ Em-dash `—` and en-dash `–` are banned in prose. Use a comma, parentheses, a
 
 Colon `:` and semicolon `;` are banned as a clause splice, where the mark joins two complete clauses into one sentence. A colon introducing a list, a code block, or a short label is standard. Keep it.
 
+Markdown prose gets no semicolon at all. Rephrasing the sentence into a simpler structure is a better approach.
+
+A code comment _may_ use one, if appropriate, under one shape: two short clauses that give the two cases of one rule, in matching grammar.
+
+```ts
+// scaffold deletes this directory when writing fails; later failures keep it
+```
+
+Cut the comment at the semicolon and read the right half. Where it opens with `so`, `therefore`, `thus`, `hence`, `meaning`, `this means`, `and`, etc., the second half is explaining the first, which section 4 already covers. Rewrite those.
+
 Comma splices are banned. A comma cannot join two complete clauses. Every comma carries a connector after it, separates list items, or becomes a period. Also, prefer to use not-negation over no-negation. "does not throw" is better than "throws no error" for example.
 
 **The comma gets no carve-out.** The colon exemption above covers the colon and nothing else. A comma joining two clauses in parallel shape (`A is X, B is Y`), a two-item enumeration, a pair of contrasting cases, or a before-and-after is still a splice. Matching structure only makes the error easier to miss. If you catch yourself arguing that a particular splice reads fine, that argument is the tell. Rewrite it.

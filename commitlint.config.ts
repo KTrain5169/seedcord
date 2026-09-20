@@ -4,7 +4,6 @@ const config: UserConfig = {
     extends: ['@commitlint/config-conventional'],
     helpUrl: 'https://github.com/seedcord/seedcord/blob/next/.github/CONTRIBUTING.md#pull-request-guidelines',
     rules: {
-        'scope-enum': [2, 'always', ['release', 'deps']],
         'type-enum': [
             2,
             'always',

@@ -64,7 +64,15 @@ pnpm -C mocks/gateway dev
     fix: gate order on the http dispatcher
     ```
 
-3. **Add a changeset** - Any change to a published package needs one
+3. **Put the package in the PR title** - Write it like a commit subject, plus the package name in the scope. Drop the `@seedcord/` prefix. If the PR touches several packages from one folder, use the folder name. If they come from different folders, leave the scope off
+
+    ```
+    feat(http): typed modal values
+    feat(plugins): drop the old init contract
+    feat: move errors out of core
+    ```
+
+4. **Add a changeset** - Any change to a published package needs one
 
     ```bash
     pnpm cs
@@ -75,11 +83,11 @@ pnpm -C mocks/gateway dev
     - **Major**: breaking changes, removals, behavior changes
     - Write one or two plain sentences about what changed for someone using the package. Look at any `CHANGELOG.md` for the shape
 
-4. **Test first** - Write the failing test, watch it fail, then fix it. A regression test that passes before your change proves nothing
+5. **Test first** - Write the failing test, watch it fail, then fix it. A regression test that passes before your change proves nothing
 
-5. **Say which transport you tested on** - Gateway and http share most of their surface and diverge in places. If a change touches both, say so
+6. **Say which transport you tested on** - Gateway and http share most of their surface and diverge in places. If a change touches both, say so
 
-6. **Keep it simple** - Write three similar lines before you write a wrong abstraction
+7. **Keep it simple** - Write three similar lines before you write a wrong abstraction
 
 ## Code Style
 
