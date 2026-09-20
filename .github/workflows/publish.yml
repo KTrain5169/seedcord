@@ -1,92 +1,92 @@
 name: publish
 
 on:
-    workflow_run:
-        workflows: ['checks']
-        types: [completed]
-        branches: [main, next]
-    workflow_dispatch: {}
+  workflow_run:
+    workflows: ['checks']
+    types: [completed]
+    branches: [main, next]
+  workflow_dispatch: {}
 
 permissions:
-    contents: read
+  contents: read
 
 concurrency:
-    # workflow_run sets ref_name to the default branch. head_branch holds the branch checks ran on.
-    group: release-${{ github.event.workflow_run.head_branch || github.ref_name }}
-    cancel-in-progress: false
+  # workflow_run sets ref_name to the default branch. head_branch holds the branch checks ran on.
+  group: release-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: false
 
 env:
-    SEEDCORD_DOCS_INDEX_URL: https://cdn.seedcord.org/index.json
+  SEEDCORD_DOCS_INDEX_URL: https://cdn.seedcord.org/index.json
 
 jobs:
-    eligibility:
-        if: ${{ github.repository == 'seedcord/seedcord' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)) }}
-        runs-on: ubuntu-latest
-        outputs:
-            publish: ${{ steps.gate.outputs.publish }}
-        steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-              with:
-                  persist-credentials: false
-                  ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-            - id: gate
-              uses: ./.github/actions/check-eligibility
-              with:
-                  branch: ${{ github.event.workflow_run.head_branch || github.ref_name }}
-
-    npm-publish:
-        needs: eligibility
-        if: ${{ needs.eligibility.outputs.publish == 'true' }}
-        runs-on: ubuntu-latest
-        timeout-minutes: 30
-        outputs:
-            published: ${{ steps.changesets.outputs.published }}
-            publishedPackages: ${{ steps.changesets.outputs['published-packages'] }}
-        permissions:
-            contents: write
-            id-token: write
-        steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-              with:
-                  ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-                  fetch-depth: 0
-            - name: Turbo cache
-              uses: ./.github/actions/turbo-cache
-              with:
-                  turbo_token: ${{ secrets.TURBO_TOKEN }}
-                  turbo_team: ${{ vars.TURBO_TEAM }}
-                  enable_fallback_cache: 'true'
-            - name: Setup workspace
-              uses: ./.github/actions/setup
-              with:
-                  registry-url: https://registry.npmjs.org
-            - name: Build prettier config dependency
-              run: pnpm exec turbo run build --filter=@seedcord/eslint-config
-
-            - id: changesets
-              uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
-              with:
-                  github-token: ${{ secrets.GITHUB_TOKEN }}
-                  publish-script: pnpm run release
-                  create-github-releases: false
-                  push-git-tags: false
-              env:
-                  NPM_CONFIG_PROVENANCE: 'true'
-                  HUSKY: 0
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    github-release:
-        needs: npm-publish
-        if: ${{ needs.npm-publish.outputs.published == 'true' && (github.event.workflow_run.head_branch || github.ref_name) == 'main' }}
-        uses: ./.github/workflows/github-release.yml
+  eligibility:
+    if: ${{ github.repository == 'seedcord/seedcord' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)) }}
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.gate.outputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-            published: ${{ needs.npm-publish.outputs.publishedPackages }}
-        secrets: inherit
-
-    docs-publish:
-        needs: npm-publish
-        if: ${{ needs.npm-publish.outputs.published == 'true' }}
-        uses: ./.github/workflows/docs-publish.yml
+          persist-credentials: false
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - id: gate
+        uses: ./.github/actions/check-eligibility
         with:
-            published: ${{ needs.npm-publish.outputs.publishedPackages }}
-        secrets: inherit
+          branch: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+
+  npm-publish:
+    needs: eligibility
+    if: ${{ needs.eligibility.outputs.publish == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      publishedPackages: ${{ steps.changesets.outputs['published-packages'] }}
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+      - name: Turbo cache
+        uses: ./.github/actions/turbo-cache
+        with:
+          turbo_token: ${{ secrets.TURBO_TOKEN }}
+          turbo_team: ${{ vars.TURBO_TEAM }}
+          enable_fallback_cache: 'true'
+      - name: Setup workspace
+        uses: ./.github/actions/setup
+        with:
+          registry-url: https://registry.npmjs.org
+      - name: Build prettier config dependency
+        run: pnpm exec turbo run build --filter=@seedcord/eslint-config
+
+      - id: changesets
+        uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          publish-script: pnpm run release
+          create-github-releases: false
+          push-git-tags: false
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'
+          HUSKY: 0
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  github-release:
+    needs: npm-publish
+    if: ${{ needs.npm-publish.outputs.published == 'true' && (github.event.workflow_run.head_branch || github.ref_name) == 'main' }}
+    uses: ./.github/workflows/github-release.yml
+    with:
+      published: ${{ needs.npm-publish.outputs.publishedPackages }}
+    secrets: inherit
+
+  docs-publish:
+    needs: npm-publish
+    if: ${{ needs.npm-publish.outputs.published == 'true' }}
+    uses: ./.github/workflows/docs-publish.yml
+    with:
+      published: ${{ needs.npm-publish.outputs.publishedPackages }}
+    secrets: inherit
