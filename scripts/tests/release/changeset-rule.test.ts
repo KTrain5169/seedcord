@@ -242,11 +242,18 @@ describe('ChangesetRule length', () => {
         expect(rule.violations('spans.md', changeset("'@seedcord/core': minor", summary))).toEqual([]);
     });
 
-    it('holds a patch to one sentence', () => {
-        const summary = 'Fixed the reload. It also logs the duration now.';
+    it('lets a patch use a second sentence to say who it affects', () => {
+        const summary =
+            "Keep the scaffolded project when install fails. Most notably, this allows sidestepping pnpm's postinstall scripts restrictions failing builds and wiping the scaffold.";
+
+        expect(rule.violations('scaffold.md', changeset("'@seedcord/core': patch", summary))).toEqual([]);
+    });
+
+    it('holds a patch to two sentences', () => {
+        const summary = 'Fixed the reload. It logs the duration now. It also counts the files.';
 
         expect(rule.violations('fix.md', changeset("'@seedcord/gateway': patch", summary))).toEqual([
-            { file: 'fix.md', reason: 'too-long', detail: '2 sentences' }
+            { file: 'fix.md', reason: 'too-long', detail: '3 sentences' }
         ]);
     });
 
