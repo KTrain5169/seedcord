@@ -12,9 +12,9 @@ const CANCELLED: Failure = { code: 0, message: null, closing: 'Nothing was writt
 export function reportFailure(error: unknown): Failure {
     if (isSeedcordError(error, undefined, SeedcordErrorCode.CreateCancelled)) return CANCELLED;
 
-    // scaffold removes the tree it wrote before a step failure gets here
-    const removed = isSeedcordError(error, undefined, SeedcordErrorCode.CreateStepFailed);
+    // scaffold keeps the tree it wrote when a post-write step fails
+    const kept = isSeedcordError(error, undefined, SeedcordErrorCode.CreateStepFailed);
     const message = isSeedcordError(error) || Error.isError(error) ? error.message : String(error);
 
-    return { code: 1, message, closing: removed ? 'Nothing was kept.' : 'Nothing was created.' };
+    return { code: 1, message, closing: kept ? 'Project kept. Run the command manually.' : 'Nothing was created.' };
 }

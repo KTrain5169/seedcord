@@ -230,21 +230,31 @@ describe('scaffold', () => {
 });
 
 describe('scaffold cleanup', () => {
-    it('removes the directory it created when a step fails', async () => {
+    it('keeps the directory it created when install fails', async () => {
         const target = await scratchTarget();
         const { runner } = recorder('add');
 
         await expect(scaffold(baseInput(target), runner)).rejects.toThrow();
-        await expect(readdir(target)).rejects.toThrow();
+        await expect(readdir(target)).resolves.toContain('package.json');
     });
 
-    it('empties a directory that already existed and leaves it standing', async () => {
+    it('keeps the written files in a directory that already existed when install fails', async () => {
         const target = await scratchTarget();
         await mkdir(target, { recursive: true });
         const { runner } = recorder('add');
 
         await expect(scaffold(baseInput(target), runner)).rejects.toThrow();
-        await expect(readdir(target)).resolves.toEqual([]);
+        await expect(readdir(target)).resolves.toContain('package.json');
+    });
+
+    it('removes the directory it created when writing fails', async () => {
+        const target = await scratchTarget();
+        const { runner } = recorder();
+
+        await expect(
+            scaffold({ ...baseInput(target), templatesRoot: join(target, 'missing-templates') }, runner)
+        ).rejects.toThrow();
+        await expect(readdir(target)).rejects.toThrow();
     });
 
     it('refuses a target with anything in it before writing', async () => {
