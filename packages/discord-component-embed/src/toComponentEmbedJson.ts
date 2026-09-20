@@ -7,7 +7,7 @@ import type { EmbedElement } from './element';
  * `<script>` tag early. Use it when your framework writes the tag itself and takes the JSON as its content.
  *
  * @throws a {@link ComponentEmbedError} when the tree breaks a rule of the format, or when your own code throws while
- * the tree is read.
+ * the package reads it.
  *
  * @example
  * ```tsx
