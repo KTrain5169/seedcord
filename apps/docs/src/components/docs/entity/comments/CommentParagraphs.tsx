@@ -1,5 +1,7 @@
 import { cn } from '@seedcord/ui';
 
+import { COMMENT_PROSE } from '../constants';
+
 import type { CommentParagraph } from '#lib/docs/types';
 import type { ReactElement } from 'react';
 
@@ -60,7 +62,7 @@ export function CommentParagraphs({
                 paragraph.html ? (
                     <div
                         key={key}
-                        className={cn('min-w-0 [&_p+p]:mt-2', paragraphClassName)}
+                        className={cn('min-w-0', COMMENT_PROSE, paragraphClassName)}
                         dangerouslySetInnerHTML={{ __html: paragraph.html }}
                     />
                 ) : (

@@ -4,6 +4,8 @@ import type { ReactElement } from 'react';
 
 const readmeProseClassName = cn(
     tw`min-w-0 text-base/relaxed text-(--text-muted)`,
+    // a markdown header link would otherwise leave the heading under the sticky nav
+    tw`[&_h1]:scroll-mt-28 [&_h2]:scroll-mt-28 [&_h3]:scroll-mt-28 [&_h4]:scroll-mt-28`,
     tw`[&_h1]:mt-0 [&_h1]:mb-4 [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:text-(--text)`,
     tw`[&_h2]:mt-8 [&_h2]:mb-3 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-(--text)`,
     tw`[&_h3]:mt-6 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-(--text)`,

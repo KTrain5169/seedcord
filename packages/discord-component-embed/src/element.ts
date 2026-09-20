@@ -1,10 +1,10 @@
-/** One node of a component embed tree. React and Preact elements have the same shape. */
+/** One node of a component embed tree. Your JSX returns these. A React or Preact element fits the same shape. */
 export interface EmbedElement {
     type: unknown;
     props: unknown;
 }
 
-/** Anything that can go where children go. Booleans, `null`, and `undefined` add nothing. */
+/** Anything you can pass as children. The package drops a boolean, `null`, and `undefined`. */
 export type EmbedNode = EmbedElement | string | number | boolean | null | undefined | Iterable<EmbedNode>;
 
 type OwnProps<Props> = Props extends unknown ? Omit<Props, 'children'> : never;
@@ -24,9 +24,13 @@ type ChildrenOf<Props> = 'children' extends keyof Props
  * @example
  * ```ts
  * const preview = h(
- *     Container, { accentColor: 0xf8f6e8 },
- *     h(Section, { accessory: h(LinkButton, { url: page.url, label: 'Read' }) },
- *     h(TextDisplay, null, `# ${page.title}`))
+ *     Container,
+ *     { accentColor: 0xf8f6e8 },
+ *     h(
+ *         Section,
+ *         { accessory: h(LinkButton, { url: page.url, label: 'Read' }) },
+ *         h(TextDisplay, null, `# ${page.title}`)
+ *     )
  * );
  * ```
  */
@@ -39,8 +43,7 @@ export function h<Props extends object>(
 }
 
 /**
- * The JSX transform calls this in place of `jsx` for a `key` written after a spread. Build elements yourself with
- * {@link h}.
+ * The JSX transform calls this itself when a `key` comes after a spread. Use {@link h} to build an element by hand.
  */
 export function createElement(
     type: unknown,

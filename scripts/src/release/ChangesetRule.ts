@@ -29,7 +29,7 @@ const LINK_TARGET = /\]\([^)]*\)/g;
 const SENTENCE_END = /[.!?](?=\s|$)/g;
 const NOT_A_SENTENCE_END = /\b(?:e\.g|i\.e)\.|\bvs\.|\betc\.(?=\s+[a-z])/g;
 const OPENER = /^(Fix|Fixes|Fixing|fix|fixes|fixing|fixed)\b/;
-const PATCH_SENTENCES = 1;
+const PATCH_SENTENCES = 2;
 const SENTENCES = 3;
 
 const EM_DASH = '—';

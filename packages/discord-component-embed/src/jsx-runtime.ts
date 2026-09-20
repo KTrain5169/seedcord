@@ -2,7 +2,9 @@ import type { EmbedElement, EmbedNode } from './element';
 
 export { Fragment } from './fragment';
 
-/** The JSX transform calls this for every element in a file set to `jsxImportSource: 'discord-component-embed'`. */
+/**
+ * The JSX transform calls this for every element in a file compiled with `jsxImportSource: 'discord-component-embed'`.
+ */
 export function jsx(type: unknown, props: object): EmbedElement {
     return { type, props };
 }

@@ -16,7 +16,7 @@ const MESSAGES: Record<Violation['reason'], string> = {
     'block-start': 'opens as a list, a heading or a quote',
     'breaking-marker': 'spells the breaking marker as something other than **BREAKING:** opening the summary',
     'breaking-patch': 'marks a patch as breaking, which needs a minor bump pre-1.0',
-    'too-long': 'runs past the sentence cap, one when every bump is a patch and three otherwise',
+    'too-long': 'runs past the sentence cap, two when every bump is a patch and three otherwise',
     'banned-punctuation': 'carries punctuation the writing rules ban',
     'banned-word': 'carries a banned word',
     'fix-opener': 'opens a fix with something other than Fixed'

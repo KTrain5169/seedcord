@@ -1,11 +1,16 @@
 /**
- * What went wrong, as a value to branch on. Messages can be reworded between releases. The codes stay.
+ * Error codes for component embed issues. You can branch on them to handle different
+ * kinds of errors programmatically using the {@link ComponentEmbedError.code} property.
  *
  * - `InvalidStructure`: a wrong root, a component in the wrong place, a parent with the wrong number of children, an
- *   empty `<TextDisplay>`, text outside one, or a Vue VNode.
+ *   empty {@link TextDisplay}, text outside one, or a Vue VNode.
+ *
  * - `InvalidProp`: a prop with the wrong type or value, like a `spacing` of `'medium'` or a URL with a bad scheme.
+ *
  * - `OverLimit`: a length, count, or byte limit Discord sets.
+ *
  * - `UnsupportedComponent`: a `memo`, `lazy`, `forwardRef`, context, class, or async component.
+ *
  * - `ReadFailed`: a component or an iterator of yours threw while the package read the tree. The original error is on
  *   `cause`.
  */
@@ -14,8 +19,8 @@ export type ComponentEmbedErrorCode =
 
 /**
  * Thrown when a component tree breaks a rule of Discord's component embed format, or when your own code throws while
- * the tree is read. Discord drops an invalid payload and shows the Open Graph card instead, without reporting an error
- * anywhere.
+ * the package reads the tree. Read {@link ComponentEmbedError.code} to tell which. Discord drops an invalid payload
+ * and falls back to the Open Graph card. The card you see is your only signal.
  *
  * @example
  * ```tsx
@@ -29,6 +34,7 @@ export type ComponentEmbedErrorCode =
  */
 export class ComponentEmbedError extends Error {
     override readonly name = 'ComponentEmbedError';
+    /** Which rule the tree broke. */
     readonly code: ComponentEmbedErrorCode;
 
     constructor(code: ComponentEmbedErrorCode, message: string, options?: ErrorOptions) {
