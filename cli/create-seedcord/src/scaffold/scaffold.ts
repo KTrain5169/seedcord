@@ -100,6 +100,9 @@ export async function scaffold(input: ScaffoldInput, run: CommandRunner): Promis
     await mkdir(parent, { recursive: true });
     const plan = gitPlanFrom(await probeGit(parent), input.git);
 
+    // once the tree exists the user can retry a failed install inside it, so only
+    // clean up when writing never finished
+    let written = false;
     try {
         const context = buildContext(input.answers, {
             developerUsername: plan.developerUsername,
@@ -112,6 +115,7 @@ export async function scaffold(input: ScaffoldInput, run: CommandRunner): Promis
             await mkdir(input.target, { recursive: true });
             await writeTree(input.target, await renderTemplates(input.templatesRoot, context));
         });
+        written = true;
 
         if (input.install) {
             await runInstallSteps(input, run, context.isGateway);
@@ -131,8 +135,10 @@ export async function scaffold(input: ScaffoldInput, run: CommandRunner): Promis
 
         return { installed: input.install, gitNotice };
     } catch (error) {
-        await rm(input.target, { recursive: true, force: true });
-        if (existed) await mkdir(input.target, { recursive: true });
+        if (!written) {
+            await rm(input.target, { recursive: true, force: true });
+            if (existed) await mkdir(input.target, { recursive: true });
+        }
 
         throw error;
     }

@@ -3,7 +3,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 
-// scaffold deletes this directory when a step fails
+// scaffold deletes this directory when writing fails; later failures keep it
 export async function claimTarget(target: string): Promise<{ existed: boolean }> {
     const found = await stat(target).catch(() => null);
     if (found === null) return { existed: false };
