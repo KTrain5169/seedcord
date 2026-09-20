@@ -1,6 +1,6 @@
 ---
 title: Writing your own
-description: Write your own plugin by extending Plugin. Covers which base to import, declaring where it runs, constructor options, rejecting bad options, logging, and dev reloads.
+description: Write your own plugin by extending Plugin. Covers which base to import, declaring where it runs, constructor options, rejecting bad options, logging, dev reloads, and putting it on npm.
 ---
 
 Let's assume your bot talks to an outside service, like a metrics API or a cache. You created its client in `bot.ts` and exported it. Nothing closes that client when the bot shuts down, and a handler can import it before it has connected. As a plugin, the client starts and stops with your bot, and handlers read it from `core` under the key you attach it with.
@@ -97,7 +97,7 @@ declare const seedcord: Seedcord;
 seedcord.attach('voice', Voice);
 ```
 
-`seedcord` here is an http bot, so passing `Voice` to its `attach` fails to compile. The error names the transport `Voice` declares and the one the bot runs.
+`seedcord` here is an http bot, so passing `Voice` to its `attach` fails to compile. The error prints the transport `Voice` declares beside the one the bot runs.
 
 ## What the constructor takes
 
@@ -203,3 +203,11 @@ export class Uptime extends Plugin {
 `Uptime` logs each changed file and marks everything under `src/schema/` as needing a restart. Both calls do nothing outside `seedcord dev`.
 
 seedcord's own plugins extend this same base, starting with [Mongoose](/plugins/mongoose).
+
+## Publishing to npm
+
+Someone who wants a plugin searches npm for seedcord, and that search reads package names and keywords.
+
+To help with discoverability, and to follow the convention, name your package `seedcord-plugin-<thing>`, like `seedcord-plugin-uptime`, and add `seedcord` and `plugin` to your keywords. Official plugins will always be published under the `@seedcord/plugin-` scope, which only seedcord can publish to.
+
+Whichever package you import `Plugin` from goes in `peerDependencies`, with the versions you tested against. Mongoose extends the base from `@seedcord/core/plugin`, so it declares `@seedcord/core` at `>=0.2.0 <1.0.0`. seedcord is below 1.0, so a breaking change can ship in a minor, and a plugin written for 0.2 can break on 0.3. The range tells people which versions work before they install.
