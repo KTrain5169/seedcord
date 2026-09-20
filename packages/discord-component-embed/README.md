@@ -9,7 +9,7 @@
 <br />
 
 <div align="center">
-  <img src="https://cdn.seedcord.org/assets/discord-component-embed.png" alt="A link to materwelon.dev in Discord. The preview card has a linked title, a line about the author, three projects with their emojis, a thumbnail, and GitHub, npm, and X buttons." width="640" />
+  <img src="https://cdn.seedcord.org/assets/discord-component-embed.webp" alt="A link to materwelon.dev in Discord. The preview card has a title, website, GitHub, npm, and X links, a line about the author, three projects with their emojis, and a thumbnail." width="640" />
 </div>
 
 <br />

@@ -1,5 +1,11 @@
 # discord-component-embed
 
+## 0.2.1
+
+### 🩹 Patch
+
+- Shrank the README image from 1.2 MB to 54 KB and added `link-previews` and `discord-link-preview` to the keywords.
+
 ## 0.2.0
 
 ### 💥 Breaking
