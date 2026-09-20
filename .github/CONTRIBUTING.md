@@ -57,7 +57,7 @@ pnpm -C mocks/gateway dev
 
 1. **One thing at a time** - Keep a PR to a single change, or changes in the same scope
 
-2. **Write good commit messages** - Conventional commits, lowercase, one line, no scope. `commitlint.config.mjs` lists the accepted types
+2. **Write good commit messages** - Conventional commits, lowercase, one line, no scope. `commitlint.config.ts` lists the accepted types
 
     ```
     feat: typed select menu values

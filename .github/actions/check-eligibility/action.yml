@@ -2,40 +2,40 @@ name: 'Check release eligibility'
 description: "Decide whether the given branch may publish. A pending changeset blocks every branch, and 'next' must be in changesets pre mode."
 
 inputs:
-    branch:
-        description: 'Branch being considered for publish.'
-        required: true
+  branch:
+    description: 'Branch being considered for publish.'
+    required: true
 
 outputs:
-    publish:
-        description: "'true' when this branch is allowed to publish, otherwise 'false'."
-        value: ${{ steps.gate.outputs.publish }}
+  publish:
+    description: "'true' when this branch is allowed to publish, otherwise 'false'."
+    value: ${{ steps.gate.outputs.publish }}
 
 runs:
-    using: composite
-    steps:
-        - id: gate
-          shell: bash
-          env:
-              BRANCH: ${{ inputs.branch }}
-          run: |
-              set -euo pipefail
-              mode=$([ -f .changeset/pre.json ] && jq -r '.mode // empty' .changeset/pre.json || true)
-              # @changesets/read skips these file names
-              count() {
-                [ -d "$1" ] || { echo 0; return; }
-                find "$1" -maxdepth 1 -type f -name '*.md' ! -name '.*' ! -iname 'readme.md' \
-                  ! -name 'AGENTS.md' ! -name 'CLAUDE.md' ! -name 'GEMINI.md' | wc -l | tr -d ' '
-              }
-              pending=$(count .changeset)
-              # changesets/action counts .changeset/pre/ outside pre mode
-              if [ "$mode" != "pre" ]; then pending=$((pending + $(count .changeset/pre))); fi
-              if [ "$pending" -gt 0 ]; then
-                echo "$pending changeset(s) pending. Run pnpm release:version and push the result. Skipping publish."
-                echo "publish=false" >> "$GITHUB_OUTPUT"
-              elif [ "$BRANCH" = "next" ] && [ "$mode" != "pre" ]; then
-                echo "On 'next' without pre-release mode. Skipping publish."
-                echo "publish=false" >> "$GITHUB_OUTPUT"
-              else
-                echo "publish=true" >> "$GITHUB_OUTPUT"
-              fi
+  using: composite
+  steps:
+    - id: gate
+      shell: bash
+      env:
+        BRANCH: ${{ inputs.branch }}
+      run: |
+        set -euo pipefail
+        mode=$([ -f .changeset/pre.json ] && jq -r '.mode // empty' .changeset/pre.json || true)
+        # @changesets/read skips these file names
+        count() {
+          [ -d "$1" ] || { echo 0; return; }
+          find "$1" -maxdepth 1 -type f -name '*.md' ! -name '.*' ! -iname 'readme.md' \
+            ! -name 'AGENTS.md' ! -name 'CLAUDE.md' ! -name 'GEMINI.md' | wc -l | tr -d ' '
+        }
+        pending=$(count .changeset)
+        # changesets/action counts .changeset/pre/ outside pre mode
+        if [ "$mode" != "pre" ]; then pending=$((pending + $(count .changeset/pre))); fi
+        if [ "$pending" -gt 0 ]; then
+          echo "$pending changeset(s) pending. Run pnpm release:version and push the result. Skipping publish."
+          echo "publish=false" >> "$GITHUB_OUTPUT"
+        elif [ "$BRANCH" = "next" ] && [ "$mode" != "pre" ]; then
+          echo "On 'next' without pre-release mode. Skipping publish."
+          echo "publish=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+        fi
