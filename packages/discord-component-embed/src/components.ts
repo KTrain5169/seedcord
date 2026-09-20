@@ -4,25 +4,26 @@ import type { APIMessageComponentEmoji } from 'discord-api-types/v10';
 export interface ContainerProps {
     /** The color of the bar on the left edge, as an RGB integer like `0x5865f2`. */
     accentColor?: number;
+    /** Blurs the whole card until someone clicks it. */
     spoiler?: boolean;
     children?: EmbedNode;
 }
 
 export interface TextDisplayProps {
     /**
-     * Discord markdown. Text split by JSX expressions is joined back together. JSX turns a line break in your source
-     * into a space, so write `{'\n'}` where the markdown needs a new line.
+     * Discord markdown. JSX turns a line break in your source into a space. Write `{'\n'}` where the markdown needs
+     * a new line.
      */
     children: TextChild;
 }
 
-/** Text a `<TextDisplay>` accepts. Booleans, `null`, and `undefined` render nothing. */
+/** Text a {@link TextDisplay} accepts. It drops a boolean, `null`, and `undefined`. */
 export type TextChild = string | number | boolean | null | undefined | readonly TextChild[];
 
 export interface SectionProps {
-    /** A `<Thumbnail>` or a `<LinkButton>`, shown to the right of the text. */
+    /** A {@link Thumbnail} or a {@link LinkButton}, shown to the right of the text. */
     accessory: EmbedElement;
-    /** One to three `<TextDisplay>` elements. */
+    /** One to three {@link TextDisplay} elements. */
     children: EmbedNode;
 }
 
@@ -35,23 +36,24 @@ export interface MediaProps {
     url: string;
     /** Alt text. */
     description?: string;
+    /** Hides the media behind a spoiler overlay. */
     spoiler?: boolean;
 }
 
 export interface MediaGalleryProps {
-    /** One to ten `<MediaGalleryItem>` elements. */
+    /** One to ten {@link MediaGalleryItem} elements. */
     children: EmbedNode;
 }
 
 export interface SeparatorProps {
-    /** Whether Discord draws a line. Discord defaults to `true`. */
+    /** Discord draws a line unless you pass `false`. */
     divider?: boolean;
-    /** Discord defaults to `'small'`. */
+    /** How much vertical space. Discord uses `'small'` when you leave it out. */
     spacing?: 'small' | 'large';
 }
 
 export interface ActionRowProps {
-    /** One to five `<LinkButton>` elements. */
+    /** One to five {@link LinkButton} elements. */
     children: EmbedNode;
 }
 
@@ -62,12 +64,15 @@ interface LinkButtonBase {
 
 type LinkButtonEmoji = APIMessageComponentEmoji & ({ id: string } | { name: string });
 
-/** A button needs a label, an emoji, or both. An emoji needs an `id` for a custom one or a `name` for a Unicode one. */
+/**
+ * {@link LinkButton} needs a label, an emoji, or both. Pass `id` for a custom emoji and `name` for a Unicode one.
+ */
 export type LinkButtonProps = LinkButtonBase &
     ({ label: string; emoji?: LinkButtonEmoji } | { label?: string; emoji: LinkButtonEmoji });
 
 /**
- * The root of every component embed. `toComponentEmbed` reads it. Rendering it with React outputs nothing.
+ * The root of every component embed. Wrap everything else in one, then pass it to {@link toComponentEmbed}. React
+ * leaves it out of your page.
  *
  * @example
  * ```tsx
@@ -81,7 +86,7 @@ export function Container(_props: ContainerProps): null {
 }
 
 /**
- * A block of Discord markdown.
+ * A block of Discord markdown. Every piece of text in a component embed goes inside one.
  *
  * @example
  * ```tsx
@@ -119,7 +124,7 @@ export function Section(_props: SectionProps): null {
 }
 
 /**
- * A small image, used as the accessory of a `<Section>`.
+ * A small image. It goes in a {@link Section}'s `accessory`.
  *
  * @example
  * ```tsx
@@ -149,7 +154,7 @@ export function MediaGallery(_props: MediaGalleryProps): null {
 }
 
 /**
- * One image or video inside a `<MediaGallery>`.
+ * One image or video inside a {@link MediaGallery}.
  *
  * @example
  * ```tsx
@@ -190,7 +195,7 @@ export function ActionRow(_props: ActionRowProps): null {
 }
 
 /**
- * A button that opens a URL. It is the only kind of button a component embed allows.
+ * A button that opens a URL. Discord allows only link buttons in a component embed.
  *
  * @example
  * ```tsx

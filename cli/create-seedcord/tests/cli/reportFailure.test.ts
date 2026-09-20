@@ -26,10 +26,10 @@ describe('reportFailure', () => {
         expect(reportFailure(error)).toEqual({ code: 1, message: '--dir: Nope.', closing: 'Nothing was created.' });
     });
 
-    it('says the tree was removed when a scaffold step failed', () => {
+    it('says the tree was kept when a scaffold step failed', () => {
         const error = new SeedcordError(SeedcordErrorCode.CreateStepFailed, ['pnpm add', 'ECONNREFUSED']);
 
-        expect(reportFailure(error).closing).toBe('Nothing was kept.');
+        expect(reportFailure(error).closing).toBe('Project kept. Run the command manually.');
     });
 
     it('prints whatever an uncoded throw carries', () => {

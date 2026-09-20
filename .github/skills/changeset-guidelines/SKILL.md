@@ -12,7 +12,7 @@ This skill decides what a changeset says. `writing-voice` covers how any sentenc
 The shape is fixed, and `pnpm lint:changesets` rejects anything else:
 
 - One paragraph on one line. No second paragraph, list, heading, quote, or code block.
-- One sentence for a patch, three at most otherwise.
+- Two sentences for a patch, three at most otherwise. Write the reader's own case in the second one.
 - `**BREAKING:**` plus a space opens the summary when the change breaks. The changeset bumps no package as a patch, and a `major` bump is only for a package already past 1.0.
 
 ---
@@ -35,7 +35,7 @@ Why: a changelog gets scanned, so the first word has to say what kind of entry t
 
 ## 3. Write the reader's own case
 
-```md
+```txt
 BAD: "a handler registered on several routes"
 GOOD: "a handler registered on two buttons"
 ```
@@ -48,7 +48,7 @@ Why: the reader matches the entry against their own code. "Several" makes them d
 
 Never list the fields it touched.
 
-```md
+```txt
 BAD: "`interactionDispatched.routeId`, `responseAttempted.routeId`, and the dispatch bag used to carry every route the class declares"
 GOOD: "its route id joined both into `button:confirm,cancel`"
 ```
@@ -61,7 +61,7 @@ Why: a field list restates the diff. One sentence about the mechanism covers all
 
 Keep a thread between sentences.
 
-```md
+```txt
 BAD: "Clicking one used to put both on cooldown. Each gets its own instead."
 GOOD: "Because its route id joined both into `button:confirm,cancel`, clicking either one put both on cooldown."
 ```
@@ -72,7 +72,7 @@ Why: splitting every clause to dodge connectors leaves stubs, and the reader has
 
 ## 6. Match the connector to the relation
 
-```md
+```txt
 BAD: ", and now each has its own"
 GOOD: "instead", or a fronted "Because ..."
 ```
@@ -85,7 +85,7 @@ Why: the wrong connector asserts a relation that is not there.
 
 ## 7. Give a value a job
 
-```md
+```txt
 BAD: "Each gets its own instead, `button:confirm`."
 GOOD: "Now it would just be `button:confirm`, for example."
 ```
@@ -96,7 +96,7 @@ Why: an id hanging off a comma has nothing to attach to, so it reads as debris.
 
 ## 8. Mark an illustrative value as illustrative
 
-```md
+```txt
 BAD: "The id now reads `button:confirm`."
 GOOD: "Now it would just be `button:confirm`, for example."
 ```
@@ -107,7 +107,7 @@ Why: the real value depends on which route matched. Stated flat, it reads as the
 
 ## 9. Stop once the reader can derive the rest
 
-```md
+```txt
 BAD: "The id now reads `button:confirm`, so each button keeps its own."
 GOOD: "Now it would just be `button:confirm`, for example."
 ```
@@ -118,7 +118,7 @@ Why: the previous sentence already said both went on cooldown. Narrowing the id 
 
 ## 10. Fix the wording, keep the fact
 
-```md
+```txt
 BAD: deleting both example ids because the word "instead" appeared twice
 ```
 

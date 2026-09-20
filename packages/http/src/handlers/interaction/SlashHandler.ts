@@ -38,7 +38,9 @@ export abstract class SlashHandler<
      * Each getter's name argument is restricted to that command's options of its kind.
      *
      * - A required option drops the null.
+     *
      * - Choices narrow to their literal union.
+     *
      * - A channel option declared with `addChannelTypes` narrows to those types.
      *
      * Rich kinds resolve from the interaction's `resolved` data.

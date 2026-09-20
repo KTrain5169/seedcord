@@ -76,11 +76,11 @@ export interface ComponentEmbedPayload {
 }
 
 /**
- * Converts a `<Container>` tree into the JSON document Discord reads for a component embed. To write the JSON into a
- * page, use {@link toComponentEmbedJson} or {@link toComponentEmbedScript}. Both escape it for HTML.
+ * Converts a {@link Container} tree into the JSON document Discord reads for a component embed. To write the JSON
+ * into a page, use {@link toComponentEmbedJson} or {@link toComponentEmbedScript}. Both escape it for HTML.
  *
  * @throws a {@link ComponentEmbedError} when the tree breaks a rule of the format, or when your own code throws while
- * the tree is read. Check `error.code` to see which.
+ * the package reads it. Check `error.code` to see which.
  *
  * @example
  * ```tsx

@@ -21,6 +21,11 @@
 }
 
 @layer base {
+    /* tokens.css forces this back to auto under prefers-reduced-motion */
+    html {
+        scroll-behavior: smooth;
+    }
+
     body {
         background-color: var(--bg);
         color: var(--text);
