@@ -61,4 +61,25 @@ describe('renderReadme', () => {
         expect(html).toContain('print("hi")');
         expect(html).not.toContain('class="shiki');
     });
+
+    it('resolves a readme link to its own heading', async () => {
+        const html = await renderReadme('## Contents\n\n- [Build a card](#build-a-card)\n\n## Build a card\n');
+
+        expect(html).toContain('id="build-a-card"');
+    });
+
+    it('slugs a heading the way GitHub does, so a README written for GitHub keeps working', async () => {
+        const html = await renderReadme('## JSX setup\n\n## Put it in your page\n\n## toComponentEmbed()\n');
+
+        expect(html).toContain('id="jsx-setup"');
+        expect(html).toContain('id="put-it-in-your-page"');
+        expect(html).toContain('id="tocomponentembed"');
+    });
+
+    it('suffixes a repeated heading so both ids stay reachable', async () => {
+        const html = await renderReadme('## Usage\n\n## Usage\n');
+
+        expect(html).toContain('id="usage"');
+        expect(html).toContain('id="usage-1"');
+    });
 });
