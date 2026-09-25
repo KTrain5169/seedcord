@@ -21,6 +21,7 @@
                 "@seedcord/http#build",
                 "@seedcord/logger#build",
                 "@seedcord/plugin-kysely-postgres#build",
+                "@seedcord/plugin-drizzle#build",
                 "@seedcord/plugin-mongoose#build",
                 "@seedcord/rate-limiter#build",
                 "@seedcord/types#build",

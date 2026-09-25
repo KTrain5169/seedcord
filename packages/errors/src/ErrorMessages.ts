@@ -211,6 +211,14 @@ const messages = {
     [SeedcordErrorCode.PluginKyselyBootstrapFailed]: (databaseName: string) =>
         `Failed to ensure database ${databaseName} exists.`,
 
+    [SeedcordErrorCode.PluginDrizzleServiceDecoratorMissing]: (className: string) =>
+        `Missing @RegisterDrizzleService on ${className}.`,
+    [SeedcordErrorCode.PluginDrizzleServiceKeyMissing]: (className: string) =>
+        `Empty service key on ${className}. Provide a non-empty key via @RegisterDrizzleService().`,
+    [SeedcordErrorCode.PluginDrizzleServicesNotReady]: () =>
+        'Drizzle services accessed before the plugin finished initializing.',
+    [SeedcordErrorCode.PluginDrizzleMigrationFailed]: () => 'Drizzle migration callback failed during startup.',
+
     [SeedcordErrorCode.CliConfigInvalidExport]: () => 'Config file must default export an object.',
     [SeedcordErrorCode.CliConfigMissingInstance]: () =>
         'Config must include an `instance` string that points to your Seedcord default export.',

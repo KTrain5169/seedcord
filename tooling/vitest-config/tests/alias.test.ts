@@ -32,6 +32,7 @@ describe('aliasFromTsconfig', () => {
         ['a wildcard path listed after a shorter one it starts with', '#src/nested/sub', 'nested/sub.ts']
     ])('resolves %s from a jsonc tsconfig', async (_label, specifier, target) => {
         const resolved = await server.pluginContainer.resolveId(specifier);
-        expect(resolved?.id).toBe(fixture(target));
+        // vite normalizes resolved ids to forward slashes, even on Windows
+        expect(resolved?.id.replaceAll('\\', '/')).toBe(fixture(target).replaceAll('\\', '/'));
     });
 });

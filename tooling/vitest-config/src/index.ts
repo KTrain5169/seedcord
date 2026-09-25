@@ -32,7 +32,8 @@ export function aliasFromTsconfig(configUrl: string): Alias[] {
     );
     return byMatchOrder.flatMap(([key, targets]) =>
         targets.slice(0, 1).map((target) => {
-            const replacement = fileURLToPath(new URL(target.replace('*', ''), configUrl));
+            // vite matches aliases against slash-normalized ids, so a backslash replacement never matches on Windows
+            const replacement = fileURLToPath(new URL(target.replace('*', ''), configUrl)).replaceAll('\\', '/');
             if (key.includes('*')) return { find: key.replace('*', ''), replacement };
             // vite also matches a string find as a prefix. '#flat' would catch '#flat/sub'
             return { find: new RegExp(`^${RegExp.escape(key)}$`), replacement };

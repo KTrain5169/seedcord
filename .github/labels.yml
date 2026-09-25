@@ -13,6 +13,8 @@
   color: 7fbc62
 - name: '📦 plugin-kysely-postgres'
   color: 6fbc62
+- name: '📦 plugin-drizzle'
+  color: 62bc7d
 - name: '📦 custom-id'
   color: 8a62bc
   description: typed customId codec

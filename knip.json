@@ -96,6 +96,9 @@
         "plugins/kysely-postgres": {
             "entry": ["**/*.types-test.ts"]
         },
+        "plugins/drizzle": {
+            "entry": ["**/*.types-test.ts"]
+        },
         "plugins/mongoose": {
             "entry": ["**/*.types-test.ts"]
         },

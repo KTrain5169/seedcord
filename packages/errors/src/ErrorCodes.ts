@@ -217,6 +217,15 @@ export enum SeedcordErrorCode {
     /** Bootstrapper failed to ensure the target Postgres database exists. */
     PluginKyselyBootstrapFailed = 2212,
 
+    /** Drizzle service class is missing the `@RegisterDrizzleService` decorator. */
+    PluginDrizzleServiceDecoratorMissing = 2301,
+    /** A drizzle service was registered with an empty key. */
+    PluginDrizzleServiceKeyMissing = 2302,
+    /** Drizzle `services` was accessed before the plugin finished initializing. */
+    PluginDrizzleServicesNotReady = 2303,
+    /** The user-supplied `migrate` callback threw during startup. */
+    PluginDrizzleMigrationFailed = 2304,
+
     /** Config file default export was not an object. */
     CliConfigInvalidExport = 3101,
     /** Config is missing the required instance string. */
