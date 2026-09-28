@@ -41,6 +41,17 @@ Then add your driver's client package, for example `pg` for `drizzle-orm/node-po
 
 `drizzle-orm`, `envapt`, `typescript`, and `@seedcord/core` are peer dependencies.
 
+The examples below assume this layout:
+
+```text
+src/
+├── bot.ts          the attach call
+├── db.ts           your configured Drizzle instance
+├── schema.ts       your table definitions
+└── services/       one file per service class
+drizzle/            the folder drizzle-kit generates migrations into
+```
+
 ## Attach
 
 `attach` takes a property name, the plugin class, and its options. Chain it off the constructor:
@@ -77,16 +88,59 @@ Attach before startup. A call after initialization throws `CorePluginAfterInit`.
 
 `migrate` is optional. Omit it when you run migrations another way, for example through `drizzle-kit`. A `migrate` callback that throws fails startup with `PluginDrizzleMigrationFailed`, keeping the original error as its cause.
 
-In dev, point `criticalFiles` at your schema and migration files. Edits to them trigger a full restart instead of an HMR swap, so startup runs `migrate` again. The patterns resolve relative to the project root, and the option does nothing outside development:
+A complete attach, with every option in play:
+
+```ts
+// bot.ts
+import { resolve } from 'node:path';
+
+import { Seedcord } from '@seedcord/gateway';
+import { Drizzle } from '@seedcord/plugin-drizzle';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
+
+import { db } from './db';
+
+export const seedcord = new Seedcord(config).attach('db', Drizzle, {
+    db,
+    dir: resolve(import.meta.dirname, './services'),
+    migrate: () => migrate(db, { migrationsFolder: resolve(import.meta.dirname, '../drizzle') })
+});
+
+export default seedcord;
+```
+
+In dev, anything matched by `criticalFiles` gets a full restart instead of a hot swap, so an edit to a migration or a schema file reruns `migrate` on the next start. The option does nothing outside development:
 
 ```ts
 export const seedcord = new Seedcord(config).attach('db', Drizzle, {
     db,
     dir: resolve(import.meta.dirname, './services'),
     migrate: () => migrate(db, { migrationsFolder: resolve(import.meta.dirname, '../drizzle') }),
-    criticalFiles: ['./drizzle', './src/schema.ts']
+    criticalFiles: ['drizzle', 'src/schema.ts']
 });
 ```
+
+Paths are relative to the project root and the plugin normalizes them for you: a leading `./` is dropped, an absolute path inside the root is made relative, and a folder gains `/**` so the files inside it match. Write `'drizzle'` and get `drizzle/**`; write `'drizzle/**'` and it is left alone.
+
+### Inferring from drizzle.config.ts
+
+If your project has a drizzle-kit config, the plugin reads it and registers its `schema` and `out` paths as critical files, so you do not have to repeat them. `criticalFiles` and the config are merged, and the result is deduplicated:
+
+```ts
+// drizzle.config.ts
+import { defineConfig } from 'drizzle-kit';
+
+export default defineConfig({
+    schema: './src/schema.ts',
+    out: './drizzle',
+    dialect: 'postgresql',
+    dbCredentials: { url: process.env.DATABASE_URL! }
+});
+```
+
+That config alone gets you `src/schema.ts` and `drizzle/**`, with no `criticalFiles` at all. The config is looked for in the project root, in drizzle-kit's own preference order, and reading it is best effort: a config that fails to load logs at debug and contributes nothing, because a broken config is no reason to take the bot down. A config that exports a function instead of an object is called and awaited.
+
+Registration happens during `init`, not in the constructor, since reading the config is asynchronous.
 
 ## Dialects
 
@@ -249,27 +303,49 @@ export const seedcord = new Seedcord(config).attach('db', Drizzle, {
 
 ## Typing
 
-Declare your database type once so the plugin's `connection` and every service resolve it:
+Declare your database type once so the plugin's `connection` and every service resolve it. Put it in its own declaration file and hand it the type of the instance you exported:
 
 ```ts
+// src/seedcord.d.ts
+import { db } from './db';
+
 declare module '@seedcord/plugin-drizzle' {
     interface DrizzleDatabase {
-        db: NodePgDatabase<typeof schema>;
+        db: typeof db;
     }
 }
 ```
 
-Until that declaration exists, `this.db` types as `unknown`. A service can also name its type directly with `extends DrizzleService<typeof db>`.
+The one member is named `db`, and it holds whatever your `drizzle()` call returned, so this works for every driver without naming one. Naming the driver's database class works too, if you would rather not import the value:
+
+```ts
+// src/seedcord.d.ts
+import type { MySql2Database } from 'drizzle-orm/mysql2';
+
+declare module '@seedcord/plugin-drizzle' {
+    interface DrizzleDatabase {
+        db: MySql2Database;
+    }
+}
+```
+
+Two ways to get this wrong, both of which leave `this.db` as `unknown` with no error anywhere:
+
+- **Do not name the file `db.d.ts`.** Sitting next to `db.ts`, that name reads as the declaration output of `db.ts` rather than a module of its own, and the augmentation is dropped. Any other name is fine, `seedcord.d.ts` above.
+- **Keep it inside the compiler's program.** A file that no `include` in your `tsconfig.json` matches is never read, so the declaration never runs.
+
+Until that declaration exists, `this.db` types as `unknown` and `core.db.connection` too. A service can also name its type directly with `extends DrizzleService<typeof db>`, which works without the declaration at all. Declaring it is still worth it: it is the only way `core.db.connection` gets a type.
 
 ## Services
 
-Each service extends `DrizzleService` with your database type and reads through `this.db`:
+Each service extends `DrizzleService` and reads through `this.db`. Name the database type on the class when you have not declared it globally:
 
 ```ts
 import { eq } from 'drizzle-orm';
 import { DrizzleService, RegisterDrizzleService } from '@seedcord/plugin-drizzle';
 
-import { db, users } from '../db';
+import { db } from '../db';
+import { users } from '../schema';
 
 @RegisterDrizzleService('users')
 export class UsersService extends DrizzleService<typeof db> {
@@ -279,7 +355,30 @@ export class UsersService extends DrizzleService<typeof db> {
 }
 ```
 
-Name each key once so the lookup types resolve:
+With the declaration in place you can leave the type argument off, which is what most services end up doing since they all share one database:
+
+```ts
+import { and, eq } from 'drizzle-orm';
+import { DrizzleService, RegisterDrizzleService } from '@seedcord/plugin-drizzle';
+
+import { users } from '../schema';
+
+@RegisterDrizzleService('users')
+export class UsersService extends DrizzleService {
+    public async findActive(userId: string) {
+        return this.db
+            .select()
+            .from(users)
+            .where(and(eq(users.userId, userId), eq(users.banned, false)));
+    }
+
+    public async ban(userId: string) {
+        await this.db.update(users).set({ banned: true }).where(eq(users.userId, userId));
+    }
+}
+```
+
+The decorator is what registers the class, and the key is what you look it up by. Name each key once so the lookup types resolve:
 
 ```ts
 declare module '@seedcord/plugin-drizzle' {
@@ -289,8 +388,16 @@ declare module '@seedcord/plugin-drizzle' {
 }
 ```
 
+The decorator checks that the class and the declared key agree, so a key with no declaration fails to compile rather than resolving to `unknown`.
+
 Then call it from a handler through `core`:
 
 ```ts
 const user = await this.core.db.services.users.findByUserId(this.event.user.id);
+```
+
+Reading `core.db.services` before the plugin finishes initializing throws `PluginDrizzleServicesNotReady`. Plugins in the same startup phase initialize in attach order, so a plugin attached before this one cannot reach a service from its own `init`. For the instance itself, without a service in the way, use the connection:
+
+```ts
+const rows = await this.core.db.connection.select().from(users).limit(10);
 ```

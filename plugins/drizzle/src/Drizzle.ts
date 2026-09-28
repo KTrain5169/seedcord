@@ -8,6 +8,7 @@ import { keepDefined } from '@seedcord/utils';
 import { Envapter } from 'envapt';
 
 import { DrizzleServiceMetadataKey } from './decorators/RegisterDrizzleService';
+import { inferCriticalFiles, toCriticalPattern } from './DrizzleKitConfig';
 import { DrizzleServiceRegistry } from './DrizzleServiceRegistry';
 
 import type { DrizzleServiceConstructor } from './DrizzleService';
@@ -32,6 +33,7 @@ export interface DrizzleArtifact {
 export class Drizzle extends Plugin<{ transport: 'any'; runtime: 'server' }> {
     private isInitialised = false;
     private servicesReady = false;
+    private criticalFilesRegistered = false;
     private inFlight: Promise<void> | null = null;
 
     /** The Drizzle instance passed via options. */
@@ -60,11 +62,6 @@ export class Drizzle extends Plugin<{ transport: 'any'; runtime: 'server' }> {
         this.serviceRegistry = new DrizzleServiceRegistry(this, this.core, this.logger);
 
         if (!Envapter.isDevelopment) return;
-
-        const { criticalFiles } = this.options;
-        if (criticalFiles) {
-            super.registerCriticalFiles(Array.isArray(criticalFiles) ? [...criticalFiles] : [criticalFiles]);
-        }
 
         this.hmrHandler = new HmrModuleHandler({
             handlersDir: this.options.dir,
@@ -102,6 +99,7 @@ export class Drizzle extends Plugin<{ transport: 'any'; runtime: 'server' }> {
 
     private async runInit(): Promise<void> {
         try {
+            await this.registerCriticalPatterns();
             await this.runMigrations();
             await this.serviceRegistry.loadFromDirectory(this.options.dir);
         } catch (caught) {
@@ -121,6 +119,33 @@ export class Drizzle extends Plugin<{ transport: 'any'; runtime: 'server' }> {
 
         this.logger.debug(paint.mute('Cleared Drizzle services.'));
         return Promise.resolve();
+    }
+
+    /**
+     * Registers the paths that force a full restart in dev: the ones named in `criticalFiles`,
+     * plus whatever a drizzle-kit config in the project root points at.
+     *
+     * Runs from `init` rather than the constructor because reading a config is asynchronous.
+     * No-op outside development, and once per instance.
+     */
+    private async registerCriticalPatterns(): Promise<void> {
+        if (this.criticalFilesRegistered || !Envapter.isDevelopment) return;
+        this.criticalFilesRegistered = true;
+
+        // the framework resolves every other path against the working directory
+        const root = process.cwd();
+        const { criticalFiles } = this.options;
+        const declared = Array.isArray(criticalFiles) ? criticalFiles : criticalFiles ? [criticalFiles] : [];
+
+        const patterns: string[] = [];
+        for (const pattern of declared) {
+            patterns.push(await toCriticalPattern(pattern, root));
+        }
+        patterns.push(...(await inferCriticalFiles(root, this.logger)));
+
+        if (patterns.length > 0) {
+            super.registerCriticalFiles([...new Set(patterns)]);
+        }
     }
 
     private async runMigrations(): Promise<void> {

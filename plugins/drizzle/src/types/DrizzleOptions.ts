@@ -28,18 +28,22 @@ export interface DrizzleOptions {
      */
     readonly migrate?: () => Promise<void> | void;
     /**
-     * Glob patterns, relative to the project root, that force a full restart
-     * in dev instead of an HMR swap.
+     * Paths, relative to the project root, that force a full restart in dev
+     * instead of an HMR swap.
      *
      * Point these at your schema and migration files so editing them reruns
      * `init`, which runs `migrate` again. Has no effect outside development.
+     *
+     * A drizzle-kit config in the project root already contributes its `schema`
+     * and `out` paths, and these are added to them. A leading `./` is dropped, an
+     * absolute path inside the root is made relative, and a folder gains `/**`.
      *
      * @example
      * ```typescript
      * {
      *   db,
      *   dir: './services',
-     *   criticalFiles: ['./drizzle', './src/schema.ts']
+     *   criticalFiles: ['drizzle', 'src/schema.ts']
      * }
      * ```
      */

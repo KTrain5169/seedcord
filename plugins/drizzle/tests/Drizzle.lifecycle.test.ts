@@ -184,32 +184,61 @@ describe('Drizzle lifecycle', () => {
         await expect(plugin.dispose()).resolves.toBeUndefined();
     });
 
-    it.each([{ criticalFiles: ['./drizzle', './src/schema.ts'] }, { criticalFiles: './drizzle' }])(
-        'registers critical files $criticalFiles so schema edits force a full restart in dev',
-        ({ criticalFiles }) => {
+    it.each([
+        { criticalFiles: ['./drizzle', './src/schema.ts'], expected: ['drizzle/**', 'src/schema.ts'] },
+        { criticalFiles: './drizzle', expected: ['drizzle/**'] }
+    ])(
+        'registers the normalized critical files $criticalFiles on init so edits force a full restart in dev',
+        async ({ criticalFiles, expected }) => {
             // the method is protected, so reach it through the prototype for the assertion
             const spy = vi.spyOn(
                 Plugin.prototype as unknown as { registerCriticalFiles(patterns: string[]): void },
                 'registerCriticalFiles'
             );
             try {
-                build({ criticalFiles });
+                const plugin = build({ criticalFiles });
 
-                expect(spy).toHaveBeenCalledWith(Array.isArray(criticalFiles) ? criticalFiles : [criticalFiles]);
+                // registration waits on the drizzle config read, so it lands during init
+                expect(spy).not.toHaveBeenCalled();
+
+                await plugin.init();
+
+                expect(spy).toHaveBeenCalledWith(expected);
             } finally {
                 spy.mockRestore();
             }
         }
     );
 
-    it('registers no critical files when the option is omitted', () => {
+    it('registers once no matter how many times init runs', async () => {
         // the method is protected, so reach it through the prototype for the assertion
         const spy = vi.spyOn(
             Plugin.prototype as unknown as { registerCriticalFiles(patterns: string[]): void },
             'registerCriticalFiles'
         );
         try {
-            build();
+            const plugin = build({ criticalFiles: './drizzle' });
+
+            await plugin.init();
+            await plugin.dispose();
+            await plugin.init();
+
+            expect(spy).toHaveBeenCalledOnce();
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
+    it('registers no critical files when the option is omitted and no drizzle config exists', async () => {
+        // the method is protected, so reach it through the prototype for the assertion
+        const spy = vi.spyOn(
+            Plugin.prototype as unknown as { registerCriticalFiles(patterns: string[]): void },
+            'registerCriticalFiles'
+        );
+        try {
+            const plugin = build();
+
+            await plugin.init();
 
             expect(spy).not.toHaveBeenCalled();
         } finally {
