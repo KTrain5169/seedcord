@@ -43,7 +43,7 @@ pnpm -C packages/<name> lint:fix
 pnpm -C packages/<name> tc
 pnpm -C packages/<name> test
 
-# the whole gate, which husky also runs on pre-push
+# build all packages to check
 pnpm prePush
 ```
 
