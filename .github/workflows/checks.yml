@@ -48,6 +48,7 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm check:catalog
       - run: pnpm lint:changesets
+      - run: pnpm lint:md
       - run: pnpm lint
 
   format:
@@ -121,41 +122,8 @@ jobs:
       - run: pnpm build
         env:
           SEEDCORD_DOCS_INDEX_URL: https://cdn.seedcord.org/index.json
-      - run: pnpm turbo docs:extract
-
-  codegen-check:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    name: codegen:check
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/turbo-cache
-        with:
-          turbo_token: ${{ secrets.TURBO_TOKEN }}
-          turbo_team: ${{ vars.TURBO_TEAM }}
-          enable_fallback_cache: 'true'
-      - uses: ./.github/actions/setup
-      - run: pnpm build
       - run: pnpm codegen:check
-
-  markdownlint:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
-    name: markdownlint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: ./.github/actions/turbo-cache
-        with:
-          turbo_token: ${{ secrets.TURBO_TOKEN }}
-          turbo_team: ${{ vars.TURBO_TEAM }}
-          enable_fallback_cache: 'true'
-      - uses: ./.github/actions/setup
-      - run: pnpm lint:md
+      - run: pnpm turbo docs:extract
 
   audit:
     if: github.event_name == 'push'
