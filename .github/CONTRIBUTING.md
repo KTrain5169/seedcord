@@ -21,6 +21,13 @@ pnpm build
 
 Branch off `next` and open your PR against `next`.
 
+The repo uses LF line endings, and `.gitattributes` checks every file out that way. If your clone predates it, or the pre-commit hook fails on CRLF, commit or stash your work and run:
+
+```bash
+git rm --cached -r .
+git reset --hard
+```
+
 ## Working on a package
 
 Run these from the repo root, in this order:
