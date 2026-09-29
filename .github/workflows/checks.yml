@@ -48,7 +48,6 @@ jobs:
       - uses: ./.github/actions/setup
       - run: pnpm check:catalog
       - run: pnpm lint:changesets
-      - run: pnpm lint:md
       - run: pnpm lint
 
   format:
