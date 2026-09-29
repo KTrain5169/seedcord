@@ -22,8 +22,13 @@ function findNearestConfig(filePath: string, name: string): ConfigHit | null {
     return null;
 }
 
-// lint-staged splits commands with string-argv. it never unescapes \" or \\
-const quote = (arg: string): string => `"${arg}"`;
+// lint-staged splits commands with string-argv
+// it never unescapes \" or \\
+function quote(arg: string): string {
+    if (!arg.includes('"')) return `"${arg}"`;
+    if (!arg.includes("'")) return `'${arg}'`;
+    throw new Error(`lint-staged can't pass a path holding both ' and ", got ${arg}. Rename the file.`);
+}
 
 const quoteFiles = (files: readonly string[]): string => files.map(quote).join(' ');
 
