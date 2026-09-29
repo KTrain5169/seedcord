@@ -95,7 +95,7 @@ pnpm -C packages/<dependent> tc
 Two whole-workspace gates exist and they differ:
 
 - `pnpm prePush` runs every check across every package.
-- `pnpm prePush:affected` runs the same checks through `turbo --affected`. **The husky pre-push hook runs this one.** A green hook covers less than a green `prePush`.
+- `pnpm prePush:affected` runs the same checks through `turbo --affected`. A green `prePush:affected` covers less than a green `prePush`.
 
 Both start with `build` and `codegen:check`, then `check:catalog`, the script and markdown lint, `tc`, `lint`, `fmt:check`, and `test`. The root `package.json` has the exact chain.
 

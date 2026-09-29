@@ -83,6 +83,7 @@ jobs:
           enable_fallback_cache: 'true'
       - uses: ./.github/actions/setup
       - run: pnpm tc
+      - run: pnpm tc:root
 
   test:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
@@ -120,6 +121,7 @@ jobs:
       - run: pnpm build
         env:
           SEEDCORD_DOCS_INDEX_URL: https://cdn.seedcord.org/index.json
+      - run: pnpm codegen:check
       - run: pnpm turbo docs:extract
 
   audit:

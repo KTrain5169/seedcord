@@ -21,7 +21,7 @@ pnpm build
 
 Branch off `next` and open your PR against `next`.
 
-The repo uses LF line endings, and `.gitattributes` checks every file out that way. If your clone predates it, or the pre-commit hook fails on CRLF, commit or stash your work and run:
+The repo uses LF line endings, and `.gitattributes` checks every file out that way. If your clone predates it, commit or stash your work and run:
 
 ```bash
 git rm --cached -r .
@@ -61,13 +61,12 @@ When you add or change a handler in a mock, run `pnpm -C mocks/<name> codegen`. 
 
 ## Hooks
 
-`pnpm install` sets up three husky hooks:
+`pnpm install` sets up two husky hooks:
 
-- **pre-commit** runs `lint-staged` with zero warnings allowed, then checks formatting. One lint warning blocks the commit, even though plain `pnpm lint` lets it through.
+- **pre-commit** runs `lint-staged`, which formats the files you staged and lints them with zero warnings allowed. One lint warning blocks the commit, even though plain `pnpm lint` lets it through.
 - **commit-msg** runs commitlint on your message.
-- **pre-push** runs `pnpm prePush:affected`, which checks the packages your branch changed and the ones that depend on them.
 
-Run `pnpm prePush` before you open the PR. It checks every package. The root `package.json` has both chains.
+Run `pnpm prePush` before you open the PR. It checks every package. `pnpm prePush:affected` checks only the packages your branch changed and the ones that depend on them. The root `package.json` has both chains.
 
 ## Pull request guidelines
 
