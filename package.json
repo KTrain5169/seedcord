@@ -1,7 +1,7 @@
 {
     "name": "@seedcord/seedcord",
     "version": "0.1.0",
-    "description": "A Discord bot framework built on top of Discord.js",
+    "description": "A TypeScript framework for Discord bots, typed end to end",
     "private": true,
     "type": "module",
     "packageManager": "pnpm@12.4.2",

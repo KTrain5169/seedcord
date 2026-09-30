@@ -51,7 +51,7 @@ A re-export from another package goes in `src/index.ts`. One file then says whic
 
 Everything ships against one of two transports.
 
-`@seedcord/gateway` holds a websocket connection through a stateful `Seedcord` class, built on discord.js. It carries message, member, voice, and reaction events.
+`@seedcord/gateway` runs a stateful `Seedcord` class that holds a websocket connection through the discord.js client. It carries message, member, voice, and reaction events.
 
 `@seedcord/http` answers Discord's interactions endpoint. Node runs through a `Seedcord` class. `@seedcord/http/edge` builds a handler through `createSeedcord` for Web-standard runtimes. Discord posts only interactions here.
 

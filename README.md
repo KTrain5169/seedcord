@@ -21,9 +21,9 @@
 
 </div>
 
-seedcord runs a Discord bot on top of discord.js and types every part of it. Commands, events, components, gates, lifecycle, and plugins all come with the framework. A wrong route or a wrong option name is a compile error, before the bot ever connects.
+seedcord is a TypeScript framework for Discord bots, typed end to end. Commands, events, components, gates, lifecycle, and plugins all come with it. A wrong route or a wrong option name is a compile error, before the bot ever connects.
 
-You pick one of two transports when you scaffold. `@seedcord/gateway` holds a websocket connection. `@seedcord/http` answers Discord's interaction requests. Everything you write on top of them is the same code.
+You pick one of two transports when you scaffold. `@seedcord/gateway` holds a websocket connection through the discord.js client. `@seedcord/http` answers Discord's interaction requests and has no discord.js dependency. Handlers, checks, and the rest of the seedcord API work the same way on both. The objects they read differ: discord.js objects on the gateway, raw payloads on http.
 
 ## Features
 
@@ -40,7 +40,7 @@ You pick one of two transports when you scaffold. `@seedcord/gateway` holds a we
 - Startup and shutdown that run in ordered phases
 - Pagination that survives a restart
 - Typed plugins with `init`, `ready`, and `dispose`
-- and much more...
+- and a lot more...
 
 ## Get started
 
@@ -72,7 +72,7 @@ From `pnpm create seedcord` to a running bot.
 | [`create-seedcord`](cli/create-seedcord) | [![version](https://img.shields.io/npm/v/create-seedcord?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](cli/create-seedcord/CHANGELOG.md) | scaffolds a new bot |
 | [`seedcord`](cli/seedcord) | [![version](https://img.shields.io/npm/v/seedcord?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](cli/seedcord/CHANGELOG.md) | the CLI, dev server, build, and codegen |
 | [`@seedcord/core`](packages/core) | [![version](https://img.shields.io/npm/v/%40seedcord%2Fcore?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](packages/core/CHANGELOG.md) | foundational code shared by both transports |
-| [`@seedcord/gateway`](packages/gateway) | [![version](https://img.shields.io/npm/v/%40seedcord%2Fgateway?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](packages/gateway/CHANGELOG.md) | the websocket transport, built on discord.js |
+| [`@seedcord/gateway`](packages/gateway) | [![version](https://img.shields.io/npm/v/%40seedcord%2Fgateway?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](packages/gateway/CHANGELOG.md) | the websocket transport, on the discord.js client |
 | [`@seedcord/http`](packages/http) | [![version](https://img.shields.io/npm/v/%40seedcord%2Fhttp?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](packages/http/CHANGELOG.md) | the interactions transport |
 | [`@seedcord/logger`](packages/logger) | [![version](https://img.shields.io/npm/v/%40seedcord%2Flogger?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](packages/logger/CHANGELOG.md) | channelled logging |
 | [`@seedcord/custom-id`](packages/custom-id) | [![version](https://img.shields.io/npm/v/%40seedcord%2Fcustom-id?style=flat-square&logo=npm&logoColor=c8341f&label=&labelColor=1f1f1f&color=c8341f)](packages/custom-id/CHANGELOG.md) | typed customId encoding and decoding |

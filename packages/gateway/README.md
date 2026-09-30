@@ -23,7 +23,7 @@
 
 ## About
 
-`@seedcord/gateway` runs a seedcord bot over a websocket connection, built on discord.js. A gateway connection carries message, member, voice, and reaction events. Discord never posts those to an interactions endpoint. Pick this transport when the bot reacts to any of them.
+`@seedcord/gateway` runs a seedcord bot over a websocket connection through the discord.js client, which also keeps the cache. A gateway connection carries message, member, voice, and reaction events. Discord never posts those to an interactions endpoint. Pick this transport when the bot reacts to any of them.
 
 Until v1.0.0, minor versions can break.
 

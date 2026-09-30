@@ -6,7 +6,7 @@ export { AUTHOR_GITHUB_URL, AUTHOR_URL, DISCORD_URL, DOCS_URL, GUIDE_URL, NPM_OR
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? HOME_URL;
 export const SITE_NAME = 'seedcord';
 export const SITE_DESCRIPTION =
-    'A TypeScript framework for Discord bots. Generated slash-option types, a typed customId codec, composable gates, and hot reload, all on top of discord.js.';
+    'A TypeScript framework for Discord bots, typed end to end, with generated slash-option types, typed customIds, reusable checks, hot reload, and a lot more.';
 export const NPM_URL = 'https://www.npmjs.com/package/seedcord';
 export const ROADMAP_URL = 'https://github.com/orgs/seedcord/projects/1';
 export const CDN_URL = 'https://cdn.seedcord.org';
