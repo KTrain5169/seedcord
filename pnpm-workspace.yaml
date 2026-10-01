@@ -16,6 +16,14 @@ overrides:
   sharp: ^0.35.4 # < 0.35.4 has GHSA-rgj7-g3m4-5g8c through libheif
   'undici@7': ^7.29.1 # < 7.29.1 has GHSA-4cwx-7wf7-3272
 
+packageExtensions:
+  '@testing-library/jest-dom':
+    peerDependencies:
+      vitest: '*'
+    peerDependenciesMeta:
+      vitest:
+        optional: true
+
 supportedArchitectures:
   libc:
     - current
