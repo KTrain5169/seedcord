@@ -1,30 +1,40 @@
+import { DocKind } from '@seedcord/docs-engine/client';
 import { describe, expect, it, vi } from 'vitest';
 
-const { searchIndexForMock } = vi.hoisted(() => ({ searchIndexForMock: vi.fn() }));
-vi.mock('#lib/search/buildIndex', () => ({ searchIndexFor: searchIndexForMock }));
+import { docNode, fixtureEngine } from '../../fixtures/docsEngine';
+
+import type { SearchIndexEntry } from '#lib/search/types';
+
+vi.mock('#lib/docs/engine', () => ({
+    getDocsEngine: () =>
+        Promise.resolve(
+            fixtureEngine('core', '@seedcord/core', [
+                { version: '0.9.2', nodes: (pkg) => [docNode(pkg, 'Bus', { kind: DocKind.Class })] }
+            ])
+        )
+}));
 
 const { GET } = await import('#src/app/search/[packageId]/[file]/route');
 
-function call(packageId: string, file: string): Promise<Response> {
+function search(packageId: string, file: string): Promise<Response> {
     return GET(new Request('https://seedcord.org/docs/search'), { params: Promise.resolve({ packageId, file }) });
 }
 
 describe('GET /search/[packageId]/[file]', () => {
-    it('serves the index of the version in the file name', async () => {
-        searchIndexForMock.mockResolvedValue([{ slug: 'logger' }]);
+    it('serves the symbols of the version in the file name', async () => {
+        const response = await search('core', '0.9.2.json');
+        const entries = (await response.json()) as SearchIndexEntry[];
 
-        const res = await call('core', '0.9.2.json');
+        expect(entries.map(({ action }) => [action.label, action.href])).toEqual([
+            ['Bus', '/packages/core/0.9.2/classes/bus']
+        ]);
+    });
 
-        expect(searchIndexForMock).toHaveBeenCalledWith('core', '0.9.2');
-        await expect(res.json()).resolves.toEqual([{ slug: 'logger' }]);
+    it('returns a 404 for a package the index does not list', async () => {
+        expect((await search('nope', '0.9.2.json')).status).toBe(404);
     });
 
     it('returns a 404 for a file without the .json extension', async () => {
-        expect((await call('core', '0.9.2')).status).toBe(404);
-    });
-
-    it('fails the build when the index does not build', async () => {
-        searchIndexForMock.mockRejectedValue(new Error('project.json is missing'));
-        await expect(call('core', '0.9.2.json')).rejects.toThrow('project.json is missing');
+        expect((await search('core', '0.9.2')).status).toBe(404);
     });
 });

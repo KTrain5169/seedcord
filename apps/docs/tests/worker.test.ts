@@ -151,7 +151,38 @@ describe('the docs worker', () => {
 
     it('answers a path that only starts with /docs with the 404 page', async () => {
         const response = await get('foo', bucket('index.html', 'foo.html', '404.html'));
+        expect(response.status).toBe(404);
         await expect(response.text()).resolves.toBe('404.html');
+    });
+
+    it('answers a path outside /docs with the 404 page', async () => {
+        const response = await get('', bucket('index.html', '404.html'), 'http://localhost:8787');
+        expect(response.status).toBe(404);
+        await expect(response.text()).resolves.toBe('404.html');
+    });
+
+    it('answers with an error when the assets binding fails', async () => {
+        const env: Env = {
+            BUILD_ID,
+            ASSETS: { fetch: () => Promise.resolve(new Response('upstream broke', { status: 500 })) }
+        };
+
+        await expect(get('/packages/core/latest', env)).rejects.toThrow(/500/);
+    });
+
+    it('serves an empty body when the assets binding answers 200 with none', async () => {
+        const env: Env = { BUILD_ID, ASSETS: { fetch: () => Promise.resolve(new Response(null, { status: 200 })) } };
+        const response = await get('/packages/core/latest', env);
+
+        await expect(
+            Promise.race([response.text(), new Promise((resolve) => setTimeout(resolve, 500, 'hung'))])
+        ).resolves.toBe('');
+    });
+
+    it('answers with an error when the assets binding fails with no body', async () => {
+        const env: Env = { BUILD_ID, ASSETS: { fetch: () => Promise.resolve(new Response(null, { status: 500 })) } };
+
+        await expect(get('/packages/core/latest', env)).rejects.toThrow(/500/);
     });
 
     it('reads the build folder through an assets binding when no bucket is bound', async () => {
