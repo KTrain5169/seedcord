@@ -1,7 +1,7 @@
-import { describeValue, messageOf } from './checks';
+import { describeValue, joinList, messageOf } from './checks';
 import { collectPayloadErrors } from './fromPayload';
 import { embedStats, MAX_JSON_BYTES } from './limits';
-import { SCRIPT_ID } from './scriptId';
+import { EMBED_TYPES, SCRIPT_ID } from './scriptId';
 import { scriptSafeJson } from './scriptSafeJson';
 
 import type { ComponentEmbedPayload } from './toComponentEmbed';
@@ -32,7 +32,12 @@ const DISCORD_WAITS =
 
 type Loaded = { text: string; inScript: boolean } | CheckResult;
 type Unreadable = Extract<CheckResult, { status: 'unreadable' }>;
-type Fetched = { text: string; contentType: string } | Unreadable;
+interface Page {
+    text: string;
+    contentType: string;
+    disposition: string;
+}
+type Fetched = Page | Unreadable;
 
 // a local html file has no host to hold a <link> to
 type LinkRule = { pageHost: string } | 'file';
@@ -52,7 +57,9 @@ async function load(target: string, deadline: number, input: CheckInput): Promis
         if (!url) return { status: 'unreadable', reason: `${target} isn't a valid URL.` };
         const page = await fetchText(url, PAGE_USER_AGENT, deadline, input);
         if (!('text' in page)) return page;
-        if (isJson(page.contentType)) return { text: page.text, inScript: false };
+        if (EMBED_TYPES.includes(mediaType(page.contentType))) return { text: page.text, inScript: false };
+        const notAPage = servedProblem(page);
+        if (notAPage) return notAPage;
         // discord's crawler held the <link> to the pasted URL's host, even after a redirect to another host
         return embedIn(page.text, { pageHost: url.hostname }, deadline, input);
     }
@@ -92,11 +99,11 @@ async function embedIn(html: string, rule: LinkRule, deadline: number, input: Ch
     const href = link.attributes.get('href');
     const jsonUrl = URL.parse(href ?? '');
     const offSite = rule !== 'file' && jsonUrl !== null && !sameSite(jsonUrl.hostname, rule.pageHost);
-    if (jsonUrl?.protocol !== 'https:' || offSite) {
+    if (!isWebUrl(jsonUrl) || offSite) {
         const where = rule === 'file' ? '' : " on the page's host, a subdomain of it, or a domain above it";
         return {
             status: 'fail',
-            problems: [`The <link> href has to be an absolute https URL${where}, got ${href ?? 'nothing'}.`]
+            problems: [`The <link> href has to be an absolute http or https URL${where}, got ${href ?? 'nothing'}.`]
         };
     }
 
@@ -106,18 +113,43 @@ async function embedIn(html: string, rule: LinkRule, deadline: number, input: Ch
     return { status: 'fail', problems: [json.reason] };
 }
 
-// the docs require this exact type. discord's crawler ignored a <link> without it
 function typeProblem(tag: Tag, label: string): CheckResult | undefined {
     const type = tag.attributes.get('type');
-    if (type === 'application/json') return undefined;
-    return {
-        status: 'fail',
-        problems: [`The ${label} has to have type="application/json", got ${describeValue(type)}.`]
-    };
+    if (type !== undefined && EMBED_TYPES.includes(type)) return undefined;
+    const allowed = joinList(
+        EMBED_TYPES.map((embedType) => `type="${embedType}"`),
+        'or'
+    );
+    return { status: 'fail', problems: [`The ${label} has to have ${allowed}, got ${describeValue(type)}.`] };
 }
 
-function isJson(contentType: string): boolean {
-    return contentType.split(';')[0]?.trim().toLowerCase() === 'application/json';
+function mediaType(contentType: string): string {
+    return contentType.split(';')[0]?.trim().toLowerCase() ?? '';
+}
+
+// discord's crawler reads a page only as one of these. a linked JSON can have any content type
+const PAGE_TYPES = ['text/html', 'application/xhtml+xml'];
+
+function servedProblem(page: Page): CheckResult | undefined {
+    const problem = servingProblem(page);
+    return problem === undefined ? undefined : { status: 'fail', problems: [problem] };
+}
+
+function servingProblem({ contentType, disposition }: Page): string | undefined {
+    if (/^\s*attachment\b/i.test(disposition)) {
+        return noPreview(
+            'served as a download, with Content-Disposition: attachment',
+            'Remove the Content-Disposition header.'
+        );
+    }
+    const serveAsPage = `Serve it as ${joinList(PAGE_TYPES, 'or')}.`;
+    if (contentType === '') return noPreview('served without a content type', serveAsPage);
+    if (!PAGE_TYPES.includes(mediaType(contentType))) return noPreview(`served as ${contentType}`, serveAsPage);
+    return undefined;
+}
+
+function noPreview(how: string, fix: string): string {
+    return `The page is ${how}. Discord shows no preview for it, not even the Open Graph card. ${fix}`;
 }
 
 async function fetchText(url: URL, userAgent: string, deadline: number, input: CheckInput): Promise<Fetched> {
@@ -131,7 +163,11 @@ async function fetchText(url: URL, userAgent: string, deadline: number, input: C
         });
         if (!response.ok) return couldNotFetch(url, `the server answered ${String(response.status)}.`);
         const text = await response.text();
-        return { text, contentType: response.headers.get('content-type') ?? '' };
+        return {
+            text,
+            contentType: response.headers.get('content-type') ?? '',
+            disposition: response.headers.get('content-disposition') ?? ''
+        };
     } catch (error) {
         const isTimeout = error instanceof DOMException && error.name === 'TimeoutError';
         return couldNotFetch(url, isTimeout ? timedOut() : oneLine(messageOf(networkError(error))));
@@ -158,6 +194,10 @@ function oneLine(message: string): string {
 // node's fetch throws "fetch failed" and keeps the network error on cause
 function networkError(thrown: unknown): unknown {
     return Error.isError(thrown) && Error.isError(thrown.cause) ? thrown.cause : thrown;
+}
+
+function isWebUrl(url: URL | null): url is URL {
+    return url?.protocol === 'http:' || url?.protocol === 'https:';
 }
 
 // the component embed docs allow the page's host, a subdomain of it, or its parent domain

@@ -134,7 +134,7 @@ Discord doesn't run JavaScript when it fetches your page. The card has to be in 
 
 <!-- prettier-ignore-end -->
 
-Keep your Open Graph tags. Other sites and apps build their previews from them, and Discord falls back to them whenever it can't use the component embed.
+Keep your Open Graph tags. Other sites and apps build their previews from them, and Discord falls back to them for most component embeds it can't use.
 
 Discord reads the tag from each page separately. If you add it to a layout that every page shares, every page shows the card, so add it only to the pages that should show one.
 
@@ -201,7 +201,7 @@ useHead({
     script: [
         {
             id: 'discord:component-embed',
-            type: 'application/json',
+            type: 'application/vnd.discord.component-embed+json',
             innerHTML: toComponentEmbedJson(buildPostCard(post))
         }
     ]
@@ -278,7 +278,11 @@ Build the card with `h()`, since Solid's Vite plugin compiles every `.tsx` file 
 import { toComponentEmbedJson } from 'discord-component-embed';
 import { buildPostCard } from '~/cards/buildPostCard';
 
-<script id="discord:component-embed" type="application/json" innerHTML={toComponentEmbedJson(buildPostCard(post))} />;
+<script
+    id="discord:component-embed"
+    type="application/vnd.discord.component-embed+json"
+    innerHTML={toComponentEmbedJson(buildPostCard(post))}
+/>;
 ```
 
 Solid writes `innerHTML` into the page as it is. That's safe here, because `toComponentEmbedJson` escapes any `</` and `<!--` in the JSON.
@@ -348,10 +352,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
 
 `componentEmbedResponse` returns the JSON as a Web `Response` with an `application/json` content type. Any framework whose routes return a Web `Response` works the same way, like a SvelteKit `+server.ts`.
 
-Point the page at that URL with a `<link>` tag. The `href` has to be an absolute `https` URL on the page's host, a subdomain of it, or its parent domain.
+Point the page at that URL with a `<link>` tag. The `href` has to be an absolute `http` or `https` URL on the page's host, a subdomain of it, or its parent domain.
 
 ```html
-<link rel="discord:component-embed" type="application/json" href="https://example.com/embeds/blog/hello-world" />
+<link
+    rel="discord:component-embed"
+    type="application/vnd.discord.component-embed+json"
+    href="https://example.com/embeds/blog/hello-world"
+/>
 ```
 
 <div align="right"><a href="#contents">back to top</a></div>
@@ -384,9 +392,9 @@ Every error for a tree from `fromPayload` has JSON keys in its `path`, like `['c
 
 Discord shows no preview at all for a bad `id`, so `fromPayload` checks those too. Each `id` has to be a whole number from 0 to 2147483647, and no two components can share one. `fromPayload` then leaves them out of the tree, because nothing in a link preview reads them.
 
-If a component has a key it doesn't take, like a mistyped `descripton`, `fromPayload` throws with the keys it does take and suggests the closest one. Discord drops such a key and shows the card without that field. On a button, Discord shows the Open Graph card instead. Extra fields inside `media`, like the `proxy_url` and `width` that Discord's API adds, are fine.
+If a component has a key it doesn't take, like a mistyped `descripton`, `fromPayload` throws with the keys it does take and suggests the closest one. Discord drops such a key and shows the card without that field. On a button, Discord shows the Open Graph card instead. It does the same for any key in `media` other than `url`, including the `proxy_url` and `width` that Discord's API adds.
 
-The 3000-byte check measures the JSON the package writes from the tree, without those extras. If you serve a hand-written file as it is, run it through the [`check` command](#check-from-the-command-line), which measures the file as written.
+The 3000-byte check measures the JSON the package writes from the tree. If you serve a hand-written file as it is, run it through the [`check` command](#check-from-the-command-line), which measures the file as written.
 
 <div align="right"><a href="#contents">back to top</a></div>
 
@@ -409,7 +417,9 @@ npx discord-component-embed check embed.json https://materwelon.dev
 1 passed, 1 failed
 ```
 
-For a URL, the command fetches the page with Discord's crawler user agent. It checks the `<script>` JSON as the page serves it, or follows the `<link>` to its JSON. Both tags need `type="application/json"`, since Discord skips either one without it. The 3000-byte limit counts that text as sent, whitespace and escapes included. A URL that answers with `application/json` gets checked as the payload itself, which is how you check a linked JSON on its own.
+For a URL, the command fetches the page with Discord's crawler user agent. It checks the `<script>` JSON as the page serves it, or follows the `<link>` to its JSON. Discord skips either tag unless its `type` is `application/vnd.discord.component-embed+json` or `application/json`. The 3000-byte limit counts that text as sent, whitespace and escapes included. A URL that answers with either of those types gets checked as the payload itself, which is how you check a linked JSON on its own.
+
+Discord shows a preview only for a page served as `text/html` or `application/xhtml+xml`.
 
 Discord waits about 10 seconds in total for the page and its linked JSON, then shows no preview. The command stops at the same 10 seconds. A page that runs out of time counts as unreadable, and a linked JSON that runs out fails the check. If the page and its JSON take over 9 seconds together, the target passes with a warning.
 
@@ -499,7 +509,7 @@ The [reference](https://seedcord.org/docs/packages/discord-component-embed/lates
 
 ## Errors
 
-Discord doesn't report an invalid payload anywhere. It drops the payload and shows the Open Graph card. So `toComponentEmbed`, `toComponentEmbedJson`, `toComponentEmbedScript`, `<ComponentEmbed>`, and `componentEmbedResponse` throw a [`ComponentEmbedError`](https://seedcord.org/docs/packages/discord-component-embed/latest/classes/component-embed-error) when:
+Discord doesn't report an invalid payload anywhere. It shows the Open Graph card, or no preview at all for most payloads that break Discord's general component rules, like a bad `id`. So `toComponentEmbed`, `toComponentEmbedJson`, `toComponentEmbedScript`, `<ComponentEmbed>`, and `componentEmbedResponse` throw a [`ComponentEmbedError`](https://docs.seedcord.org/packages/discord-component-embed/latest/classes/component-embed-error) when:
 
 - the root is anything other than one `Container`
 - a component is somewhere it isn't allowed, or text is outside a `TextDisplay`

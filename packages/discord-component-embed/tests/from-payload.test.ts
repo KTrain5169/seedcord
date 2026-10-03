@@ -107,13 +107,6 @@ describe('fromPayload keys', () => {
             'A text display doesn\'t take "x". It takes type, id, and content.'
         ],
         [
-            // discord falls back to the Open Graph card for any key past the six its docs list
-            'an id on a button',
-            inPayload({ type: 1, components: [{ type: 2, style: 5, url: 'https://example.com', label: 'go', id: 3 }] }),
-            ['component', 'components', '0', 'components', '0'],
-            'A button doesn\'t take "id". It takes type, style, url, label, emoji, and disabled.'
-        ],
-        [
             // discord's crawler rendered the button and dropped the unknown key
             'a mistyped key on a button emoji',
             inPayload({
@@ -128,6 +121,18 @@ describe('fromPayload keys', () => {
             { component: { type: 17, components: [text] }, extra: true },
             [],
             'A component embed payload doesn\'t take "extra". It takes component.'
+        ],
+        [
+            'a thumbnail media key past url',
+            inPayload({ type: 9, components: [text], accessory: { type: 11, media: { url: IMAGE, width: 256 } } }),
+            ['component', 'components', '0', 'accessory'],
+            'A thumbnail\'s media doesn\'t take "width". It takes url.'
+        ],
+        [
+            'a gallery item media key past url',
+            inPayload({ type: 12, items: [{ media: { url: IMAGE, proxy_url: IMAGE } }] }),
+            ['component', 'components', '0', 'items', '0'],
+            'A gallery item\'s media doesn\'t take "proxy_url". It takes url.'
         ]
     ])('rejects %s', (_label, payload, path, message) => {
         const error = thrownBy(() => fromJson(payload));
@@ -135,14 +140,6 @@ describe('fromPayload keys', () => {
         expect(error.code).toBe('InvalidProp');
         expect(error.path).toEqual(path);
         expect(error.message.split('\nFound at')[0]).toBe(message);
-    });
-
-    it("leaves the fields discord's API adds to media alone", () => {
-        const media = { url: IMAGE, proxy_url: 'https://media.discordapp.net/x.png', width: 256, height: 256 };
-
-        expect(() =>
-            toComponentEmbed(fromJson(inPayload({ type: 9, components: [text], accessory: { type: 11, media } })))
-        ).not.toThrow();
     });
 });
 
@@ -183,6 +180,42 @@ describe('fromPayload ids', () => {
         expect(error.path).toEqual(['component', 'components', '0']);
         expect(error.message.split('\nFound at')[0]).toBe(
             'Another component already has the id 7. No two components in an embed can share one.'
+        );
+    });
+
+    const withButtonId = (containerId: unknown, buttonId: unknown): unknown => ({
+        component: {
+            type: 17,
+            id: containerId,
+            components: [{ type: 1, components: [{ type: 2, style: 5, url: IMAGE, label: 'go', id: buttonId }] }]
+        }
+    });
+    const BUTTON_PATH = ['component', 'components', '0', 'components', '0'];
+
+    it('accepts an id on a button and leaves it out of the payload', () => {
+        expect(toComponentEmbed(fromJson(withButtonId(1, 2)))).toEqual({
+            component: {
+                type: 17,
+                components: [{ type: 1, components: [{ type: 2, style: 5, url: IMAGE, label: 'go' }] }]
+            }
+        });
+    });
+
+    it('rejects a button id outside the range', () => {
+        const error = thrownBy(() => fromJson(withButtonId(1, -1)));
+
+        expect(error.path).toEqual(BUTTON_PATH);
+        expect(error.message.split('\nFound at')[0]).toBe(
+            'An id has to be a whole number from 0 to 2147483647, got -1.'
+        );
+    });
+
+    it('rejects a button id another component already uses', () => {
+        const error = thrownBy(() => fromJson(withButtonId(5, 5)));
+
+        expect(error.path).toEqual(BUTTON_PATH);
+        expect(error.message.split('\nFound at')[0]).toBe(
+            'Another component already has the id 5. No two components in an embed can share one.'
         );
     });
 });
