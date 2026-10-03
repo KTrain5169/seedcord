@@ -54,8 +54,8 @@
     ],
     "dependencies": {
         "@leeoniya/ufuzzy": "^1.0.19",
-        "@microsoft/api-extractor-model": "7.33.8",
-        "@microsoft/tsdoc": "^0.16.0",
+        "@microsoft/api-extractor-model": "7.33.14",
+        "@microsoft/tsdoc": "^0.17.1",
         "@seedcord/docs-generator": "workspace:^",
         "prettier": "catalog:deps",
         "semver": "^7.8.5"

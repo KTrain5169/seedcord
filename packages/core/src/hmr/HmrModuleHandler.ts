@@ -140,10 +140,8 @@ export class HmrModuleHandler<THandler, TMiddleware = void, TArtifacts = unknown
         }
         set.add(handler);
 
-        if (this.options.getArtifacts) {
-            const artifacts = this.options.getArtifacts(handler);
-            this.store.handlerArtifacts.set(handler, artifacts);
-        }
+        if (!this.options.getArtifacts) return;
+        this.store.handlerArtifacts.set(handler, this.options.getArtifacts(handler));
     }
 
     /** Links the middleware to its source file so a later update can unload it. */

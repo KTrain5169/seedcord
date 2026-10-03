@@ -282,16 +282,14 @@ export class InteractionDispatcher implements Initializeable, HmrAware {
 
     private registerMiddleware(middlewareCtor: InteractionMiddlewareConstructor, relativePath: string): void {
         const metadata = this.middlewares.register(middlewareCtor);
-        if (!metadata) return;
+        if (!metadata || !this.loading) return;
 
-        if (this.loading) {
-            // the kinds are the only place a dev sees that a middleware is scoped
-            const scope = metadata.keys ? `${metadata.priority}, ${metadata.keys.join(', ')}` : metadata.priority;
-            this.loadedMiddlewares.push({
-                name: `${middlewareCtor.name} (${String(scope)})`,
-                from: formatFilePath(relativePath)
-            });
-        }
+        // the kinds are the only place a dev sees that a middleware is scoped
+        const scope = metadata.keys ? `${metadata.priority}, ${metadata.keys.join(', ')}` : metadata.priority;
+        this.loadedMiddlewares.push({
+            name: `${middlewareCtor.name} (${String(scope)})`,
+            from: formatFilePath(relativePath)
+        });
     }
 
     private isHandlerClass(obj: unknown): obj is HandlerConstructor {

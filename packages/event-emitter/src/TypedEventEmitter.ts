@@ -172,6 +172,7 @@ export class TypedEventEmitter<TEvents extends EventMap<TEvents>> {
                 reject(new WaitForError('aborted'));
             };
 
+            // eslint-disable-next-line prefer-const -- an already-aborted signal runs cleanup before the timer is set
             let timer: ReturnType<typeof setTimeout> | undefined;
 
             const cleanup = (): void => {
@@ -190,13 +191,13 @@ export class TypedEventEmitter<TEvents extends EventMap<TEvents>> {
                 options.signal.addEventListener('abort', onAbort, { once: true });
             }
 
-            if (options?.timeoutMs !== undefined) {
-                const timeoutMs = options.timeoutMs;
-                timer = setTimeout(() => {
-                    cleanup();
-                    reject(new WaitForError('timeout', timeoutMs));
-                }, timeoutMs);
-            }
+            if (options?.timeoutMs === undefined) return;
+
+            const timeoutMs = options.timeoutMs;
+            timer = setTimeout(() => {
+                cleanup();
+                reject(new WaitForError('timeout', timeoutMs));
+            }, timeoutMs);
         });
     }
 

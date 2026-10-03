@@ -84,7 +84,7 @@
         "typescript": "catalog:consumerTypes"
     },
     "devDependencies": {
-        "@cloudflare/vitest-pool-workers": "^0.20.1",
+        "@cloudflare/vitest-pool-workers": "^0.22.0",
         "@discordjs/builders": "catalog:deps",
         "@seedcord/eslint-config": "workspace:^",
         "@seedcord/tsconfig": "workspace:^",

@@ -47,10 +47,12 @@ const logPackageResult = (result: ApiDocsGeneratorResult['results'][number]): vo
         result.warnings.slice(0, 5).forEach((warning) => console.log(`      • ${warning}`));
     }
 
-    if (result.errors.length > 0) {
-        console.log('   first errors:');
-        result.errors.slice(0, 5).forEach((error) => console.log(`      • ${error}`));
+    if (result.errors.length === 0) {
+        return;
     }
+
+    console.log('   first errors:');
+    result.errors.slice(0, 5).forEach((error) => console.log(`      • ${error}`));
 };
 
 const createGeneratorOptions = (argv: readonly string[]): ApiDocsGeneratorOptions => {

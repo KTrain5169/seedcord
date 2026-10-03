@@ -21,10 +21,12 @@ export class HmrManager {
         const channel = wrapHot<SeedcordFrameworkEvents, SeedcordCliEvents>(import.meta.hot);
         setDevChannel(channel);
 
-        if (Envapter.isDevelopment || Envapter.isTest) {
-            this.logger.debug('Enabled');
-            channel.on('seedcord:hmr', (payload) => void this.handleUpdate(payload));
+        if (!(Envapter.isDevelopment || Envapter.isTest)) {
+            return;
         }
+
+        this.logger.debug('Enabled');
+        channel.on('seedcord:hmr', (payload) => void this.handleUpdate(payload));
     }
 
     /** @internal */

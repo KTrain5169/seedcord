@@ -248,13 +248,10 @@ export abstract class Pluggable<BotT extends Transport, BotRt extends Runtime> i
         if (this.pluginTasksRegistered) return;
         this.pluginTasksRegistered = true;
 
-        const groups = new Map<StartupPhase, Attachment[]>();
-        for (const attachment of this.attachments) {
-            const phase = resolvedLifecycleSpecOf(attachment.instance).init.phase;
-            const group = groups.get(phase) ?? [];
-            group.push(attachment);
-            groups.set(phase, group);
-        }
+        const groups = Map.groupBy(
+            this.attachments,
+            (attachment) => resolvedLifecycleSpecOf(attachment.instance).init.phase
+        );
 
         for (const [phase, group] of groups) {
             // Ready inits run in the combined Ready task, before the ready hooks

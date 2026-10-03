@@ -150,12 +150,12 @@ export class ApiDocsGenerator {
             const { description } = await readPackageManifest(packageDir);
             if (description) result.description = description;
 
-            if (this.githubBase) {
-                const repoRelativeDir = this.paths.toRepoRelative(packageDir).split(path.sep).join('/');
-                result.folderUrl = `${this.githubBase}/blob/${this.ref}/${repoRelativeDir}`;
-                if (existsSync(path.join(packageDir, 'CHANGELOG.md'))) {
-                    result.changelogUrl = `${result.folderUrl}/CHANGELOG.md`;
-                }
+            if (!this.githubBase) continue;
+
+            const repoRelativeDir = this.paths.toRepoRelative(packageDir).split(path.sep).join('/');
+            result.folderUrl = `${this.githubBase}/blob/${this.ref}/${repoRelativeDir}`;
+            if (existsSync(path.join(packageDir, 'CHANGELOG.md'))) {
+                result.changelogUrl = `${result.folderUrl}/CHANGELOG.md`;
             }
         }
 

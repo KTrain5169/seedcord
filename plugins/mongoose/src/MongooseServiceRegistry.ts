@@ -100,10 +100,12 @@ export class MongooseServiceRegistry {
         }
 
         // only delete models this registry created
-        if (modelName && this.ownModels.has(modelName)) {
-            mongoose.deleteModel(modelName);
-            this.ownModels.delete(modelName);
+        if (!(modelName && this.ownModels.has(modelName))) {
+            return;
         }
+
+        mongoose.deleteModel(modelName);
+        this.ownModels.delete(modelName);
     }
 
     public getArtifacts(ctor: MongooseServiceConstructor): MongooseArtifact {

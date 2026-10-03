@@ -178,12 +178,14 @@ export class AugmentationBuilder {
     private toSlashOption(option: BasicOption): SlashOption {
         // empty choices would narrow the value to never
         const choices =
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- builders' toJSON() sets choices: undefined
             'choices' in option && option.choices && option.choices.length > 0
                 ? option.choices.map((choice) => choice.value)
                 : undefined;
         const autocomplete = 'autocomplete' in option && option.autocomplete === true ? true : undefined;
         // sorted so a reordered declaration still matches under `--check`
         const channelTypes =
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- builders' toJSON() sets channel_types: undefined
             'channel_types' in option && option.channel_types && option.channel_types.length > 0
                 ? option.channel_types.toSorted((first, second) => first - second)
                 : undefined;

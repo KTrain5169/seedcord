@@ -13,7 +13,7 @@ export default defineConfig({
     minify: false,
     sourcemap: true,
     outDir: 'dist',
-    deps: { skipNodeModulesBundle: true },
+    deps: { neverBundle: true },
     fixedExtension: true,
     checks: { legacyCjs: false }
 });

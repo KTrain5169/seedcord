@@ -27,7 +27,7 @@
         "@tailwindcss/postcss": "catalog:deps",
         "envapt": "catalog:peer",
         "github-slugger": "^2.0.0",
-        "isomorphic-dompurify": "^3.21.0",
+        "isomorphic-dompurify": "^4.4.0",
         "lucide-react": "catalog:deps",
         "marked": "^18.0.14",
         "motion": "catalog:deps",

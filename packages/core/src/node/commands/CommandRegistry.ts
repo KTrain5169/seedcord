@@ -207,10 +207,9 @@ export class CommandRegistry implements Initializeable, HmrAware {
         } else {
             for (const g of info.guilds) {
                 const arr = this.guildCommands.get(g);
-                if (arr) {
-                    const idx = arr.findIndex((c) => c.name === info.name);
-                    if (idx !== -1) arr.splice(idx, 1);
-                }
+                if (!arr) continue;
+                const idx = arr.findIndex((c) => c.name === info.name);
+                if (idx !== -1) arr.splice(idx, 1);
             }
         }
         this.ctorToCommand.delete(ctor);

@@ -59,10 +59,12 @@ export class CatalogRule {
                 continue;
             }
 
-            if (refs.some((one) => one.version.startsWith('catalog:')) && !this.entries.has(depName)) {
-                found.push({ depName, refs, reason: 'catalog-missing-entry' });
-                flagged.add(depName);
+            if (!(refs.some((one) => one.version.startsWith('catalog:')) && !this.entries.has(depName))) {
+                continue;
             }
+
+            found.push({ depName, refs, reason: 'catalog-missing-entry' });
+            flagged.add(depName);
         }
 
         for (const entry of this.entries) {

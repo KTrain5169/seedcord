@@ -30,12 +30,7 @@ import type {
 
 // the entity page lays out sections in this first-seen kind order
 export function synthGroups(children: DocNode[]): DocGroup[] {
-    const byKind = new Map<number, DocNode[]>();
-    for (const child of children) {
-        const bucket = byKind.get(child.kind) ?? [];
-        bucket.push(child);
-        byKind.set(child.kind, bucket);
-    }
+    const byKind = Map.groupBy(children, (child) => child.kind);
     return [...byKind.entries()].map(([kind, nodes]) => ({
         title: frozenKindLabel(kind),
         kind,

@@ -199,11 +199,13 @@ export class EventDispatcher implements Initializeable, HmrAware {
             const handlers = this.eventMap.get(event as keyof ClientEvents);
             if (!handlers) continue;
             const index = handlers.findIndex((h) => h.ctor === handlerClass);
-            if (index !== -1) {
-                handlers.splice(index, 1);
-                if (handlers.length === 0) {
-                    this.eventMap.delete(event as keyof ClientEvents);
-                }
+            if (!(index !== -1)) {
+                continue;
+            }
+
+            handlers.splice(index, 1);
+            if (handlers.length === 0) {
+                this.eventMap.delete(event as keyof ClientEvents);
             }
         }
         // leaving executedOnceHandlers alone keeps a rollback-restored ctor spent

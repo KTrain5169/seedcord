@@ -49,7 +49,7 @@ export function createTsdownConfig({
     minify = false,
     sourcemap = true,
     outDir = 'dist',
-    deps = { skipNodeModulesBundle: true },
+    deps = { neverBundle: true },
     fixedExtension = true,
     checks = { legacyCjs: false },
     define = {},

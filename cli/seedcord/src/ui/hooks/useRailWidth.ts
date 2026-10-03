@@ -25,11 +25,13 @@ export function useRailWidth(
         }
         if (!needsMeasureRef.current || !railRef.current) return;
         const measured = measureElement(railRef.current).width;
-        if (measured > 0) {
-            needsMeasureRef.current = false;
-            // eslint-disable-next-line @eslint-react/set-state-in-effect -- rail width comes from measuring the rendered element, set once per run
-            setRailWidth(measured);
+        if (!(measured > 0)) {
+            return;
         }
+
+        needsMeasureRef.current = false;
+        // eslint-disable-next-line @eslint-react/set-state-in-effect -- rail width comes from measuring the rendered element, set once per run
+        setRailWidth(measured);
     }, [rows, columns, phase, railRef]);
 
     return railWidth;

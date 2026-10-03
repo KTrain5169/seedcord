@@ -193,10 +193,12 @@ export default createRule({
                     if (reportedInits.has(init)) continue;
                     const contextual = contextualType(arg);
                     if (contextual === undefined || !isMessageOptionsType(contextual)) continue;
-                    if (payloadViolates(init)) {
-                        reportedInits.add(init);
-                        context.report({ node: init, messageId: 'missingFlag' });
+                    if (!payloadViolates(init)) {
+                        continue;
                     }
+
+                    reportedInits.add(init);
+                    context.report({ node: init, messageId: 'missingFlag' });
                 }
             }
         };

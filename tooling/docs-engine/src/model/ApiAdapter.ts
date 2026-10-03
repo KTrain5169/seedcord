@@ -274,10 +274,12 @@ export class ApiAdapter {
         }
         node.signatures = signatures;
         node.comment = null;
-        if (node.header?.type) {
-            delete node.header.type;
-            node.headerText = formatRenderedDeclarationHeader(node.header);
+        if (!node.header?.type) {
+            return;
         }
+
+        delete node.header.type;
+        node.headerText = formatRenderedDeclarationHeader(node.header);
     }
 
     private signatureParameters(item: ApiItem): {

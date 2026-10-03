@@ -22,24 +22,5 @@ export default createTsdownConfig({
     shims: false,
     target: 'esnext',
     dts: true,
-    unbundle: true,
-    deps: {
-        skipNodeModulesBundle: true,
-        neverBundle: [
-            '@shikijs/langs',
-            'shiki',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-slot',
-            '@radix-ui/react-switch',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-tooltip',
-            'clsx',
-            'lucide-react',
-            'motion',
-            'next',
-            'react',
-            'react-dom',
-            'tailwind-merge'
-        ]
-    }
+    unbundle: true
 });

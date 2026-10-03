@@ -128,13 +128,15 @@ export class Bot implements HmrAware {
 
         await this.#emojiInjector.init();
 
-        if (this.#commandRegistry) {
-            await this.#commandRegistry.init();
-            assertGuildsIntent(this.#intents, this.#commandRegistry.allCommands());
-            await this.#commandRegistry.setCommands();
-            this.#interactions?.warnUnhandledRoutes(this.#commandRegistry.routeLeaves());
-            this.#interactions?.warnUnhandledContextMenuRoutes(this.#commandRegistry.contextMenuLeaves());
+        if (!this.#commandRegistry) {
+            return;
         }
+
+        await this.#commandRegistry.init();
+        assertGuildsIntent(this.#intents, this.#commandRegistry.allCommands());
+        await this.#commandRegistry.setCommands();
+        this.#interactions?.warnUnhandledRoutes(this.#commandRegistry.routeLeaves());
+        this.#interactions?.warnUnhandledContextMenuRoutes(this.#commandRegistry.contextMenuLeaves());
     }
 
     async #stop(): Promise<void> {

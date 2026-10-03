@@ -65,10 +65,12 @@ export default createRule({
             ImportDeclaration(node) {
                 forEachSeedcordImport(node, (imported, local) => {
                     if (imported === SUBSCRIBER) subscriberBases.add(local);
-                    if (imported === WEBHOOK_LOG) {
-                        subscriberBases.add(local);
-                        webhookBases.add(local);
+                    if (!(imported === WEBHOOK_LOG)) {
+                        return;
                     }
+
+                    subscriberBases.add(local);
+                    webhookBases.add(local);
                 });
                 decorators.collectImports(node);
             },

@@ -104,10 +104,12 @@ export class CoordinatedShutdown extends CoordinatedLifecycle<ShutdownPhase> {
             process.off('SIGTERM', this.onSigTerm);
             this.onSigTerm = null;
         }
-        if (this.onSigInt) {
-            process.off('SIGINT', this.onSigInt);
-            this.onSigInt = null;
+        if (!this.onSigInt) {
+            return;
         }
+
+        process.off('SIGINT', this.onSigInt);
+        this.onSigInt = null;
     }
 
     /** @internal run() awaits this so boot finishes registering its dispose tasks first */
