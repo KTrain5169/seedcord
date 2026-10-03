@@ -149,6 +149,15 @@ describe('R2Bucket site files', () => {
         expect(deletes.map(({ Objects }) => Objects.length)).toEqual([1000, 500]);
         expect(deletes[0]?.Objects[0]?.Key).toBe('builds/a/page-0.html');
     });
+
+    it('throws when the bucket refuses to delete some of the keys', async () => {
+        const { client } = stub(
+            { Contents: [{ Key: 'builds/a/index.html' }], IsTruncated: false },
+            { Errors: [{ Key: 'builds/a/index.html', Code: 'AccessDenied' }] }
+        );
+
+        await expect(new R2Bucket(client, 'site').deleteFolder('builds/a/')).rejects.toThrow(/builds\/a\/index\.html/);
+    });
 });
 
 describe('R2Bucket listing', () => {

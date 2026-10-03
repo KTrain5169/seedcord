@@ -3,6 +3,10 @@ import path from 'node:path';
 
 import type { SiteBucket } from '#src/docs/DocsSiteUpload';
 
+function isMissing(error: unknown): boolean {
+    return Error.isError(error) && 'code' in error && error.code === 'ENOENT';
+}
+
 // the docs bucket's layout on disk, for `pnpm docs:preview`
 export class DirectoryBucket implements SiteBucket {
     constructor(private readonly root: string) {}
@@ -14,8 +18,13 @@ export class DirectoryBucket implements SiteBucket {
     }
 
     async folders(prefix: string): Promise<string[]> {
-        const entries = await readdir(path.join(this.root, prefix), { withFileTypes: true }).catch(() => []);
-        return entries.filter((entry) => entry.isDirectory()).map((entry) => `${prefix}${entry.name}/`);
+        try {
+            const entries = await readdir(path.join(this.root, prefix), { withFileTypes: true });
+            return entries.filter((entry) => entry.isDirectory()).map((entry) => `${prefix}${entry.name}/`);
+        } catch (error) {
+            if (isMissing(error)) return [];
+            throw error;
+        }
     }
 
     async deleteFolder(folder: string): Promise<void> {

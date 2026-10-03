@@ -8,7 +8,7 @@ import type { SiteBucket } from '#src/docs/DocsSiteUpload';
 
 class FakeBucket implements SiteBucket {
     readonly written: string[] = [];
-    readonly deleted: string[] = [];
+    readonly deleted = new Set<string>();
 
     constructor(private readonly existing: SiteBuild[] = []) {}
 
@@ -22,7 +22,7 @@ class FakeBucket implements SiteBucket {
     }
 
     deleteFolder(folder: string): Promise<void> {
-        this.deleted.push(folder);
+        this.deleted.add(folder);
         return Promise.resolve();
     }
 }
@@ -31,37 +31,47 @@ const files = (...keys: string[]): DocsSiteFile[] => keys.map((key) => ({ key, p
 
 const build = (day: number): SiteBuild => new SiteBuild(`202610${String(day).padStart(2, '0')}T000000Z-abc1234`);
 
-describe('DocsSiteUpload', () => {
-    it('writes every file into the folder of its build', async () => {
-        const bucket = new FakeBucket();
+describe('DocsSiteUpload.upload', () => {
+    it('writes every file into the folder of its build and deletes nothing', async () => {
+        const bucket = new FakeBucket([build(1), build(2)]);
 
-        await new DocsSiteUpload(bucket).run(build(5), files('index.html', 'index.json'));
+        await new DocsSiteUpload(bucket).upload(build(5), files('index.html', 'index.json'));
 
         expect(bucket.written).toEqual([build(5).key('index.html'), build(5).key('index.json')]);
+        expect(bucket.deleted.size).toBe(0);
     });
 
-    it('keeps the previous build for rollback and deletes the older ones', async () => {
-        const bucket = new FakeBucket([build(1), build(2), build(3)]);
+    it('refuses an export without index.json before it touches the bucket', async () => {
+        const bucket = new FakeBucket();
 
-        const summary = await new DocsSiteUpload(bucket).run(build(4), files('index.json'));
+        await expect(new DocsSiteUpload(bucket).upload(build(4), files('index.html'))).rejects.toThrow(/index\.json/);
+        expect(bucket.written).toEqual([]);
+    });
+});
 
-        expect(bucket.deleted).toEqual([build(2).folder, build(1).folder]);
-        expect(summary.deleted).toEqual([build(2).id, build(1).id]);
+describe('DocsSiteUpload.prune', () => {
+    it('keeps the build a rollback goes to and deletes the older ones', async () => {
+        const bucket = new FakeBucket([build(1), build(2), build(3), build(4)]);
+
+        const deleted = await new DocsSiteUpload(bucket).prune(build(4), build(2).id);
+
+        expect(bucket.deleted).toEqual(new Set([build(1).folder, build(3).folder]));
+        expect(new Set(deleted)).toEqual(new Set([build(1).id, build(3).id]));
     });
 
     it('leaves a newer build alone', async () => {
         const bucket = new FakeBucket([build(9)]);
 
-        await new DocsSiteUpload(bucket).run(build(4), files('index.json'));
+        await new DocsSiteUpload(bucket).prune(build(4), null);
 
-        expect(bucket.deleted).toEqual([]);
+        expect(bucket.deleted.size).toBe(0);
     });
 
-    it('refuses an export without index.json before it touches the bucket', async () => {
-        const bucket = new FakeBucket([build(1), build(2)]);
+    it('deletes every older build when there is nothing to roll back to', async () => {
+        const bucket = new FakeBucket([build(1), build(2), build(3)]);
 
-        await expect(new DocsSiteUpload(bucket).run(build(4), files('index.html'))).rejects.toThrow(/index\.json/);
-        expect(bucket.written).toEqual([]);
-        expect(bucket.deleted).toEqual([]);
+        await new DocsSiteUpload(bucket).prune(build(3), null);
+
+        expect(bucket.deleted).toEqual(new Set([build(1).folder, build(2).folder]));
     });
 });

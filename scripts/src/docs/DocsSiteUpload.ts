@@ -8,20 +8,13 @@ export interface SiteBucket {
     deleteFolder(folder: string): Promise<void>;
 }
 
-export interface UploadSummary {
-    written: number;
-    deleted: string[];
-}
-
 const INDEX = 'index.json';
 const WRITES_AT_ONCE = 64;
-// a cloudflare rollback to the previous worker version reads the previous build
-const OLDER_BUILDS_KEPT = 1;
 
 export class DocsSiteUpload {
     constructor(private readonly bucket: SiteBucket) {}
 
-    async run(build: SiteBuild, files: readonly DocsSiteFile[]): Promise<UploadSummary> {
+    async upload(build: SiteBuild, files: readonly DocsSiteFile[]): Promise<number> {
         if (!files.some(({ key }) => key === INDEX)) {
             throw new Error(`the docs export has no ${INDEX}. run \`pnpm -C apps/docs build\` first`);
         }
@@ -33,22 +26,18 @@ export class DocsSiteUpload {
                     .map(({ key, path }) => this.bucket.putFile(build.key(key), path))
             );
         }
-
-        const stale = await this.olderThanKept(build);
-        for (const old of stale) await this.bucket.deleteFolder(old.folder);
-
-        return { written: files.length, deleted: stale.map(({ id }) => id) };
+        return files.length;
     }
 
-    private async olderThanKept(current: SiteBuild): Promise<SiteBuild[]> {
-        const folders = await this.bucket.folders(SiteBuild.ROOT);
-        const older = folders.reduce<SiteBuild[]>((builds, folder) => {
-            const build = SiteBuild.fromFolder(folder);
-            if (build?.isOlderThan(current)) builds.push(build);
-            return builds;
-        }, []);
+    async prune(live: SiteBuild, rollbackId: string | null): Promise<string[]> {
+        const builds = await this.builds();
+        const retired = builds.filter((build) => build.isOlderThan(live) && build.id !== rollbackId);
+        for (const build of retired) await this.bucket.deleteFolder(build.folder);
+        return retired.map(({ id }) => id);
+    }
 
-        const newestFirst = older.sort((a, b) => (b.isOlderThan(a) ? -1 : 1));
-        return newestFirst.slice(OLDER_BUILDS_KEPT);
+    private async builds(): Promise<SiteBuild[]> {
+        const folders = await this.bucket.folders(SiteBuild.ROOT);
+        return folders.flatMap((folder) => SiteBuild.fromFolder(folder) ?? []);
     }
 }

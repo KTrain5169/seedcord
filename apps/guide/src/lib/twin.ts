@@ -1,9 +1,11 @@
 import { parseCodeBlockAttributes } from 'fumadocs-core/mdx-plugins/codeblock-utils';
+import { defaultHandlers } from 'mdast-util-to-markdown';
 
 import { CALLOUT_LABELS, TRANSPORT_LABELS } from '#lib/callout';
 import { cleanFence } from '#lib/fence';
 import { getServerManager, VERBS } from '#lib/packageManager';
 import { FENCE_MODES } from '#lib/rehypeFenceMeta';
+import { canonicalUrl } from '#lib/site';
 
 import type { CalloutType, Transport } from '#lib/callout';
 import type { Verb } from '#lib/packageManager';
@@ -59,12 +61,22 @@ function shellCommand(node: JsxNode): string {
     return lead.trimEnd();
 }
 
+function isGuidePath(url: string): boolean {
+    return url.startsWith('/') && !url.startsWith('//');
+}
+
 function isJsx(node: Nodes): node is JsxNode {
     return node.type === 'mdxJsxFlowElement' || node.type === 'mdxJsxTextElement';
 }
 
 export const TWIN_OPTIONS: LLMsOptions = {
     headingIds: false,
+    handlers: {
+        link(node, parent, state, info) {
+            const url = isGuidePath(node.url) ? canonicalUrl(node.url) : node.url;
+            return defaultHandlers.link({ ...node, url }, parent, state, info);
+        }
+    },
     stringify(node, _parent, state, info) {
         if (node.type === 'code') {
             const { rest } = parseCodeBlockAttributes(node.meta ?? '', FENCE_MODES);

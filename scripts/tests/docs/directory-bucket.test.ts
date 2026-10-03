@@ -37,4 +37,12 @@ describe('DirectoryBucket', () => {
         const { root } = await scratch();
         await expect(new DirectoryBucket(root).folders('builds/')).resolves.toEqual([]);
     });
+
+    it('throws when the prefix is a file', async () => {
+        const { root, source } = await scratch();
+        const bucket = new DirectoryBucket(root);
+        await bucket.putFile('builds', source);
+
+        await expect(bucket.folders('builds/')).rejects.toThrow(/ENOTDIR/);
+    });
 });

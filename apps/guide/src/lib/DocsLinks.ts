@@ -3,6 +3,7 @@ import { workspaceIndexLoader } from '@seedcord/docs-engine/workspace';
 
 import { DOCS_URL } from './site';
 
+import type { SymbolRef } from './SymbolRef';
 import type { IndexJson } from '@seedcord/docs-engine/client';
 
 // the reference site renders each symbol under its kind's directory, with a member as an anchor on its owner
@@ -15,7 +16,11 @@ export class DocsLinks {
     static async load(): Promise<DocsLinks> {
         DocsLinks.loading ??= workspaceIndexLoader()
             .load()
-            .then((index) => (DocsLinks.loaded = new DocsLinks(index)));
+            .then((index) => (DocsLinks.loaded = new DocsLinks(index)))
+            .catch((error: unknown) => {
+                DocsLinks.loading = undefined;
+                throw error;
+            });
         return DocsLinks.loading;
     }
 
@@ -26,21 +31,18 @@ export class DocsLinks {
     }
 
     hasPackage(pkg: string): boolean {
-        return pkg in this.index.packages;
+        return Object.hasOwn(this.index.packages, pkg);
     }
 
-    // symbol is Owner, Owner.member, Owner#member, or empty for the package overview
-    href(pkg: string, symbol: string): string | null {
-        const entry = this.index.packages[pkg];
+    href({ pkg, owner, member, isPackage }: SymbolRef): string | null {
+        const entry = this.hasPackage(pkg) ? this.index.packages[pkg] : undefined;
         if (!entry) return null;
-        if (symbol === '') return `${DOCS_URL}${buildPackageBasePath(entry.fullName, DEFAULT_VERSION)}`;
+        if (isPackage) return `${DOCS_URL}${buildPackageBasePath(entry.fullName, DEFAULT_VERSION)}`;
 
-        const [owner = '', ...members] = symbol.split(/[.#]/);
         const slug = slugifySegment(owner);
         const tone = entry.entities?.[slug];
         if (!tone) return null;
 
-        const member = members.at(-1);
         const page = buildEntityHref({ name: entry.fullName, slug, tone, version: DEFAULT_VERSION });
         return `${DOCS_URL}${page}${member ? `#${slugifySegment(member)}` : ''}`;
     }
