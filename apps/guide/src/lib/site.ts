@@ -62,7 +62,7 @@ export interface PageMetadataOptions {
     pill: string;
 }
 
-const isFrontPage = (path: string): boolean => path === '/';
+export const isFrontPage = (path: string): boolean => path === '/';
 const FRONT_PAGE_TITLE = `${SITE_NAME} · build typed Discord bots`;
 
 // the front page's frontmatter title is its sidebar label, "Start here"

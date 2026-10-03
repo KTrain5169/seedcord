@@ -1,11 +1,17 @@
+import { DOCS_URL, HOME_URL } from '@seedcord/ui';
 import { PREVIEW_EMOJI, SITE_ACCENT } from '@seedcord/ui/link-preview';
 
 import { editUrl } from '#lib/pageActions';
-import { markdownUrl, shownTitle, SITE_DESCRIPTION } from '#lib/site';
+import { isFrontPage, markdownUrl, shownTitle, SITE_DESCRIPTION } from '#lib/site';
 
 import type { OrderedPage } from '#lib/neighbours';
 import type { GuidePage } from '#lib/pageActions';
-import type { PreviewCardProps } from '@seedcord/ui/link-preview';
+import type { PreviewCardProps, PreviewLink } from '@seedcord/ui/link-preview';
+
+const SITE_LINKS: readonly PreviewLink[] = [
+    { emoji: PREVIEW_EMOJI.home, label: 'Home', url: HOME_URL },
+    { emoji: PREVIEW_EMOJI.docs, label: 'Docs', url: DOCS_URL }
+];
 
 // both rates are guesses
 const PROSE_WORDS_PER_MINUTE = 200;
@@ -39,6 +45,8 @@ export function guidePreview({ page, order, twinMarkdown }: GuidePreviewSource):
     const subtext = [`${readingMinutes(twinMarkdown)} min read`];
     if (here) subtext.unshift(`${tabPages.indexOf(here) + 1} of ${tabPages.length} in ${here.tab}`);
 
+    const front = isFrontPage(page.url);
+
     return {
         accent: SITE_ACCENT.guide,
         breadcrumb,
@@ -47,8 +55,9 @@ export function guidePreview({ page, order, twinMarkdown }: GuidePreviewSource):
         body: page.data.description ?? SITE_DESCRIPTION,
         subtext,
         links: [
+            ...(front ? SITE_LINKS : []),
             { emoji: PREVIEW_EMOJI.markdown, label: 'Markdown', url: markdownUrl(page.url) },
-            { emoji: PREVIEW_EMOJI.github, label: 'Edit on GitHub', url: editUrl(page.path) }
+            { emoji: PREVIEW_EMOJI.github, label: front ? 'Edit' : 'Edit on GitHub', url: editUrl(page.path) }
         ]
     };
 }

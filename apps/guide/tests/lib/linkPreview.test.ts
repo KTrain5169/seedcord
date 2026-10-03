@@ -37,6 +37,14 @@ describe('guidePreview', () => {
         );
     });
 
+    it('links the front page to home and the docs before its own markdown and source', () => {
+        const front = guidePreview({ page: page('/', 'Start here'), order: ORDER, twinMarkdown: '' });
+        const inner = guidePreview({ page: page('/replying/', 'Replying'), order: ORDER, twinMarkdown: '' });
+
+        expect(front.links.map(({ label }) => label)).toEqual(['Home', 'Docs', 'Markdown', 'Edit']);
+        expect(inner.links.map(({ label }) => label)).toEqual(['Markdown', 'Edit on GitHub']);
+    });
+
     it('rounds a short page up to one minute', () => {
         const card = guidePreview({ page: page('/replying/', 'Replying'), order: ORDER, twinMarkdown: 'Hi.' });
 
