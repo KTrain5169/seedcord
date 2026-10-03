@@ -69,7 +69,7 @@ function RootLayout({ children }: RootLayoutProps): ReactNode {
     preconnect('https://cdn.seedcord.org');
 
     return (
-        <html lang="en" suppressHydrationWarning>
+        <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
             <body
                 suppressHydrationWarning
                 className={cn(display.variable, 'antialiased')}

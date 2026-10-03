@@ -42,7 +42,7 @@ interface RootLayoutProps {
 
 function RootLayout({ children }: RootLayoutProps): ReactNode {
     return (
-        <html lang="en" suppressHydrationWarning>
+        <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
             <body
                 // extensions mutate body attributes before react hydrates
                 suppressHydrationWarning

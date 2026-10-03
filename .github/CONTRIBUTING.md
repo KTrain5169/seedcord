@@ -169,6 +169,8 @@ Have it load the others only for these tasks:
 - [`envapt`](skills/envapt/SKILL.md) when code reads config through `envapt`
 - [`release-version`](skills/release-version/SKILL.md) for prepping a release, a maintainer-only job
 
+Before you open a PR, run [`/branch-audit`](../.claude/commands/branch-audit.md) or have your agent run it. It reviews everything your branch changes against `next`. Fix what it finds before you push.
+
 ## CI
 
 [`checks.yml`](workflows/checks.yml) runs on every PR that is not a draft, and [`commitlint.yml`](workflows/commitlint.yml) checks every commit in it. CI runs the checks from `pnpm prePush:all` on every package. A PR that fails CI will not get a detailed review.
