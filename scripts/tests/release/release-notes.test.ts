@@ -120,6 +120,33 @@ describe('ReleaseNotes', () => {
         expect(body).toContain('- **core, gateway**: Added `dispatchId` to every bus key. ([#311](url))');
     });
 
+    it('thanks a contributor with a bare mention where the changelog links their profile', () => {
+        const thanked = {
+            name: '@seedcord/utils',
+            version: '0.8.12',
+            directory: 'packages/utils',
+            changelog: lines(
+                '# @seedcord/utils',
+                '',
+                '## 0.8.12',
+                '',
+                '### 🩹 Patch',
+                '',
+                '- Fixed `renderTable`. ([#323](url), thanks [@alice](https://github.com/alice) and [@bob](https://github.com/bob))',
+                ''
+            )
+        };
+
+        const body = new ReleaseNotes({
+            repo: 'seedcord/seedcord',
+            tag: 'release-2026.10.03',
+            published: [thanked],
+            entries: new ReleaseEntries([thanked])
+        }).body();
+
+        expect(body).toContain('- **utils**: Fixed `renderTable`. ([#323](url), thanks @alice and @bob)');
+    });
+
     it('leaves out a bucket that carries no entry', () => {
         expect(notes()).not.toContain('🩹 Patch changes');
     });

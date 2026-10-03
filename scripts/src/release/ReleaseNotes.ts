@@ -1,3 +1,5 @@
+import { PROFILE_LINK } from '#src/release/ChangelogRenderer';
+
 import type { ReleaseEntries, ReleaseEntry } from '#src/release/ReleaseEntries';
 
 export interface ReleasePackage {
@@ -78,7 +80,9 @@ function dependencyBlock(packages: readonly ReleasePackage[]): string {
 function section(heading: string, entries: readonly ReleaseEntry[]): string {
     if (entries.length === 0) return '';
 
-    const rows = entries.map((entry) => `- **${entry.packages.join(', ')}**: ${entry.summary}`);
+    const rows = entries.map(
+        (entry) => `- **${entry.packages.join(', ')}**: ${entry.summary.replace(PROFILE_LINK, '@$1')}`
+    );
 
     return [`## ${heading}`, '', ...rows].join('\n');
 }

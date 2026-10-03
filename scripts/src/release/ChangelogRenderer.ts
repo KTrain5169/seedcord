@@ -61,9 +61,13 @@ export class ChangelogRenderer {
         const credited = contributors.filter((login) => !maintainers.includes(login));
         if (credited.length === 0) return '';
 
-        return `, thanks ${joined(credited.map((login) => `[@${login}](https://github.com/${login})`))}`;
+        return `, thanks ${joined(credited.map(profileLink))}`;
     }
 }
+
+const profileLink = (login: string): string => `[@${login}](https://github.com/${login})`;
+
+export const PROFILE_LINK = /\[@([\w-]+)\]\(https:\/\/github\.com\/\1\)/g;
 
 function joined(links: readonly string[]): string {
     const last = links.at(-1) ?? '';
