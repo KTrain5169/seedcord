@@ -1,5 +1,7 @@
 import { cn, tw } from '@seedcord/ui';
 
+import { PROSE_CODE_BLOCK } from '#components/docs/proseCodeBlock';
+
 import type { ReactElement } from 'react';
 
 const readmeProseClassName = cn(
@@ -17,8 +19,8 @@ const readmeProseClassName = cn(
     tw`[&_ol]:my-3 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6`,
     tw`[&_li]:leading-relaxed`,
     tw`[&_code]:rounded [&_code]:bg-(--surface-subtle) [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.85em]`,
-    tw`[&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:border-(--border) [&_pre]:bg-(--surface-subtle) [&_pre]:p-4 [&_pre]:text-sm lg:[&_pre]:text-[0.9375rem]`,
-    tw`[&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-inherit`,
+    PROSE_CODE_BLOCK,
+    tw`[&_pre]:my-4 [&_pre]:p-4 [&_pre]:text-sm lg:[&_pre]:text-[0.9375rem]`,
     tw`[&_blockquote]:my-4 [&_blockquote]:border-l-2 [&_blockquote]:border-(--border) [&_blockquote]:pl-4 [&_blockquote]:italic`,
     tw`[&_hr]:my-6 [&_hr]:border-(--border)`,
     // badges and the wordmark carry their own size

@@ -21,6 +21,12 @@ describe('plainSummary', () => {
         expect(plainSummary('first line.\n\nsecond   line.')).toBe('first line. second line.');
     });
 
+    it('leaves a fenced block out of the prose', () => {
+        expect(plainSummary('Reads a wire.\n\n```ts\nconst a = 1;\n```\nThen throws.')).toBe(
+            'Reads a wire. Then throws.'
+        );
+    });
+
     it('leaves prose brackets and non-link parens alone', () => {
         expect(plainSummary('call `arr[0](idx)` to read, returns []')).toBe('call arr[0](idx) to read, returns []');
     });

@@ -107,6 +107,7 @@ export interface InlineTagTarget {
 export type CommentDisplayPart =
     | { kind: 'text'; text: string }
     | { kind: 'code'; text: string }
+    | { kind: 'fence'; language: string; text: string }
     | { kind: 'inline-tag'; tag: `@${string}`; text: string; target?: number | string | InlineTagTarget };
 
 export interface DocCommentBlockTag {

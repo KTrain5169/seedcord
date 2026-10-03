@@ -2,6 +2,7 @@ import { buildPackageBasePath, DEFAULT_VERSION } from '@seedcord/docs-engine/cli
 import { GUIDE_URL, HOME_URL, REPO_URL } from '@seedcord/ui';
 import { accentColor, PREVIEW_EMOJI, SITE_ACCENT } from '@seedcord/ui/link-preview';
 
+import { FENCED_BLOCK } from '#lib/docs/comments/fence';
 import { DocsPage } from '#lib/docs/DocsPage';
 import { entityPath } from '#lib/docs/entityJsonLd';
 import { ENTITY_TONE_HEX } from '#lib/entityColors';
@@ -27,12 +28,22 @@ const SOURCE_WRAP = /(?<!\n)\n(?![ \t]*(?:[-*+] |\d+\. |\n))[ \t]*/g;
 const GAP_BETWEEN_ITEMS = /^([ \t]*(?:[-*+]|\d+\.) .*)\n{2,}(?=[ \t]*(?:[-*+]|\d+\.) )/gm;
 const EXTRA_BLANK_LINES = /\n{3,}/g;
 
-function discordMarkdown(summary: string): string {
-    return summary
+function discordProse(prose: string): string {
+    return prose
         .replace(RELATIVE_LINK, (_, path: string) => `](${new URL(path, HOME_URL).href})`)
         .replace(SOURCE_WRAP, ' ')
         .replace(GAP_BETWEEN_ITEMS, '$1\n')
-        .replace(EXTRA_BLANK_LINES, '\n\n');
+        .replace(EXTRA_BLANK_LINES, '\n\n')
+        .trim();
+}
+
+function discordMarkdown(summary: string): string {
+    const fences = summary.match(FENCED_BLOCK) ?? [];
+    return summary
+        .split(FENCED_BLOCK)
+        .flatMap((prose, at) => [discordProse(prose), fences[at] ?? ''])
+        .filter((block) => block !== '')
+        .join('\n');
 }
 
 function counted(count: number, one: string, many = `${one}s`): string {

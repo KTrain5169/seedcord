@@ -74,7 +74,8 @@ function walk(node: DocNode, parts: CommentDisplayPart[], resolveLink: LinkResol
             return;
         }
         case 'FencedCode': {
-            parts.push({ kind: 'code', text: (node as DocFencedCode).code });
+            const { language, code } = node as DocFencedCode;
+            parts.push({ kind: 'fence', language, text: code });
             return;
         }
         case 'LinkTag': {

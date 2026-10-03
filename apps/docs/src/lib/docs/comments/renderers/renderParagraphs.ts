@@ -1,5 +1,6 @@
 import { marked } from 'marked';
 
+import { markdownFence } from '#lib/docs/comments/fence';
 import { resolveInlineHref } from '#lib/docs/comments/resolvers';
 import { sanitizeHtml } from '#lib/sanitizeHtml';
 import { highlightToHtml, highlightInlineToHtml } from '@seedcord/ui/shiki';
@@ -42,6 +43,9 @@ export function partsToMarkdown(parts: readonly CommentDisplayPart[], context: F
                 break;
             case 'code':
                 markdown += `\`${part.text}\``;
+                break;
+            case 'fence':
+                markdown += markdownFence(part.language, part.text);
                 break;
             case 'inline-tag': {
                 if (part.tag === '@link' || part.tag === '@linkcode' || part.tag === '@linkplain') {

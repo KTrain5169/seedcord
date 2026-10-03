@@ -124,6 +124,27 @@ describe('symbolPreview', () => {
         expect(card.body).toBe('Error codes.\n\n- `One`: first.\n- `Two`: second.');
     });
 
+    it('keeps a fenced block line for line between the joined prose around it', () => {
+        const plain = [
+            'Decodes a',
+            'wire.',
+            '',
+            '```ts',
+            'const a = 1;',
+            '  [`b`](/docs/x);',
+            '```',
+            'Throws on a',
+            'bad prefix.'
+        ].join('\n');
+        const card = symbolPreview(resolved({ kind: 'type', summary: [{ plain, html: '' }] }), undefined);
+
+        expect(card.body).toBe(
+            ['Decodes a wire.', '```ts', 'const a = 1;', '  [`b`](/docs/x);', '```', 'Throws on a bad prefix.'].join(
+                '\n'
+            )
+        );
+    });
+
     it('leaves out the source link for a symbol with no source', () => {
         const labels = symbolPreview(resolved({ kind: 'type' }), undefined).links.map(({ label }) => label);
 
