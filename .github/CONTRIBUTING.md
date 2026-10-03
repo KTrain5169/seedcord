@@ -153,7 +153,21 @@ AI tools are fine. I use them too. The bar is the same as any other code. You ha
 
 Same for anything you write in the repo. Issues, PR descriptions, and review replies should come from you, the person who read the change. I want to talk it through with the human doing the work.
 
-AI code often looks correct and misses edge cases, so the testing rules matter more here. Point your agent at `AGENTS.md` and have it load the skills in [`.github/skills`](skills).
+AI code often looks correct and misses edge cases, so the testing rules matter more here. Point your agent at `AGENTS.md`.
+
+Have it load these four skills from [`.github/skills`](skills) before any work:
+
+- [`code-quality`](skills/code-quality/SKILL.md), plus every file in its folder
+- [`code-commenting-guidelines`](skills/code-commenting-guidelines/SKILL.md)
+- [`writing-voice`](skills/writing-voice/SKILL.md)
+- [`tdd`](skills/tdd/SKILL.md), plus every file in its folder
+
+Have it load the others only for these tasks:
+
+- [`guide-voice`](skills/guide-voice/SKILL.md) for any page under `apps/guide/content`, with its two review prompts
+- [`changeset-guidelines`](skills/changeset-guidelines/SKILL.md) before writing a changeset
+- [`envapt`](skills/envapt/SKILL.md) when code reads config through `envapt`
+- [`release-version`](skills/release-version/SKILL.md) for prepping a release, a maintainer-only job
 
 ## CI
 
