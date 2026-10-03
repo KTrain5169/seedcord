@@ -9,6 +9,7 @@ import { Seedcord } from '#src/node/Seedcord';
 
 import { createSigner, type Signer } from '../helpers/ed25519';
 import { VALID_TOKEN } from '../helpers/fixtures';
+import { slowGateEntered } from './discovery/fixtures/handlers/SlowGateCommand';
 
 import type { HttpConfig } from '#src/interfaces/Config';
 
@@ -80,7 +81,7 @@ describe('http Seedcord shutdown', () => {
 
         const started = Date.now();
         const pending = fetch(url, { method: 'POST', headers: await signedHeaders(signer, body), body });
-        await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+        await slowGateEntered.promise;
         const closing = shutdownOf(host).run(0, false);
 
         const response = await pending;
