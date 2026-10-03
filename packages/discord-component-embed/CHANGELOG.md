@@ -1,5 +1,20 @@
 # discord-component-embed
 
+## 0.5.0
+
+### ✨ Minor
+
+- The script tag and the docs now use `type="application/vnd.discord.component-embed+json"`, Discord's own type for a component embed. `check` accepts it on a `<script>` or `<link>`, and still accepts `application/json`. ([#338](https://github.com/seedcord/seedcord/pull/338))
+
+### 🩹 Patch
+
+- `fromPayload` and `check` accept an `id` on a link button, which Discord now allows. It follows the same rules as every other `id`. ([#338](https://github.com/seedcord/seedcord/pull/338))
+- Fixed `check` failing a page whose `<link>` points at an `http://` URL. Discord fetches that JSON over http and shows the card. ([#338](https://github.com/seedcord/seedcord/pull/338))
+- Fixed `check` passing a page that Discord shows no preview for. Discord reads a page only when it's served as `text/html` or `application/xhtml+xml`. ([#338](https://github.com/seedcord/seedcord/pull/338))
+- `fromPayload` and `check` now reject any key in `media` other than `url`, like `width` or `proxy_url`. Discord shows the Open Graph card for those. ([#338](https://github.com/seedcord/seedcord/pull/338))
+- The README and `ComponentEmbedError` docs now say that Discord shows no preview at all for most payloads that break its general component rules, like a bad `id`. They used to say Discord shows the Open Graph card for every invalid payload. ([#338](https://github.com/seedcord/seedcord/pull/338))
+- The README and the `discord-component-embed` doc comment examples now link the guide at `seedcord.org/guide` and the reference at `seedcord.org/docs`. ([#343](https://github.com/seedcord/seedcord/pull/343))
+
 ## 0.4.1
 
 ### 🩹 Patch

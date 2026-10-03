@@ -1,5 +1,16 @@
 # create-seedcord
 
+## 0.4.0
+
+### ✨ Minor
+
+- You can now leave the bot token and the http public key empty during setup. Press Enter twice on the empty prompt, or pass `--no-token` or `--no-public-key`, then fill the key into `.env` before running your bot for the first time. ([#342](https://github.com/seedcord/seedcord/pull/342), thanks [@camdzic](https://github.com/camdzic))
+
+### 🩹 Patch
+
+- A new bot's `AGENTS.md` now points agents at the plugin guide pages for anything that holds a connection, keeps state between interactions, or runs in the background. ([#340](https://github.com/seedcord/seedcord/pull/340))
+- A new bot's `AGENTS.md`, its README and the closing message now link the guide at `seedcord.org/guide` and the reference at `seedcord.org/docs`. ([#343](https://github.com/seedcord/seedcord/pull/343))
+
 ## 0.3.3
 
 ### 🩹 Patch

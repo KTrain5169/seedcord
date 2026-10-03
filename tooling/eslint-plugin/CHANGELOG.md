@@ -1,5 +1,16 @@
 # @seedcord/eslint-plugin
 
+## 0.4.2
+
+### 🩹 Patch
+
+- The README and the `discord-component-embed` doc comment examples now link the guide at `seedcord.org/guide` and the reference at `seedcord.org/docs`. ([#343](https://github.com/seedcord/seedcord/pull/343))
+- Fixed the peer conflict that a project on TypeScript 5.9 hit at install. The `typescript` peer now accepts 5.9 and 6.0. ([#340](https://github.com/seedcord/seedcord/pull/340))
+
+#### 📦 Seedcord packages
+
+- `eslint-plugin-discordjs` 0.1.5 → 0.1.6
+
 ## 0.4.1
 
 ### 🩹 Patch

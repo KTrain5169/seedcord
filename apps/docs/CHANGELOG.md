@@ -1,5 +1,16 @@
 # @seedcord/docs
 
+## 0.1.18
+
+### 🩹 Patch
+
+#### 📦 Seedcord packages
+
+- `discord-component-embed` 0.4.1 → 0.5.0
+- `@seedcord/eslint-config` 2.2.2 → 2.3.0
+- `@seedcord/types` 0.14.1 → 0.14.2
+- `@seedcord/ui` 0.2.0 → 0.2.1
+
 ## 0.1.17
 
 ### 🩹 Patch

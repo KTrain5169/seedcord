@@ -1,5 +1,14 @@
 # eslint-plugin-discordjs
 
+## 0.1.6
+
+### 🩹 Patch
+
+- An `eslint.config.cjs` now loads the plugin's ESM build through `require()`. ([`4a3318c`](https://github.com/seedcord/seedcord/commit/4a3318c91e4466acac62a09eb934d8b785e7700d))
+- The README opens with the plugin's own name and links, and the npm homepage now points at that README. ([#340](https://github.com/seedcord/seedcord/pull/340))
+- The README and the `discord-component-embed` doc comment examples now link the guide at `seedcord.org/guide` and the reference at `seedcord.org/docs`. ([#343](https://github.com/seedcord/seedcord/pull/343))
+- Fixed the peer conflict that a project on TypeScript 5.9 hit at install. The `typescript` peer now accepts 5.9 and 6.0. ([#340](https://github.com/seedcord/seedcord/pull/340))
+
 ## 0.1.5
 
 ### 🩹 Patch

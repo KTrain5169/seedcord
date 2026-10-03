@@ -1,5 +1,11 @@
 # @seedcord/tsconfig
 
+## 2.0.5
+
+### 🩹 Patch
+
+- The README and the `discord-component-embed` doc comment examples now link the guide at `seedcord.org/guide` and the reference at `seedcord.org/docs`. ([#343](https://github.com/seedcord/seedcord/pull/343))
+
 ## 2.0.4
 
 ### 🩹 Patch

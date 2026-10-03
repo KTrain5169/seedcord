@@ -1,5 +1,21 @@
 # @seedcord/eslint-config
 
+## 2.3.0
+
+### ✨ Minor
+
+- Because `eslint-plugin-unicorn` 76 widened its early-return and grouping rules, lint now flags an `if` that wraps the rest of a function or loop body. It also flags a `for...of` loop that pushes items into a `Map` of arrays. ([`4a3318c`](https://github.com/seedcord/seedcord/commit/4a3318c91e4466acac62a09eb934d8b785e7700d))
+
+### 🩹 Patch
+
+- The README and the `discord-component-embed` doc comment examples now link the guide at `seedcord.org/guide` and the reference at `seedcord.org/docs`. ([#343](https://github.com/seedcord/seedcord/pull/343))
+- Fixed the peer conflict that a project on TypeScript 5.9 hit at install. The `typescript` peer now accepts 5.9 and 6.0. ([#340](https://github.com/seedcord/seedcord/pull/340))
+
+#### 📦 Seedcord packages
+
+- `eslint-plugin-discordjs` 0.1.5 → 0.1.6
+- `@seedcord/eslint-plugin` 0.4.1 → 0.4.2
+
 ## 2.2.2
 
 ### 🩹 Patch

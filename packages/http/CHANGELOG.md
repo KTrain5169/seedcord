@@ -1,5 +1,28 @@
 # @seedcord/http
 
+## 0.10.0
+
+### ✨ Minor
+
+- `createSeedcord` now takes a manifest of handler, middleware, and subscriber classes, dropping the route rows and their lazy module loading. An entry in the wrong array, or one carrying no decorator, throws while the engine builds. ([#312](https://github.com/seedcord/seedcord/pull/312))
+
+### 🩹 Patch
+
+- Fixed the `Class 'Seedcord' incorrectly implements interface 'Core'` error that a bot with a plugin attached got with `skipLibCheck` off. ([#340](https://github.com/seedcord/seedcord/pull/340))
+- The README and the `discord-component-embed` doc comment examples now link the guide at `seedcord.org/guide` and the reference at `seedcord.org/docs`. ([#343](https://github.com/seedcord/seedcord/pull/343))
+- Fixed the peer conflict that a bot on TypeScript 5.9 hit at install. The `typescript` peer now accepts 5.9, 6, and 7. ([#340](https://github.com/seedcord/seedcord/pull/340))
+
+#### 📦 Seedcord packages
+
+- `@seedcord/errors` 0.11.1 → 0.12.0
+- `@seedcord/core` 0.9.2 → 0.9.3
+- `@seedcord/custom-id` 0.2.5 → 0.2.6
+- `@seedcord/event-emitter` 0.1.6 → 0.1.7
+- `@seedcord/logger` 0.4.2 → 0.4.3
+- `@seedcord/rate-limiter` 0.1.10 → 0.1.11
+- `@seedcord/types` 0.14.1 → 0.14.2
+- `@seedcord/utils` 0.8.15 → 0.8.16
+
 ## 0.9.2
 
 ### 🩹 Patch

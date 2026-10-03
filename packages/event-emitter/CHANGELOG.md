@@ -1,5 +1,12 @@
 # @seedcord/event-emitter
 
+## 0.1.7
+
+### 🩹 Patch
+
+- The README and the `discord-component-embed` doc comment examples now link the guide at `seedcord.org/guide` and the reference at `seedcord.org/docs`. ([#343](https://github.com/seedcord/seedcord/pull/343))
+- Fixed the peer conflict that a bot on TypeScript 5.9 hit at install. The `typescript` peer now accepts 5.9, 6, and 7. ([#340](https://github.com/seedcord/seedcord/pull/340))
+
 ## 0.1.6
 
 ### 🩹 Patch
