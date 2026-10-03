@@ -29,7 +29,7 @@
         "github-slugger": "^2.0.0",
         "isomorphic-dompurify": "^3.21.0",
         "lucide-react": "catalog:deps",
-        "marked": "^18.0.7",
+        "marked": "^18.0.14",
         "motion": "catalog:deps",
         "next": "catalog:deps",
         "postcss": "^8.5.28",
@@ -39,7 +39,7 @@
         "shiki": "catalog:deps",
         "tailwindcss": "catalog:deps",
         "type-fest": "catalog:deps",
-        "zustand": "^5.0.14"
+        "zustand": "^5.0.15"
     },
     "devDependencies": {
         "@seedcord/tsconfig": "workspace:^",

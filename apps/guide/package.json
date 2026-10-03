@@ -24,7 +24,7 @@
     "dependencies": {
         "@seedcord/docs-engine": "workspace:^",
         "@seedcord/ui": "workspace:^",
-        "@shikijs/twoslash": "^4.4.3",
+        "@shikijs/twoslash": "^4.5.0",
         "fumadocs-core": "16.15.18",
         "fumadocs-mdx": "15.4.6",
         "lucide-react": "catalog:deps",
