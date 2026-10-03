@@ -81,6 +81,10 @@ export class DocsPage {
         return this.facts.card;
     }
 
+    get markdownUrl(): string | undefined {
+        return this.facts.markdownPath === undefined ? undefined : canonicalUrl(this.facts.markdownPath);
+    }
+
     static root(): DocsPage {
         return new DocsPage({
             path: '/',
