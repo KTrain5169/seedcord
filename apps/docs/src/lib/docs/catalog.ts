@@ -5,7 +5,7 @@ import {
     formatDisplayPackageName,
     formatVersionLabel,
     servedPrerelease,
-    stableLineHeads
+    servedStableVersions
 } from '@seedcord/docs-engine';
 import { cache } from 'react';
 
@@ -35,7 +35,7 @@ function buildVersions(fullName: string, entry: PackageIndexEntry): PackageVersi
     const { stable } = entry;
     const prerelease = servedPrerelease(entry);
     const stableVersions = stable
-        ? stableLineHeads(stable).map((id) => {
+        ? servedStableVersions(stable).map((id) => {
               const isLatest = id === stable.latest;
               return version(id, 'stable', isLatest, isLatest ? 'latest' : null);
           })

@@ -24,6 +24,17 @@ export function stableLineHeads(channel: {
     ]);
 }
 
+// a 0.x minor can break like a major. 2 covers someone upgrading from the previous one
+const ZERO_MINORS_SHOWN = 2;
+
+export function servedStableVersions(channel: Parameters<typeof stableLineHeads>[0]): string[] {
+    const majorHeads = Object.values(channel.latestByMajor).filter((version) => major(version) > 0);
+    const zeroMinors = stableLineHeads(channel)
+        .filter((version) => major(version) === 0)
+        .slice(0, ZERO_MINORS_SHOWN);
+    return sortVersionsDesc([...majorHeads, ...zeroMinors]);
+}
+
 export function servedPrerelease({
     stable,
     prerelease
@@ -33,9 +44,10 @@ export function servedPrerelease({
 }
 
 /**
- * The head of `version`'s minor line, or of its major line when the index lists no such minor. A prerelease
- * falls back to the prerelease head of its own major when that line head isn't newer. Returns `null` when the
- * index still serves `version`, when `version` isn't full semver, or when nothing newer exists.
+ * Where a request for an old `version` should go. That's the newest patch of the same minor if the docs still
+ * show that minor, then the newest release of the same major, then the newest stable release. An old prerelease
+ * goes to the current prerelease of its major when that one is newer. Returns `null` when the docs still show
+ * `version`, when `version` isn't a full semver string, or when nothing newer exists.
  */
 export function replacementVersion(
     entry: Pick<PackageIndexEntry, 'stable' | 'prerelease'>,
@@ -46,10 +58,14 @@ export function replacementVersion(
 
     const { stable } = entry;
     const next = servedPrerelease(entry);
-    if (next === version || (stable && stableLineHeads(stable).includes(version))) return null;
+    const served = stable ? servedStableVersions(stable) : [];
+    if (next === version || served.includes(version)) return null;
 
-    const minorHead = stable?.latestByMinor[`${requested.major}.${requested.minor}`];
-    const lineHead = minorHead ?? stable?.latestByMajor[String(requested.major)];
+    const lineHead = [
+        stable?.latestByMinor[`${requested.major}.${requested.minor}`],
+        stable?.latestByMajor[String(requested.major)],
+        stable?.latest
+    ].find((candidate) => candidate !== undefined && served.includes(candidate));
     const prereleaseHead =
         requested.prerelease.length > 0 && next !== null && major(next) === requested.major ? next : undefined;
     return [lineHead, prereleaseHead].find((candidate) => candidate !== undefined && gt(candidate, requested)) ?? null;

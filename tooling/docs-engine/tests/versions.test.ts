@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { isPrerelease, replacementVersion, servedPrerelease, stableLineHeads } from '#src/versions';
+import {
+    isPrerelease,
+    replacementVersion,
+    servedPrerelease,
+    servedStableVersions,
+    stableLineHeads
+} from '#src/versions';
 
 import type { PackageIndexEntry } from '#remote/index-json';
 
@@ -12,6 +18,29 @@ const GATEWAY: PackageIndexEntry = {
         latestByMajor: { '0': '0.7.1' }
     },
     prerelease: { latest: '0.8.0-next.4' }
+};
+
+const PAST_ONE: PackageIndexEntry = {
+    fullName: 'seedcord',
+    stable: {
+        latest: '4.3.1',
+        latestByMinor: {
+            '4.3': '4.3.1',
+            '4.2': '4.2.0',
+            '3.9': '3.9.0',
+            '3.7': '3.7.1',
+            '3.3': '3.3.9',
+            '2.8': '2.8.0',
+            '1.2': '1.2.0'
+        },
+        latestByMajor: { '4': '4.3.1', '3': '3.9.0', '2': '2.8.0', '1': '1.2.0' }
+    },
+    prerelease: null
+};
+
+const STILL_ZERO = {
+    latestByMinor: { '0.21': '0.21.3', '0.20': '0.20.4', '0.19': '0.19.8', '0.18': '0.18.3' },
+    latestByMajor: { '0': '0.21.3' }
 };
 
 describe('versions', () => {
@@ -28,6 +57,14 @@ describe('versions', () => {
                 latestByMajor: { '0': '0.10.6', '1': '1.3.2' }
             })
         ).toEqual(['1.3.2', '0.10.6', '0.9.4', '0.2.4']);
+    });
+
+    it('shows the newest release of every major from 1.0 on', () => {
+        expect(servedStableVersions(PAST_ONE.stable ?? STILL_ZERO)).toEqual(['4.3.1', '3.9.0', '2.8.0', '1.2.0']);
+    });
+
+    it('shows the two newest minors of a 0.x package', () => {
+        expect(servedStableVersions(STILL_ZERO)).toEqual(['0.21.3', '0.20.4']);
     });
 });
 
@@ -89,8 +126,18 @@ describe('replacementVersion', () => {
         expect(replacementVersion(GATEWAY, '0.7.0-next.3')).toBe('0.7.1');
     });
 
-    it.each(['0.5.1', '0.6.2', '0.7.1', '0.8.0-next.4'])('keeps %s because the index still serves it', (version) => {
+    it.each(['0.6.2', '0.7.1', '0.8.0-next.4'])('keeps %s because the docs still show it', (version) => {
         expect(replacementVersion(GATEWAY, version)).toBeNull();
+    });
+
+    it('moves a version from a minor the docs stopped showing to the newest of its major', () => {
+        expect(replacementVersion(GATEWAY, '0.5.1')).toBe('0.7.1');
+        expect(replacementVersion(GATEWAY, '0.5.0')).toBe('0.7.1');
+    });
+
+    it('moves an old minor to the newest release of its own major', () => {
+        expect(replacementVersion(PAST_ONE, '4.2.0')).toBe('4.3.1');
+        expect(replacementVersion(PAST_ONE, '3.3.9')).toBe('3.9.0');
     });
 
     // an index cached from before a release does not list the version that release shipped

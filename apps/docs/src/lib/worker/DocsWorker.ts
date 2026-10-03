@@ -93,7 +93,7 @@ export class DocsWorker {
 
     private async serve(path: DocsPath, url: URL): Promise<Response> {
         const object = await this.bucket.get(path.key);
-        if (!object) return (await this.replacedPatch(path, url)) ?? (await this.notFound(url));
+        if (!object) return (await this.replacedVersion(path, url)) ?? (await this.notFound(url));
 
         const headers = new Headers({
             'content-type': path.contentType,
@@ -110,8 +110,8 @@ export class DocsWorker {
         return new Response(object.body, { headers });
     }
 
-    // each release removes the previous patch of its line from the index
-    private async replacedPatch(path: DocsPath, url: URL): Promise<Response | null> {
+    // a release can take an old patch or an old minor off the docs
+    private async replacedVersion(path: DocsPath, url: URL): Promise<Response | null> {
         const [root, packageId, versionSegment, ...rest] = path.path.split('/');
         if (root !== 'packages' || packageId === undefined || versionSegment === undefined) return null;
 

@@ -135,6 +135,25 @@ describe('loadDocsCatalog version badges', () => {
 
         expect(core?.versions.map((version) => version.id)).toEqual(['0.9.2']);
     });
+
+    it('lists the current minor and the one before it', async () => {
+        const threeLines: PackageIndexEntry = {
+            fullName: '@seedcord/core',
+            stable: {
+                latest: '0.9.2',
+                latestByMinor: { '0.7': '0.7.0', '0.8': '0.8.0', '0.9': '0.9.2' },
+                latestByMajor: { '0': '0.9.2' }
+            },
+            prerelease: null
+        };
+        engineStub.ready.mockResolvedValue(undefined);
+        engineStub.listPackages.mockResolvedValue([{ folder: 'core', fullName: '@seedcord/core' }]);
+        engineStub.getEntry.mockResolvedValue(threeLines);
+
+        const [core] = await loadDocsCatalog();
+
+        expect(core?.versions.map((version) => version.id)).toEqual(['0.9.2', '0.8.0']);
+    });
 });
 
 describe('loadDocsCatalog descriptions', () => {
