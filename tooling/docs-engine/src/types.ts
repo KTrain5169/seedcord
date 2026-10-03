@@ -68,6 +68,8 @@ export interface DocManifestPackage {
     reexports?: DocReexport[];
     readme?: string;
     changelogUrl?: string;
+    // a README's relative links resolve against this github folder
+    folderUrl?: string;
     description?: string;
 }
 
@@ -286,7 +288,10 @@ export interface DocPackageModel {
     packageDocumentation: DocComment | null;
     nodes: Map<number, DocNode>;
     indexes: DocIndexes;
+    // what the sidebar and search list
     directory: PackageDirectory;
+    // every symbol with its own page, a superset of directory
+    pages: PackageDirectory;
 }
 
 export interface DocCollection {
