@@ -6,7 +6,7 @@ import { FENCED_BLOCK } from '#lib/docs/comments/fence';
 import { DocsPage } from '#lib/docs/DocsPage';
 import { entityPath } from '#lib/docs/entityJsonLd';
 import { ENTITY_TONE_HEX } from '#lib/entityColors';
-import { canonicalUrl, SITE_DESCRIPTION } from '#lib/site';
+import { canonicalUrl, SITE_DESCRIPTION, SITE_NAME } from '#lib/site';
 import { getToneTitle } from '#lib/tonePresentation';
 
 import type { ResolvedEntity } from '#lib/docs/resolveEntity';
@@ -103,7 +103,7 @@ export function docsFrontPreview(catalog: DocsCatalog): PreviewCardProps {
         accent: SITE_ACCENT.docs,
         breadcrumb: ['docs'],
         breadcrumbEmoji: PREVIEW_EMOJI.docs,
-        title: 'API reference',
+        title: `${SITE_NAME} reference`,
         body: SITE_DESCRIPTION,
         subtext: [counted(catalog.length, 'package'), counted(symbols, 'symbol')],
         links: [
