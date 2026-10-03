@@ -1,11 +1,13 @@
 import {
+    ComponentEmbedError,
     Container,
     MediaGallery,
     MediaGalleryItem,
     Section,
     Separator,
     TextDisplay,
-    Thumbnail
+    Thumbnail,
+    toComponentEmbedJson
 } from 'discord-component-embed';
 
 import { BRAND } from './palette';
@@ -76,14 +78,50 @@ function linkRow(links: readonly PreviewLink[], latestVersion: LatestVersion | u
     return latestVersion ? `Latest [${latestVersion.label}](${latestVersion.url})  /  ${row}` : row;
 }
 
+const ELLIPSIS = '…';
+
+function shorterBodies(body: string): string[] {
+    const lines = body.split('\n');
+    const cuts: string[] = [];
+    let inCodeBlock = false;
+    lines.slice(0, -1).forEach((line, at) => {
+        if (line.startsWith('```')) inCodeBlock = !inCodeBlock;
+        if (!inCodeBlock)
+            cuts.push(
+                `${lines
+                    .slice(0, at + 1)
+                    .join('\n')
+                    .trimEnd()}\n${ELLIPSIS}`
+            );
+    });
+    return cuts.reverse();
+}
+
+function fitsDiscord(card: ReactElement): boolean {
+    try {
+        toComponentEmbedJson(card);
+        return true;
+    } catch (error) {
+        if (error instanceof ComponentEmbedError && error.code === 'OverLimit') return false;
+        throw error;
+    }
+}
+
 export function PreviewCard(props: PreviewCardProps): ReactElement {
+    for (const body of [props.body, ...shorterBodies(props.body)]) {
+        const card = cardWithBody(props, body);
+        if (fitsDiscord(card)) return card;
+    }
+    return cardWithBody(props, ELLIPSIS);
+}
+
+function cardWithBody(props: PreviewCardProps, body: string): ReactElement {
     const {
         accent,
         breadcrumb,
         breadcrumbEmoji,
         title,
         titleEmoji,
-        body,
         extraText,
         subtext,
         links,
