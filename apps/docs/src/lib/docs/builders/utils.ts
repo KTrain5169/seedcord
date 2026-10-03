@@ -6,10 +6,11 @@ import type {
     FormatContext,
     CommentParagraph,
     FormattedComment,
-    DeprecationStatus,
-    EntityMemberSummary
+    DeprecationStatus
 } from '#lib/docs/types';
 import type { CodeRepresentation } from '@seedcord/ui';
+import { memberModifiers } from '@seedcord/docs-engine';
+
 import type { DocNode, DocSignature } from '@seedcord/docs-engine';
 
 export type DocNodeLike = Pick<DocNode, 'flags' | 'comment'>;
@@ -25,115 +26,19 @@ export const ensureSignatureAnchor = (signature: DocSignature): string =>
         ? signature.anchor
         : `${signature.name}-${signature.overloadIndex}`;
 
-function computeModifierParts(node: DocNode): string[] {
-    const parts: string[] = [];
-    if (node.flags.access) parts.push(node.flags.access);
-    if (node.flags.isReadonly) parts.push('readonly');
-    if (node.flags.isAbstract) parts.push('abstract');
-    if (node.flags.isStatic) parts.push('static');
-    if (node.flags.isAsync) parts.push('async');
-    return parts;
-}
-
-function headerHasPrefix(headerText: string, parts: string[]): boolean {
-    const base = headerText.trim().toLowerCase();
-    const prefix = parts.join(' ').trim().toLowerCase();
-
-    const baseTokens = base.split(/\s+/).filter(Boolean);
-    const prefixTokens = prefix.split(/\s+/).filter(Boolean);
-
-    if (prefixTokens.length > baseTokens.length) return false;
-
-    for (let i = 0; i < prefixTokens.length; i += 1) {
-        if (baseTokens[i] !== prefixTokens[i]) return false;
-    }
-
-    return true;
-}
-
 export async function resolveHeaderSignature(node: DocNode, context: FormatContext): Promise<CodeRepresentation> {
     if (node.header) {
-        const headerRep = await formatDeclarationHeader(node.header, context);
-
-        const accessAtStart = headerRep.text.match(/^(public|protected)\b/);
-        if (accessAtStart) {
-            const access = accessAtStart[1];
-            if (node.flags.isReadonly && !/^\s*(?:public|protected)\s+readonly\b/.test(headerRep.text)) {
-                const rest = headerRep.text.replace(/^(?:public|protected)\b\s*/i, '');
-                return highlightCode(`${access} readonly ${rest}`);
-            }
-
-            return headerRep;
-        }
-
-        const parts = computeModifierParts(node);
-
-        if (parts.length) {
-            if (headerHasPrefix(headerRep.text, parts)) {
-                return headerRep;
-            }
-
-            return highlightCode(`${parts.join(' ')} ${headerRep.text}`);
-        }
-
-        return headerRep;
+        // releases built before memberModifiers stored their modifiers in a different order
+        const header = { ...node.header, modifiers: memberModifiers(node.flags, node.kind) };
+        return formatDeclarationHeader(header, context, node.flags.isOptional);
     }
 
     const rendered = node.signatures[0]?.render;
     if (rendered) {
-        return formatSignature(rendered, context);
+        return formatSignature(rendered, context, node.flags.isOptional);
     }
 
     return highlightCode(node.headerText ?? node.name);
-}
-
-export function normalizeAccessor(accessor?: string | null): EntityMemberSummary['accessorType'] {
-    if (!accessor) {
-        return undefined;
-    }
-
-    if (accessor === 'getter' || accessor === 'setter') {
-        return accessor;
-    }
-
-    return 'accessor';
-}
-
-export function collectMemberTags(node: DocNode): string[] {
-    const tags = new Set<string>();
-
-    const addFlags = (f: DocNode['flags'] | undefined): void => {
-        if (!f) return;
-        if (f.isStatic) tags.add('static');
-        if (f.isAbstract) tags.add('abstract');
-        if (f.isOptional) tags.add('optional');
-        if (f.isDeprecated) tags.add('deprecated');
-        if (f.isInternal) tags.add('internal');
-        if (f.isOverwriting === true) tags.add('overrides');
-        if (typeof f.accessor === 'string') tags.add('accessor');
-        if (f.isDecorator === true) tags.add('decorator');
-    };
-
-    addFlags(node.flags);
-
-    if (node.comment?.modifierTags) {
-        for (const tag of node.comment.modifierTags) {
-            if (tag === '@virtual') tags.add('virtual');
-        }
-    }
-
-    if (Array.isArray(node.signatures) && node.signatures.length > 0) {
-        for (const sig of node.signatures) {
-            addFlags(sig.flags);
-            if (sig.comment?.modifierTags) {
-                for (const tag of sig.comment.modifierTags) {
-                    if (tag === '@virtual') tags.add('virtual');
-                }
-            }
-        }
-    }
-
-    return Array.from(tags);
 }
 
 interface DescriptionSelection {

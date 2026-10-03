@@ -20,7 +20,7 @@ export function inlineTypeToText(inline?: InlineType): string {
     return inline ? sigPartsToText(inline.parts) : '';
 }
 
-export function formatRenderedDeclarationHeader(header: RenderedDeclarationHeader): string {
+export function formatRenderedDeclarationHeader(header: RenderedDeclarationHeader, optional: boolean): string {
     const segments: string[] = [];
     if (header.modifiers.length > 0) {
         segments.push(header.modifiers.join(' '));
@@ -46,6 +46,8 @@ export function formatRenderedDeclarationHeader(header: RenderedDeclarationHeade
             .join(', ');
         declarationName += `<${renderedParams}>`;
     }
+
+    if (optional) declarationName += '?';
 
     if (header.type) {
         declarationName += `: ${inlineTypeToText(header.type)}`;
@@ -73,7 +75,7 @@ export function formatRenderedDeclarationHeader(header: RenderedDeclarationHeade
         .trim();
 }
 
-export function formatRenderedSignature(render: RenderedSignature): string {
+export function formatRenderedSignature(render: RenderedSignature, optional: boolean): string {
     const nameText = sigPartsToText(render.name);
     const typeParams =
         render.typeParams && render.typeParams.length > 0
@@ -89,5 +91,5 @@ export function formatRenderedSignature(render: RenderedSignature): string {
         .join(', ');
     const returnType = render.returnType ? `: ${inlineTypeToText(render.returnType)}` : '';
 
-    return `${nameText}${typeParams}(${parameters})${returnType}`.trim();
+    return `${nameText}${optional ? '?' : ''}${typeParams}(${parameters})${returnType}`.trim();
 }

@@ -1,4 +1,5 @@
 import {
+    ApiAbstractMixin,
     ApiDeclaredItem,
     ApiDocumentedItem,
     ApiItemKind,
@@ -12,6 +13,7 @@ import {
 import { referenceFromCanonical } from '#model/canonical-ref';
 import { excerptToInlineType } from '#model/excerpt-renderer';
 import { DocKind, frozenKindLabel } from '#model/kinds';
+import { memberModifiers } from '#model/modifiers';
 import { buildComment, type LinkResolver } from '#model/tsdoc-comment';
 import { formatRenderedSignature } from '#transformers/signature-renderer';
 
@@ -60,7 +62,7 @@ export function buildDeclarationHeader(
     const header: RenderedDeclarationHeader = {
         name,
         keyword: declarationKeyword(kind, flags),
-        modifiers: modifiersOf(flags, kind)
+        modifiers: memberModifiers(flags, kind)
     };
 
     // method and ctor type params render on the signature
@@ -85,21 +87,30 @@ export function buildDeclarationHeader(
         if (implementsInline) header.heritage.implements = implementsInline;
     }
 
-    const valueExcerpt =
-        kind === DocKind.TypeAlias
-            ? shapes.typeExcerpt
-            : kind === DocKind.Variable
-              ? shapes.variableTypeExcerpt
-              : kind === DocKind.Property
-                ? shapes.propertyTypeExcerpt
-                : undefined;
-    const valueInline = excerptToInlineType(valueExcerpt);
+    const valueInline = excerptToInlineType(valueExcerptOf(shapes, kind));
     if (valueInline) {
         if (kind === DocKind.TypeAlias) header.value = valueInline;
         else header.type = valueInline;
     }
 
     return header;
+}
+
+function valueExcerptOf(shapes: AeShapes, kind: number): Excerpt | undefined {
+    switch (kind) {
+        case DocKind.TypeAlias: {
+            return shapes.typeExcerpt;
+        }
+        case DocKind.Variable: {
+            return shapes.variableTypeExcerpt;
+        }
+        case DocKind.Property: {
+            return shapes.propertyTypeExcerpt;
+        }
+        default: {
+            return undefined;
+        }
+    }
 }
 
 function declarationKeyword(kind: number, flags: DocFlags): string | null {
@@ -126,17 +137,6 @@ function declarationKeyword(kind: number, flags: DocFlags): string | null {
             return null;
         }
     }
-}
-
-function modifiersOf(flags: DocFlags, kind: number): string[] {
-    const modifiers: string[] = [];
-    if (flags.access) modifiers.push(flags.access);
-    // typedoc leaves readonly off a const because the keyword already says it
-    if (flags.isReadonly && kind !== DocKind.Variable) modifiers.push('readonly');
-    if (flags.isAbstract) modifiers.push('abstract');
-    if (flags.isStatic) modifiers.push('static');
-    if (flags.isAsync) modifiers.push('async');
-    return modifiers;
 }
 
 export function emptyInheritance(): DocInheritance {
@@ -188,17 +188,24 @@ const MODIFIER_WORDS = new Set([
     'set',
     'declare',
     'override',
+    'accessor',
     'async'
 ]);
 
-// typedoc prints only the modifiers written in source (no inferred `public`, no auto-`readonly` on a
-// getter). the AE mixins report the inferred ones too, which is why this parses the excerpt prefix.
-export function explicitModifiers(item: ApiItem, name: string): { access: DocFlags['access']; isReadonly: boolean } {
-    if (!(item instanceof ApiDeclaredItem)) return { access: null, isReadonly: false };
-    const text = item.excerptTokens[0]?.text ?? '';
-    const nameIndex = text.indexOf(name);
-    const prefix = nameIndex !== -1 ? text.slice(0, nameIndex) : text;
-    const words = new Set(prefix.split(/\s+/).filter((word) => MODIFIER_WORDS.has(word)));
+interface ExplicitModifiers {
+    access: DocFlags['access'];
+    isReadonly: boolean;
+    isAutoAccessor: boolean;
+}
+
+// the AE mixins also report inferred modifiers, like `readonly` on a get-only accessor
+export function explicitModifiers(item: ApiItem): ExplicitModifiers {
+    if (!(item instanceof ApiDeclaredItem)) return { access: null, isReadonly: false, isAutoAccessor: false };
+    const words = new Set<string>();
+    for (const word of (item.excerptTokens[0]?.text ?? '').trim().split(/\s+/)) {
+        if (!MODIFIER_WORDS.has(word)) break;
+        words.add(word);
+    }
     const access: DocFlags['access'] = words.has('private')
         ? 'private'
         : words.has('protected')
@@ -206,7 +213,17 @@ export function explicitModifiers(item: ApiItem, name: string): { access: DocFla
           : words.has('public')
             ? 'public'
             : null;
-    return { access, isReadonly: words.has('readonly') };
+    return {
+        access,
+        isReadonly: words.has('readonly'),
+        isAutoAccessor: words.has('accessor')
+    };
+}
+
+// typescript rejects `async` on an abstract method or an interface member
+export function hasBody(item: ApiItem): boolean {
+    if (item.kind === ApiItemKind.Function) return true;
+    return item.kind === ApiItemKind.Method && !(ApiAbstractMixin.isBaseClassOf(item) && item.isAbstract);
 }
 
 // AE emits an accessor as an ApiProperty whose excerpt starts with `get ` or `set `
@@ -263,7 +280,7 @@ export function buildAccessorSignature(
         comment,
         sources: owner.sources,
         render,
-        renderText: formatRenderedSignature(render),
+        renderText: formatRenderedSignature(render, owner.flags.isOptional),
         overwrites: null,
         inheritedFrom: null,
         implementationOf: null

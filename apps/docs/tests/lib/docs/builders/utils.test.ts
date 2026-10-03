@@ -2,13 +2,16 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { CommentParagraph, FormatContext, FormattedComment } from '#lib/docs/types';
 import type { CodeRepresentation } from '@seedcord/ui';
-import type { DocComment, DocFlags, DocNode } from '@seedcord/docs-engine';
+import type { DocComment, DocFlags, DocNode, RenderedDeclarationHeader } from '@seedcord/docs-engine';
 
 // justified: formatting.ts pulls in @lib/sanitizeHtml + @lib/shiki, which vitest can't resolve without vite-tsconfig-paths.
 vi.mock('../../../../src/lib/docs/formatting', () => {
     const code = (text: string): CodeRepresentation => ({ text, html: null });
     return {
-        formatDeclarationHeader: vi.fn((header: { text: string }) => Promise.resolve(code(header.text))),
+        formatDeclarationHeader: vi.fn(
+            (header: { name: string; modifiers: string[] }, _context: unknown, optional: boolean) =>
+                Promise.resolve(code(`${[...header.modifiers, header.name].join(' ')}${optional ? '?' : ''}`))
+        ),
         formatSignature: vi.fn((rendered: { text: string }) => Promise.resolve(code(rendered.text))),
         highlightCode: vi.fn((text: string) => Promise.resolve(code(text)))
     };
@@ -57,49 +60,29 @@ function makeFormattedComment(paragraphs: CommentParagraph[]): FormattedComment 
 
 const context = {} as FormatContext;
 
-describe('resolveHeaderSignature (exercises headerHasPrefix)', () => {
-    it('keeps header untouched when the modifier prefix is already present', async () => {
-        const node = makeNode({
-            header: { text: 'static async run(): void', keyword: null } as never,
-            flags: makeFlags({ isStatic: true, isAsync: true })
-        });
-
-        const result = await resolveHeaderSignature(node, context);
-
-        expect(result.text).toBe('static async run(): void');
+describe('resolveHeaderSignature', () => {
+    const header = (name: string, modifiers: string[]): RenderedDeclarationHeader => ({
+        name,
+        modifiers,
+        keyword: null
     });
 
-    it('prepends modifier parts when the header is missing them', async () => {
-        const node = makeNode({
-            header: { text: 'run(): void', keyword: null } as never,
-            flags: makeFlags({ isStatic: true, isAsync: true })
-        });
-
-        const result = await resolveHeaderSignature(node, context);
-
-        expect(result.text).toBe('static async run(): void');
+    it('marks an optional property from its flags', async () => {
+        const node = makeNode({ header: header('tag', []), flags: makeFlags({ isOptional: true }) });
+        expect((await resolveHeaderSignature(node, context)).text).toBe('tag?');
     });
 
-    it('returns the formatted header verbatim when there are no modifier parts', async () => {
-        const node = makeNode({
-            header: { text: 'plain(): void', keyword: null } as never,
-            flags: makeFlags()
-        });
-
-        const result = await resolveHeaderSignature(node, context);
-
-        expect(result.text).toBe('plain(): void');
+    it('leaves ? off a required property', async () => {
+        const node = makeNode({ header: header('tag', []), flags: makeFlags() });
+        expect((await resolveHeaderSignature(node, context)).text).toBe('tag');
     });
 
-    it('treats prefix tokens longer than the header as absent and prepends', async () => {
+    it('writes modifiers from the flags over an older stored order', async () => {
         const node = makeNode({
-            header: { text: 'run', keyword: null } as never,
-            flags: makeFlags({ isStatic: true, isAsync: true })
+            header: header('MAX', ['readonly', 'static']),
+            flags: makeFlags({ isStatic: true, isReadonly: true })
         });
-
-        const result = await resolveHeaderSignature(node, context);
-
-        expect(result.text).toBe('static async run');
+        expect((await resolveHeaderSignature(node, context)).text).toBe('static readonly MAX');
     });
 });
 

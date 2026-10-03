@@ -1,15 +1,19 @@
+import { DocKind } from '@seedcord/docs-engine';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { CommentParagraph, FormatContext, FormattedComment } from '#lib/docs/types';
 import type { CodeRepresentation } from '@seedcord/ui';
-import type { DocNode, DocSignature } from '@seedcord/docs-engine';
+import type { DocFlags, DocNode, DocSignature } from '@seedcord/docs-engine';
 
 // justified: formatting.ts pulls in @lib/sanitizeHtml + @lib/shiki, which vitest can't resolve without vite-tsconfig-paths.
 vi.mock('../../../../src/lib/docs/formatting', () => {
     const code = (text: string): CodeRepresentation => ({ text, html: null });
     return {
         formatDeclarationHeader: vi.fn((header: { text: string }) => Promise.resolve(code(header.text))),
-        formatSignature: vi.fn((rendered: { text: string }) => Promise.resolve(code(rendered.text))),
+        formatSignature: vi.fn((rendered: { text: string }, _context: unknown, optional: boolean, prefix?: string) => {
+            const text = optional ? rendered.text.replace('(', '?(') : rendered.text;
+            return Promise.resolve(code(prefix ? `${prefix} ${text}` : text));
+        }),
         highlightCode: vi.fn((text: string) => Promise.resolve(code(text)))
     };
 });
@@ -93,5 +97,65 @@ describe('buildSignatureDetails', () => {
         const header = result[0]?.documentation.find((p) => p.plain.startsWith('Parameter: retries'));
         expect(header?.plain).toBe('Parameter: retries (Default: `5`)');
         expect(header?.html).toContain('(Default: `5`)');
+    });
+
+    describe('signature code', () => {
+        function memberNode(kind: number, flags: Partial<DocFlags>, sigs: [kind: number, text: string][]): DocNode {
+            // buildSignatureDetails reads only these fields
+            return {
+                name: 'member',
+                slug: 'member',
+                id: 3,
+                kind,
+                signatures: sigs.map(([sigKind, text]) => ({ ...makeSig(text), kind: sigKind })),
+                flags,
+                comment: undefined
+            } as unknown as DocNode;
+        }
+
+        async function codes(node: DocNode): Promise<string[]> {
+            const result = await buildSignatureDetails({
+                node,
+                context,
+                signatureComments: node.signatures.map(() => comment([])),
+                description: null,
+                descriptionSignatureIndex: null,
+                headerSignature: { text: node.name, html: null }
+            });
+            return result.map((detail) => detail.code.text);
+        }
+
+        it('marks an optional method from its flags', async () => {
+            const node = memberNode(DocKind.Method, { isOptional: true }, [[DocKind.Method, 'run(): void']]);
+            expect(await codes(node)).toEqual(['run?(): void']);
+        });
+
+        it('writes override in the order TypeScript writes it', async () => {
+            const flags: Partial<DocFlags> = { access: 'public', isStatic: true, isOverwriting: true, isAsync: true };
+            const node = memberNode(DocKind.Method, flags, [[DocKind.Method, 'run(): Promise<void>']]);
+            expect(await codes(node)).toEqual(['public static override async run(): Promise<void>']);
+        });
+
+        it('prefixes a getter with get', async () => {
+            const node = memberNode(DocKind.Accessor, { access: 'public' }, [
+                [DocKind.GetSignature, 'label(): string']
+            ]);
+            expect(await codes(node)).toEqual(['public get label(): string']);
+        });
+
+        it('prefixes a setter with set', async () => {
+            const node = memberNode(DocKind.Accessor, { access: 'public' }, [
+                [DocKind.SetSignature, 'label(value: string)']
+            ]);
+            expect(await codes(node)).toEqual(['public set label(value: string)']);
+        });
+
+        it('shows both sides of a get+set pair', async () => {
+            const node = memberNode(DocKind.Accessor, { access: 'public' }, [
+                [DocKind.GetSignature, 'label(): string'],
+                [DocKind.SetSignature, 'label(value: string)']
+            ]);
+            expect(await codes(node)).toEqual(['public get label(): string', 'public set label(value: string)']);
+        });
     });
 });

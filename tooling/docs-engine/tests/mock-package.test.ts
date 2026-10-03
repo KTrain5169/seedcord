@@ -61,6 +61,60 @@ describe('DocsEngine mock package integration', () => {
         expect(engine.getNodeByGlobalSlug(MOCK_PACKAGE_FULL_NAME, 'mock-class')?.id).toBe(node.id);
     });
 
+    describe('OverrideChild node', () => {
+        let child: (name: string) => DocNode | undefined;
+
+        beforeAll(async () => {
+            const node = await getNodeBySlug('override-child');
+            child = (name) => node.children.find((entry) => entry.name === name);
+        });
+
+        it('flags an override method', () => {
+            expect(child('describe')?.flags.isOverwriting).toBe(true);
+        });
+
+        it('leaves an instance method alone when only a base static shares its name', () => {
+            expect(child('create')?.flags.isOverwriting).toBe(false);
+        });
+
+        it('leaves override off a method that implements an abstract one', () => {
+            expect(child('hook')?.flags.isOverwriting).toBe(false);
+        });
+
+        it('leaves override off an overriding field', () => {
+            expect(child('label')?.headerText).not.toMatch(/\boverride\b/);
+        });
+
+        it('leaves override off a declare field', () => {
+            expect(child('tag')?.headerText).not.toMatch(/\boverride\b/);
+        });
+
+        it('writes accessor into an auto-accessor header', () => {
+            expect(child('counter')?.headerText).toMatch(/\baccessor counter\b/);
+        });
+    });
+
+    describe('OverrideBase node', () => {
+        let member: (name: string) => DocNode | undefined;
+
+        beforeAll(async () => {
+            const node = await getNodeBySlug('override-base');
+            member = (name) => node.children.find((entry) => entry.name === name);
+        });
+
+        it('writes static before readonly in a header', () => {
+            expect(member('LIMIT')?.headerText).toMatch(/^public static readonly LIMIT\b/);
+        });
+
+        it('leaves async off an abstract method', () => {
+            expect(member('load')?.flags.isAsync).toBe(false);
+        });
+
+        it('keeps readonly on a member named `on`', () => {
+            expect(member('on')?.headerText).toMatch(/^public readonly on\b/);
+        });
+    });
+
     describe('MockClass node', () => {
         let mockClass: DocNode;
 
@@ -82,6 +136,11 @@ describe('DocsEngine mock package integration', () => {
             const optionalProp = mockClass.children.find((child) => child.name === '_optionalProp');
             expect(optionalProp).toBeDefined();
             expect(optionalProp?.flags.isOptional).toBe(true);
+        });
+
+        it('marks an optional property with ? in its header', () => {
+            const optionalProp = mockClass.children.find((child) => child.name === '_optionalProp');
+            expect(optionalProp?.headerText).toMatch(/_optionalProp\?:/);
         });
 
         it('has optionalProp setter', () => {

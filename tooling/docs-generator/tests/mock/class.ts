@@ -206,3 +206,116 @@ export class InlineConstraintCallable<TypeM extends { (): void; run(): void; new
      */
     public held: TypeM | null = null;
 }
+
+/**
+ * A base class whose members a subclass overrides.
+ */
+export abstract class OverrideBase {
+    /**
+     * A tag the subclass narrows.
+     */
+    public tag = 'base';
+
+    /**
+     * A hook every subclass implements.
+     *
+     * @returns The hook result.
+     */
+    public abstract hook(): string;
+
+    /**
+     * Loads data in a subclass.
+     *
+     * @returns When loading finishes.
+     */
+    public abstract load(): Promise<void>;
+
+    /**
+     * A label the subclass replaces.
+     */
+    public label = 'base';
+
+    /**
+     * An event name that the word `readonly` contains.
+     */
+    public readonly on = 'ready';
+
+    /**
+     * The most instances a caller should build.
+     */
+    public static readonly LIMIT = 3;
+
+    /**
+     * Builds a label for a new instance.
+     *
+     * @returns The label.
+     */
+    public static create(): string {
+        return 'base';
+    }
+
+    /**
+     * Describes the instance.
+     *
+     * @returns The description.
+     */
+    public describe(): string {
+        return this.tag;
+    }
+}
+
+/**
+ * A subclass with override members and an auto-accessor.
+ */
+export class OverrideChild extends OverrideBase {
+    /**
+     * Implements the base's abstract hook.
+     *
+     * @returns The hook result.
+     */
+    public hook(): string {
+        return this.tag;
+    }
+
+    /**
+     * Loads nothing.
+     *
+     * @returns When loading finishes.
+     */
+    public async load(): Promise<void> {
+        await Promise.resolve();
+    }
+
+    /**
+     * The subclass label.
+     */
+    public override label = 'child';
+
+    /**
+     * The subclass tag.
+     */
+    declare public tag: 'child';
+
+    /**
+     * A counter stored through an auto-accessor.
+     */
+    public accessor counter = 0;
+
+    /**
+     * Describes the subclass.
+     *
+     * @returns The description.
+     */
+    public override describe(): string {
+        return `child:${this.tag}`;
+    }
+
+    /**
+     * An instance method that shares its name with a static on the base.
+     *
+     * @returns The tag.
+     */
+    public create(): string {
+        return this.tag;
+    }
+}

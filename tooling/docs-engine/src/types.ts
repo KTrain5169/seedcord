@@ -132,7 +132,7 @@ export interface DocComment {
 
 export interface DocFlags {
     access: 'public' | 'protected' | 'private' | null;
-    accessor: 'getter' | 'setter' | 'getter-setter' | null;
+    accessor: 'getter' | 'setter' | 'getter-setter' | 'auto-accessor' | null;
     isStatic: boolean;
     isAbstract: boolean;
     isConst: boolean;
