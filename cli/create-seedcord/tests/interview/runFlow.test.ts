@@ -67,4 +67,25 @@ describe('runFlow', () => {
             runFlow([publicKey], { transport: 'gateway', publicKey: 'supplied' }, { interactive: true })
         ).rejects.toThrow(/public-key/);
     });
+
+    it('leaves a step unasked when its --no- flag answered null', async () => {
+        const asked: (keyof Answers)[] = [];
+        const answers = await runFlow([stubStep('token', 'prompted', asked)], { token: null }, { interactive: true });
+
+        expect(asked).toEqual([]);
+        expect(answers.token).toBeNull();
+    });
+
+    it('points at --no-public-key when it was passed on gateway', async () => {
+        const asked: (keyof Answers)[] = [];
+        const publicKey: Step<'publicKey'> = {
+            ...stubStep('publicKey', 'prompted', asked),
+            flag: { name: 'public-key', description: 'a stub', parse: (raw) => raw, noFlag: 'a stub' },
+            skip: (answers) => answers.transport === 'gateway'
+        };
+
+        await expect(
+            runFlow([publicKey], { transport: 'gateway', publicKey: null }, { interactive: true })
+        ).rejects.toThrow(/--no-public-key/);
+    });
 });

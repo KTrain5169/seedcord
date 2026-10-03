@@ -4,6 +4,12 @@ import { applyFlags } from '#interview/applyFlags';
 
 import type { AnyStep } from '#interview/types';
 
+const token: AnyStep = {
+    key: 'token',
+    flag: { name: 'token', description: 'a stub', parse: (raw) => raw, noFlag: 'a stub' },
+    ask: () => Promise.resolve('asked')
+};
+
 const directory: AnyStep = {
     key: 'directory',
     flag: { name: 'dir', description: 'a stub', parse: (raw) => raw },
@@ -33,5 +39,17 @@ describe('applyFlags', () => {
 
     it('ignores a flag no step declares', () => {
         expect(applyFlags([directory], { dir: 'my-bot', nonsense: 'x' })).toEqual({ directory: 'my-bot' });
+    });
+
+    it('answers null for a step whose --no- flag was passed', () => {
+        expect(applyFlags([token], { 'no-token': true })).toEqual({ token: null });
+    });
+
+    it('leaves the key out when the --no- flag is false', () => {
+        expect(applyFlags([token], { 'no-token': false })).toEqual({});
+    });
+
+    it('reads no --no- flag for a step that cannot wait', () => {
+        expect(applyFlags([directory], { 'no-dir': true })).toEqual({});
     });
 });
