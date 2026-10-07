@@ -1,0 +1,117 @@
+@layer utilities {
+    .font-display {
+        font-family: var(--font-display), ui-monospace, monospace;
+    }
+    .font-mono-code {
+        font-family: var(--font-mono), ui-monospace, monospace;
+    }
+
+    /* two identical tracks slid -50% make the loop restart without a visible jump */
+    .marquee-anim {
+        animation: marquee-x 240s linear infinite;
+    }
+
+    .shot-settle {
+        animation: shot-settle 4.5s ease-in-out forwards;
+    }
+
+    /* a broken img paints its alt text and a glyph over the blur behind it. screen readers still read the attribute */
+    .shot-img {
+        color: transparent;
+        font-size: 0;
+    }
+
+    /* main poster theme */
+    .blk {
+        box-shadow: 10px 10px 0 0 var(--seed-dark);
+    }
+    .blk-sm {
+        box-shadow: 6px 6px 0 0 var(--seed-dark);
+    }
+    .rule {
+        border: 3px solid var(--seed-dark);
+    }
+    .rule-pith {
+        border: 3px solid var(--pith);
+    }
+    .blk-pith {
+        box-shadow: 10px 10px 0 0 var(--pith);
+    }
+    .blk-rind {
+        box-shadow: 10px 10px 0 0 var(--rind);
+    }
+}
+
+/* the shadow draws outside the box, so a full-width card reads 10px left of centre without this */
+@media (width < 64rem) {
+    .blk,
+    .blk-pith,
+    .blk-rind {
+        margin-right: 10px;
+    }
+    .blk-sm {
+        margin-right: 6px;
+    }
+}
+
+@keyframes marquee-x {
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+/* three decaying beats, then gone to stop infinite skeleton */
+@keyframes shot-settle {
+    0% {
+        opacity: 0.28;
+    }
+    16% {
+        opacity: 0.08;
+    }
+    33% {
+        opacity: 0.26;
+    }
+    50% {
+        opacity: 0.07;
+    }
+    66% {
+        opacity: 0.2;
+    }
+    83% {
+        opacity: 0.05;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .marquee-anim {
+        animation: none;
+    }
+    .shot-settle {
+        animation: none;
+        opacity: 0;
+    }
+}
+
+/* shiki writes its own <pre>, give it the poster code-card padding + size (the bg comes from the brand theme) */
+.code-card .shiki {
+    margin: 0;
+    overflow-x: auto;
+    padding: 1.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    scrollbar-width: thin;
+    scrollbar-color: var(--husk) transparent;
+}
+.code-card .shiki::-webkit-scrollbar {
+    height: 8px;
+}
+.code-card .shiki::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: var(--husk);
+}
+.code-card .shiki:hover::-webkit-scrollbar-thumb {
+    background-color: var(--rind);
+}

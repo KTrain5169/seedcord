@@ -1,0 +1,70 @@
+import { cn } from '@seedcord/ui';
+import { Materwelon } from '@seedcord/ui/Materwelon';
+
+import { CopyCommand } from '#components/ui/CopyCommand';
+import { PosterButton } from '#components/ui/PosterButton';
+import { DOCS_URL, GUIDE_URL } from '#lib/site';
+
+import type { ReactNode } from 'react';
+
+export function Hero(): ReactNode {
+    return (
+        <section className={cn('relative overflow-hidden border-b-[3px] border-(--seed-dark) bg-(--pith)')}>
+            <div
+                className={cn(
+                    'mx-auto grid max-w-(--shell-max) items-center gap-8 px-5 py-12 lg:grid-cols-[1.05fr_0.95fr] lg:py-16'
+                )}
+            >
+                <div className={cn('relative z-10')}>
+                    <div
+                        className={cn(
+                            'font-mono-code mb-6 inline-flex items-center gap-2 rounded-sm bg-(--seed-dark) px-2.5 py-1 text-xs font-semibold text-(--pith) sm:px-3 sm:py-1.5 sm:text-sm'
+                        )}
+                    >
+                        typescript
+                        <span className={cn('hidden sm:inline')}> · gateway/http bot framework</span>
+                    </div>
+                    <h1
+                        className={cn(
+                            'font-display text-[clamp(2.9rem,7vw,5.75rem)] leading-[0.94] font-semibold tracking-tight text-(--seed-dark)'
+                        )}
+                    >
+                        The whole Discord bot, <span className={cn('text-(--rind-deep)')}>typed</span>{' '}
+                        <span className={cn('whitespace-nowrap')}>
+                            <span className={cn('text-(--flesh-deep)')}>end to end</span>.
+                        </span>
+                    </h1>
+                    <p className={cn('mt-7 max-w-xl text-lg/snug font-medium text-(--seed-dark)/85 md:text-xl')}>
+                        A wrong route or option name is a compile error, before the bot ever connects. Every command,
+                        button, and event goes to a class you write, with reusable checks, hot reload, and a lot more
+                        built in.
+                    </p>
+                    {/* ml-1 matches the poster button's 4px rest translate, aligning the chip with the button face */}
+                    <CopyCommand command="pnpm create seedcord" className={cn('mt-7 ml-1')} />
+                    <div className={cn('mt-3 flex flex-wrap items-center gap-3')}>
+                        <PosterButton
+                            href={GUIDE_URL}
+                            variant="solid"
+                            className={cn('font-display px-4 py-2.5 text-base sm:px-7 sm:py-3 sm:text-lg')}
+                        >
+                            Get started
+                        </PosterButton>
+                        <PosterButton
+                            href={DOCS_URL}
+                            variant="outline"
+                            className={cn('font-display px-4 py-2.5 text-base sm:px-7 sm:py-3 sm:text-lg')}
+                        >
+                            Browse the docs
+                        </PosterButton>
+                    </div>
+                </div>
+
+                <div className={cn('relative hidden items-center justify-center lg:flex lg:h-124')}>
+                    {/* deeper green so the green in the materwelon doesn't blend with that square in the back */}
+                    <div className={cn('blk absolute top-6 right-0 size-[78%] rounded-sm bg-(--rind-deep)')} />
+                    <Materwelon className={cn('drop-shadow-mark-lg relative z-10 w-[84%] max-w-124')} />
+                </div>
+            </div>
+        </section>
+    );
+}

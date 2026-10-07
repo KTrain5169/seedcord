@@ -1,0 +1,47 @@
+import { cn } from '@seedcord/ui';
+
+import { CodeCard } from '#components/code/CodeCard';
+import { SECTION_HEADING_LG, Section } from '#components/home/Section';
+import { PosterButton } from '#components/ui/PosterButton';
+import { startTerminal } from '#lib/code/samples';
+import { DISCORD_URL, REPO_URL } from '#lib/site';
+
+import type { ReactNode } from 'react';
+
+export function GetStarted(): ReactNode {
+    return (
+        <Section ground="ink">
+            <div className={cn('grid items-center gap-10 lg:grid-cols-[1fr_0.8fr]')}>
+                <div>
+                    <h2 className={cn(SECTION_HEADING_LG)}>
+                        From zero
+                        <br />
+                        to <span className={cn('text-(--flesh)')}>hot reload</span>.
+                    </h2>
+                    <p className={cn('mt-6 max-w-md text-lg font-medium text-(--pith)/80')}>
+                        Scaffold a typed bot, open it, and run it. seedcord sends each interaction to its handler,
+                        registers your commands, and types every option. Hot reload keeps the gateway connected while
+                        you edit.
+                    </p>
+                    <div className={cn('mt-8 flex flex-wrap gap-3')}>
+                        <PosterButton
+                            href={DISCORD_URL}
+                            variant="solidDark"
+                            className={cn('font-display px-4 py-2.5 text-base sm:px-7 sm:py-3 sm:text-lg')}
+                        >
+                            Join the Discord
+                        </PosterButton>
+                        <PosterButton
+                            href={REPO_URL}
+                            variant="outlineDark"
+                            className={cn('font-display px-4 py-2.5 text-base sm:px-7 sm:py-3 sm:text-lg')}
+                        >
+                            Star on GitHub
+                        </PosterButton>
+                    </div>
+                </div>
+                <CodeCard code={startTerminal} filename="terminal" lang="bash" className={cn('rule-pith blk-pith')} />
+            </div>
+        </Section>
+    );
+}

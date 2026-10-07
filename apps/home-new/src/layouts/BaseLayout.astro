@@ -1,0 +1,63 @@
+---
+import { BRAND } from '@seedcord/ui/palette';
+import { AgentLinks, cn, HOME_URL, seedcordJsonLd } from '@seedcord/ui';
+
+import '../styles/globals.css';
+
+import { ConsoleGreeting } from '#components/ConsoleGreeting';
+import { DEFAULT_OG_IMAGE, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '#lib/site';
+import { Font } from 'astro:assets';
+
+const TITLE = 'seedcord, a TypeScript framework for Discord bots, typed end to end';
+const OG_IMAGE_URL = new URL(DEFAULT_OG_IMAGE.url, SITE_URL).toString();
+
+const { children } = Astro.props;
+
+const jsonLd = seedcordJsonLd({ name: SITE_NAME, url: HOME_URL, description: SITE_DESCRIPTION });
+
+---
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{TITLE}</title>
+        <meta name="description" content={SITE_DESCRIPTION} />
+        <meta name="application-name" content={SITE_NAME} />
+        <link rel="canonical" href={SITE_URL} />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content={SITE_NAME} />
+        <meta property="og:url" content={SITE_URL} />
+        <meta property="og:locale" content="en_US" />
+        <meta property="og:title" content={TITLE} />
+        <meta property="og:description" content={SITE_DESCRIPTION} />
+        <meta property="og:image" content={OG_IMAGE_URL} />
+        <meta property="og:image:width" content={String(DEFAULT_OG_IMAGE.width)} />
+        <meta property="og:image:height" content={String(DEFAULT_OG_IMAGE.height)} />
+        <meta property="og:image:alt" content={DEFAULT_OG_IMAGE.alt} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={TITLE} />
+        <meta name="twitter:description" content={SITE_DESCRIPTION} />
+        <meta name="twitter:image" content={OG_IMAGE_URL} />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content={BRAND.seedDark} />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content={BRAND.pith} />
+        <Font cssVariable='--font-mono' />
+        <Font cssVariable='--font-display' />
+    </head>
+            <body
+                class={cn('--font-mono', '--font-display', 'antialiased')}
+            >
+                <AgentLinks site="home" />
+                <script type="application/ld+json" is:inline set:html={{ __html: jsonLd }} />
+                <a
+                    href="#main-content"
+                    class={cn(
+                        'sr-only rounded-sm bg-(--seed-dark) px-4 py-2 font-semibold text-(--pith) focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-100'
+                    )}
+                >
+                    Skip to content
+                </a>
+                <ConsoleGreeting />
+                {children}
+            </body>
+        </html>

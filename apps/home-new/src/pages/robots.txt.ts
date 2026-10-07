@@ -1,0 +1,23 @@
+import { DOCS, GUIDE } from '@seedcord/ui';
+
+import { canonicalUrl } from '#lib/site';
+
+// not MetadataRoute so it can carry the non-standard Content-Signal directive
+const BODY = `# Content Signals Policy (https://contentsignals.org)
+# search: building a search index and providing search results
+# ai-input: inputting content into AI models for real-time use
+# ai-train: training or fine-tuning AI models
+
+User-agent: *
+Content-Signal: search=yes, ai-train=yes, ai-input=yes
+Allow: /
+Disallow: ${DOCS.path}/dev
+
+Sitemap: ${canonicalUrl('/sitemap.xml')}
+Sitemap: ${GUIDE.at('sitemap.xml')}
+Sitemap: ${DOCS.at('sitemap.xml')}
+`;
+
+export function GET(): Response {
+    return new Response(BODY, { headers: { 'content-type': 'text/plain; charset=utf-8' } });
+}
