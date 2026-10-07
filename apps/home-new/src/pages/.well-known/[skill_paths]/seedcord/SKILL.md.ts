@@ -1,21 +1,21 @@
-import { skillsIndex } from '@seedcord/ui/skills';
+import { skillResponse } from '@seedcord/ui/skills';
 import { SEEDCORD_SKILL } from '@seedcord/ui/skills/seedcord';
+
+export function GET(): Response {
+    return skillResponse(SEEDCORD_SKILL);
+}
 
 export function getStaticPaths() {
     return [
         {
             params: {
-                'skill-paths': 'skills'
+                skill_paths: 'skills'
             }
         },
         {
             params: {
-                'skill-paths': 'agent-skills'
+                skill_paths: 'agent-skills'
             }
         }
     ];
-}
-
-export function GET(): Response {
-    return Response.json(skillsIndex([SEEDCORD_SKILL]));
 }

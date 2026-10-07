@@ -1,6 +1,6 @@
 {
     "extends": "astro/tsconfigs/strict",
-    "include": [".astro/types.d.ts", "**/*", "./worker-configuration.d.ts", "src/pages/.well-known/[skill-paths]"],
+    "include": [".astro/types.d.ts", "**/*", "./worker-configuration.d.ts", "src/pages/.well-known/[skill_paths]"],
     "exclude": ["dist"],
     "compilerOptions": {
         "jsx": "react-jsx",
