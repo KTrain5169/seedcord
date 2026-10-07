@@ -1,16 +1,17 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
+import { navigate } from 'astro:transitions/client';
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { toPageHref } from '#lib/docs/pageHref';
 import { log } from '#lib/logger';
 import { searchFiles } from '#lib/search/SearchFiles';
-import type { SearchCatalog } from '#lib/search/SearchCatalog';
 import { useUIStore, type UIStore } from '#store/ui';
 
 import { ALL_PACKAGES, FOCUS_DELAY_MS, isKindFilter } from './constants';
 
+import type { SearchCatalog } from '#lib/search/SearchCatalog';
 import type { KindFilter } from './constants';
 import type { CommandAction, DocsPackageOption } from './types';
 
@@ -103,8 +104,6 @@ export function useCommandPaletteController(): CommandPaletteController {
             setCommandPaletteOpen: state.setCommandPaletteOpen
         }))
     );
-    const router = useRouter();
-    const pathname = usePathname();
     const inputRef = useRef<HTMLInputElement>(null);
     const [searchValue, setSearchValue] = useState('');
     const { scope, kind, prerelease, handleScopeChange, handleKindChange, handlePrereleaseChange, resetFilters } =
@@ -120,7 +119,7 @@ export function useCommandPaletteController(): CommandPaletteController {
             const focusTimeout = window.setTimeout(() => {
                 inputRef.current?.select();
             }, FOCUS_DELAY_MS);
-            log('Command palette opened', { fromPath: pathname });
+            log('Command palette opened', { fromPath: window.location.pathname });
             return () => {
                 window.clearTimeout(focusTimeout);
             };
@@ -128,7 +127,7 @@ export function useCommandPaletteController(): CommandPaletteController {
 
         log('Command palette closed');
         return undefined;
-    }, [mounted, open, pathname]);
+    }, [mounted, open]);
 
     const handleOpenChange = useCallback(
         (next: boolean): void => {
@@ -153,15 +152,11 @@ export function useCommandPaletteController(): CommandPaletteController {
                 return;
             }
 
-            if (typeof window !== 'undefined') {
-                const targetHref = buildNavigationHref(action, window.location.origin);
-                router.push(targetHref);
-                return;
-            }
-
-            router.push(action.href);
+            // the router resolves the href against the current page before it navigates. the
+            // search index carries base-relative paths, so the served /docs prefix goes on first
+            navigate(buildNavigationHref({ ...action, href: toPageHref(action.href) }, window.location.origin));
         },
-        [handleClose, router]
+        [handleClose]
     );
 
     return {

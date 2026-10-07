@@ -1,0 +1,56 @@
+---
+import { DEFAULT_VERSION, parseEntityPathSegments } from '@seedcord/docs-engine';
+
+import { EmbedPreview } from '#components/docs/EmbedPreview';
+import { EntityContent } from '#components/docs/entity/EntityContent';
+import { DocsPage } from '#lib/docs/DocsPage';
+import { entityPaths } from '#lib/docs/DocsRoute';
+import { getDocsEngine } from '#lib/docs/engine';
+import { entityJsonLd, entityPagePath, entityPath } from '#lib/docs/entityJsonLd';
+import { symbolPreview } from '#lib/docs/linkPreview';
+import { decodeSegments, getCatalogContext, type PageParams } from '#lib/docs/pageContext';
+import { resolveEntity, type ResolvedEntity } from '#lib/docs/resolveEntity';
+import { ENTITY_TONE_HEX } from '#lib/entityColors';
+import { latestEntitySegments } from '#lib/indexing';
+
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import PackageLayout from '../../../../layouts/PackageLayout.astro';
+
+export async function getStaticPaths() {
+    return entityPaths();
+}
+
+const params: PageParams = {
+    ...Astro.params,
+    // astro delivers the rest route's segments as one raw string, so the page splits and decodes them
+    entitySegments: decodeSegments(Astro.params.entitySegments)
+};
+
+const context = await getCatalogContext(params);
+if (!context) return Astro.rewrite('/404');
+
+const resolved = await resolveEntity(params);
+if (!resolved) return Astro.rewrite('/404');
+
+// getEntry reads the index alone. resolveEntity would move the engine off this page's version
+async function pathInLatest({ entry, segments }: ResolvedEntity): Promise<string | undefined> {
+    const engine = await getDocsEngine();
+    const index = await engine.getEntry(entry.id);
+    const inLatest = latestEntitySegments(index?.entities, parseEntityPathSegments(segments));
+    if (!inLatest) return undefined;
+
+    return entityPagePath(entry.manifestName, DEFAULT_VERSION, inLatest);
+}
+
+const latestPath = await pathInLatest(resolved);
+const jsonLd = entityJsonLd(resolved, resolved.version.isLatest ? latestPath : undefined);
+const head = DocsPage.forEntity(entityPath(resolved), resolved.entity, resolved.version, latestPath).head();
+const themeColor = ENTITY_TONE_HEX[resolved.entity.kind];
+---
+
+<BaseLayout head={head} jsonLd={jsonLd} themeColor={themeColor}>
+    <PackageLayout context={context}>
+        <EmbedPreview {...symbolPreview(resolved, latestPath)} />
+        <EntityContent client:load model={resolved.entity} />
+    </PackageLayout>
+</BaseLayout>

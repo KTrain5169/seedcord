@@ -2,9 +2,9 @@ import { DEFAULT_VERSION } from '@seedcord/docs-engine/client';
 
 import { ALL_PACKAGES } from '#components/search/command-palette/constants';
 
-import type { SearchPackage } from './types';
 import type { ActiveDocsTarget } from '#components/search/command-palette/activeTarget';
 import type { DocsPackageOption } from '#components/search/command-palette/types';
+import type { SearchPackage } from './types';
 
 interface SearchTarget {
     id: string;

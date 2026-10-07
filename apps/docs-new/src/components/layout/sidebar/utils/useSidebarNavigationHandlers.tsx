@@ -1,6 +1,8 @@
 'use client';
-import { useRouter, usePathname } from 'next/navigation';
+import { navigate } from 'astro:transitions/client';
 import { useCallback } from 'react';
+
+import { toPageHref } from '#lib/docs/pageHref';
 
 import { buildVersionPath } from './buildVersionPath';
 
@@ -9,13 +11,12 @@ import type { PackageCatalogEntry, PackageVersionCatalog } from '#lib/docs/types
 export function useSidebarNavigationHandlers(
     catalog: readonly PackageCatalogEntry[],
     versionOptions: readonly PackageVersionCatalog[],
+    pathname: string,
     restSegments: readonly string[]
 ): {
     handlePackageChange: (value: string) => void;
     handleVersionChange: (value: string) => void;
 } {
-    const router = useRouter();
-    const pathname = usePathname();
     const handlePackageChange = useCallback(
         (value: string) => {
             const targetPackage = catalog.find((entry) => entry.id === value);
@@ -28,9 +29,9 @@ export function useSidebarNavigationHandlers(
                 return;
             }
 
-            router.push(targetVersion.basePath);
+            navigate(toPageHref(targetVersion.basePath));
         },
-        [catalog, router]
+        [catalog]
     );
 
     const handleVersionChange = useCallback(
@@ -46,9 +47,11 @@ export function useSidebarNavigationHandlers(
             const targetPackageSegment = targetSegments[2] ?? '';
             const shouldPreserveRest = restSegments.length > 0 && currentPackageSegment === targetPackageSegment;
 
-            router.push(shouldPreserveRest ? buildVersionPath(targetVersion, restSegments) : targetVersion.basePath);
+            navigate(
+                toPageHref(shouldPreserveRest ? buildVersionPath(targetVersion, restSegments) : targetVersion.basePath)
+            );
         },
-        [restSegments, router, versionOptions, pathname]
+        [restSegments, versionOptions, pathname]
     );
 
     return {

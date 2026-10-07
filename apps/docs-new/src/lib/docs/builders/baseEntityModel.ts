@@ -8,8 +8,8 @@ import type {
     WithSeeAlso,
     WithThrows
 } from '#lib/docs/types';
-import type { CodeRepresentation } from '@seedcord/ui';
 import type { DocNode } from '@seedcord/docs-engine';
+import type { CodeRepresentation } from '@seedcord/ui';
 
 function buildEntityTags(node: DocNode): string[] {
     const tags = new Set<string>();

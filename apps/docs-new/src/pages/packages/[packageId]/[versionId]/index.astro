@@ -1,0 +1,47 @@
+---
+import { EmbedPreview } from '#components/docs/EmbedPreview';
+import { PackageOverviewTabs } from '#components/docs/PackageOverviewTabs';
+import { PackageVersionOverview } from '#components/docs/PackageVersionOverview';
+import { ReadmeBlock } from '#components/docs/ReadmeBlock';
+import { loadActiveVersion } from '#lib/docs/ActiveVersion';
+import { DocsPage } from '#lib/docs/DocsPage';
+import { overviewPaths } from '#lib/docs/DocsRoute';
+import { packagePreview } from '#lib/docs/linkPreview';
+import { getCatalogContext, type PageParams } from '#lib/docs/pageContext';
+import { renderReadme } from '#lib/docs/renderReadme';
+
+import BaseLayout from '../../../../layouts/BaseLayout.astro';
+import PackageLayout from '../../../../layouts/PackageLayout.astro';
+
+export async function getStaticPaths() {
+    return overviewPaths();
+}
+
+const context = await getCatalogContext(Astro.params as PageParams);
+if (!context) return Astro.rewrite('/404');
+const { entry, version, versionSegment } = context;
+
+const active = await loadActiveVersion(entry.id, versionSegment);
+const readmeHtml = active?.readme ? await renderReadme(active.readme, active.folderUrl) : null;
+
+const categories = active?.categories ?? [];
+
+const head = DocsPage.forPackage(entry, version).head();
+---
+
+<BaseLayout head={head}>
+    <PackageLayout context={context}>
+        <EmbedPreview
+            {...packagePreview({ entry, version, versionCategories: categories, folderUrl: active?.folderUrl })}
+        />
+        <PackageOverviewTabs
+            client:load
+            title={entry.label}
+            version={version.label}
+            changelogHref={active?.changelogUrl ?? null}
+        >
+            {readmeHtml && <ReadmeBlock slot="readme" html={readmeHtml} />}
+            <PackageVersionOverview slot="reference" categories={categories} reexports={active?.reexports ?? []} />
+        </PackageOverviewTabs>
+    </PackageLayout>
+</BaseLayout>

@@ -6,6 +6,7 @@ import {
     Icon,
     MobileNavButton,
     Navbar as NavbarShell,
+    PlainLink,
     SearchIconButton,
     SearchTrigger,
     SiteSwitcher,
@@ -15,12 +16,10 @@ import {
     ThemeToggle,
     cn
 } from '@seedcord/ui';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
 import { hasMobileNavPanel } from '#components/layout/sidebar/utils/hasMobileNavPanel';
-import { SITE_URL } from '#lib/site';
 import { log } from '#lib/logger';
+import { SITE_URL } from '#lib/site';
 import { useUIStore } from '#store/ui';
 
 import { HeaderSettingsPopover } from './HeaderSettingsPopover';
@@ -36,12 +35,17 @@ const DESTINATIONS: readonly SiteDestination[] = [
     { label: 'Reference', href: SITE_URL, current: true }
 ];
 
-export function Navbar(): ReactElement {
+interface NavbarProps {
+    // the page passes this from its url, because an island renders before the router exists
+    pathname: string;
+}
+
+export function Navbar({ pathname }: NavbarProps): ReactElement {
     const setMobileNavOpen = useUIStore((state) => state.setMobileNavOpen);
     const isMobileNavOpen = useUIStore((state) => state.isMobileNavOpen);
     const isCommandPaletteOpen = useUIStore((state) => state.isCommandPaletteOpen);
     const setCommandPaletteOpen = useUIStore((state) => state.setCommandPaletteOpen);
-    const showMobileNavButton = hasMobileNavPanel(usePathname());
+    const showMobileNavButton = hasMobileNavPanel(pathname);
 
     const openSearch = (): void => {
         log('Search button clicked');
@@ -50,7 +54,7 @@ export function Navbar(): ReactElement {
 
     return (
         <NavbarShell
-            mark={<SiteSwitcher site="docs" destinations={DESTINATIONS} linkAs={Link} />}
+            mark={<SiteSwitcher site="docs" destinations={DESTINATIONS} linkAs={PlainLink} />}
             center={<SearchTrigger label={SEARCH_LABEL} onOpen={openSearch} />}
             actions={
                 <>
@@ -65,9 +69,10 @@ export function Navbar(): ReactElement {
                             aria-label="Open GitHub repository"
                             className={cn('text-(--text)')}
                         >
-                            <Link href={REPO_URL} target="_blank" rel="noreferrer">
+                            {/* the router never intercepts an external link, so it needs no link component */}
+                            <a href={REPO_URL} target="_blank" rel="noreferrer">
                                 <Icon icon={GithubIcon} size={20} />
-                            </Link>
+                            </a>
                         </Button>
                     </span>
                     {/* moving this into the span above loses it on mobile */}

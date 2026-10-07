@@ -2,7 +2,6 @@
 
 import { Card, cn, tw } from '@seedcord/ui';
 import { BookOpen } from 'lucide-react';
-import { usePathname } from 'next/navigation';
 
 import { SidebarCategoryList } from './SidebarCategoryList';
 import { SidebarCategoryListSkeleton } from './SidebarCategoryListSkeleton';
@@ -29,13 +28,13 @@ const OVERVIEW_STYLES = {
 // eslint-disable-next-line max-lines-per-function -- composes selection state, persistence, navigation handlers, store wiring, and the full sidebar tree
 export function Sidebar({
     catalog,
+    pathname,
     activePackageId,
     activeVersionId,
     variant = 'desktop',
     className,
     onSelect
 }: SidebarProps): ReactElement {
-    const pathname = usePathname();
     const { handleWheel } = useSidebarScrollGuards();
 
     const {
@@ -59,6 +58,7 @@ export function Sidebar({
     const { handlePackageChange, handleVersionChange } = useSidebarNavigationHandlers(
         catalog,
         versionOptions,
+        pathname,
         restSegments
     );
 

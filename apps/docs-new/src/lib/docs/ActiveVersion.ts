@@ -1,9 +1,8 @@
 import { buildEntityHref, DEFAULT_VERSION, toneToDirectory } from '@seedcord/docs-engine/client';
-import { cache } from 'react';
 
 import { getToneTitle, TONE_ORDER } from '#lib/tonePresentation';
 
-import { getDocsEngine } from './engine';
+import { openDocsEngine } from './engine';
 
 import type { NavigationCategory, NavigationEntityItem } from './types';
 import type { DocNode, DocPackageModel, PackageDirectory, VersionedDocsEngine } from '@seedcord/docs-engine';
@@ -79,7 +78,16 @@ export class ActiveVersion {
     }
 }
 
-// the layout and the overview page share one project.json fetch per request
-export const loadActiveVersion = cache(async (folder: string, versionId: string): Promise<ActiveVersion | null> =>
-    ActiveVersion.open(await getDocsEngine(), folder, versionId)
-);
+// a version's layout and overview page share one project read. the build runs pages concurrently,
+// so a version memoized across them keeps every page off an engine another page is mutating
+const versions = new Map<string, Promise<ActiveVersion | null>>();
+
+export function loadActiveVersion(folder: string, versionId: string): Promise<ActiveVersion | null> {
+    const key = `${folder}@${versionId}`;
+    let version = versions.get(key);
+    if (!version) {
+        version = ActiveVersion.open(openDocsEngine(), folder, versionId);
+        versions.set(key, version);
+    }
+    return version;
+}

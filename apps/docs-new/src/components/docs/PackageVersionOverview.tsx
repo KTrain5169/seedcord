@@ -1,7 +1,6 @@
-import { cn, tw } from '@seedcord/ui';
-import Link from 'next/link';
+import { cn, PlainLink, tw } from '@seedcord/ui';
 
-import { HoverPrefetchLink } from '#components/HoverPrefetchLink';
+import { toPageHref } from '#lib/docs/pageHref';
 import { getToneConfig, getToneTitle, TONE_ORDER } from '#lib/tonePresentation';
 
 import type { ReexportLink } from '#lib/docs/ActiveVersion';
@@ -29,10 +28,14 @@ function renderCategory(category: NavigationCategory): ReactElement {
             </header>
             <div className={cn('flex flex-wrap gap-2')}>
                 {category.items.map((item) => (
-                    <HoverPrefetchLink key={item.id} href={item.href} className={cn(chipClassName, toneStyles.item)}>
+                    <PlainLink
+                        key={item.id}
+                        href={toPageHref(item.href)}
+                        className={cn(chipClassName, toneStyles.item)}
+                    >
                         <span aria-hidden className={cn('size-1.5 shrink-0 rounded-full', toneStyles.dot)} />
                         {item.label}
-                    </HoverPrefetchLink>
+                    </PlainLink>
                 ))}
             </div>
         </section>
@@ -53,17 +56,17 @@ function groupReexports(reexports: readonly ReexportLink[]): [string, ReexportLi
 function renderReexportLink(link: ReexportLink): ReactElement {
     const toneStyles = link.tone ? getToneConfig(link.tone).styles : null;
     return (
-        <Link
+        // the router never intercepts a cross-package link, so it needs no link component
+        <a
             key={link.name}
-            href={link.href}
+            href={toPageHref(link.href)}
             target="_blank"
             rel="noopener noreferrer"
-            prefetch={false}
             className={cn(reexportChipClassName, toneStyles?.item)}
         >
             {toneStyles ? <span aria-hidden className={cn('size-1 shrink-0 rounded-full', toneStyles.dot)} /> : null}
             {link.name}
-        </Link>
+        </a>
     );
 }
 

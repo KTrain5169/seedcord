@@ -59,6 +59,12 @@
             "outputs": ["dist/**"],
             "env": ["SEEDCORD_DOCS_INDEX_URL"]
         },
+        "docs-new#build": {
+            "dependsOn": ["^build", "//#docs:artifacts"],
+            "inputs": ["$TURBO_DEFAULT$", ".env*"],
+            "outputs": ["dist/**"],
+            "env": ["SEEDCORD_DOCS_INDEX_URL", "PUBLIC_SITE_URL"]
+        },
         "//#check:catalog": {
             "inputs": ["scripts/src/**/*.ts", "pnpm-workspace.yaml", "**/package.json"]
         },

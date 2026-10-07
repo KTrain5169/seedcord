@@ -1,8 +1,8 @@
 import { DocSearch } from '@seedcord/docs-engine/client';
 
-import type { SearchIndexEntry } from './types';
 import type { KindFilter } from '#components/search/command-palette/constants';
 import type { CommandAction, SearchResultKind } from '#components/search/command-palette/types';
+import type { SearchIndexEntry } from './types';
 
 const MAX_RESULTS = 24;
 

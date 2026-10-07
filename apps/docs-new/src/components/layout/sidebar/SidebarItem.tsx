@@ -1,8 +1,8 @@
 'use client';
 
-import { cn } from '@seedcord/ui';
+import { cn, PlainLink } from '@seedcord/ui';
 
-import { HoverPrefetchLink } from '#components/HoverPrefetchLink';
+import { toPageHref } from '#lib/docs/pageHref';
 import { log } from '#lib/logger';
 
 import type { SidebarItemProps } from './types';
@@ -17,8 +17,8 @@ export function SidebarItem({
     onSelect
 }: SidebarItemProps): ReactElement {
     return (
-        <HoverPrefetchLink
-            href={href}
+        <PlainLink
+            href={toPageHref(href)}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
                 'flex w-full items-center gap-2 rounded-md border border-transparent bg-transparent px-3 py-2 text-left text-sm font-medium text-(--text) transition focus-visible:outline-2 focus-visible:outline-offset-2',
@@ -35,6 +35,6 @@ export function SidebarItem({
             </span>
 
             <span className={cn('min-w-0 truncate')}>{label}</span>
-        </HoverPrefetchLink>
+        </PlainLink>
     );
 }

@@ -1,5 +1,5 @@
 import { formatVersionLabel } from '@seedcord/docs-engine/client';
-import { Badge, Button, Card, Icon, type IconComponent, cn } from '@seedcord/ui';
+import { Badge, Button, Card, Icon, type IconComponent, cn, type CodeRepresentation } from '@seedcord/ui';
 import { ArrowUpRight } from 'lucide-react';
 
 import { SeeAlso } from '#components/docs/SeeAlso';
@@ -22,7 +22,6 @@ import type {
     WithSeeAlso,
     WithThrows
 } from '#lib/docs/types';
-import type { CodeRepresentation } from '@seedcord/ui';
 import type { EntityToneStyle } from '#lib/tonePresentation';
 import type { EntityTone } from '@seedcord/docs-engine/client';
 import type { ReactElement } from 'react';

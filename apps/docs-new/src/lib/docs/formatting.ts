@@ -10,8 +10,6 @@ import {
     type ResolveHref,
     type TypeParameter
 } from '@seedcord/docs-engine';
-
-import { sanitizeHtml } from '#lib/sanitizeHtml';
 import {
     highlightMemberToHtml,
     highlightSignatureToHtml,
@@ -19,6 +17,8 @@ import {
     highlightTypeParamToHtml,
     type CodeLink
 } from '@seedcord/ui/shiki';
+
+import { sanitizeHtml } from '#lib/sanitizeHtml';
 
 import { opensInNewTab } from './crossPackage';
 import { toPageHref } from './pageHref';

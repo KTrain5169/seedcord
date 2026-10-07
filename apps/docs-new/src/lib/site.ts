@@ -1,6 +1,7 @@
 import { DOCS_URL, SiteAddress } from '@seedcord/ui';
 
-const SITE = new SiteAddress(process.env.NEXT_PUBLIC_SITE_URL ?? DOCS_URL);
+// astro inlines PUBLIC_* env values into the build
+const SITE = new SiteAddress(import.meta.env.PUBLIC_SITE_URL ?? DOCS_URL);
 
 export const SITE_URL = SITE.url;
 export const SITE_NAME = 'seedcord';

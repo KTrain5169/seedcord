@@ -1,15 +1,9 @@
 ---
-import { cn, Button } from "@seedcord/ui";
-import BaseLayout from '../layouts/BaseLayout.astro'
+import { NotFound } from '#components/docs/NotFound';
+
+import BaseLayout from '../layouts/BaseLayout.astro';
 ---
+
 <BaseLayout>
-<div class={cn('flex min-h-[60vh] items-center justify-center')}>
-    <div class={cn('text-center')}>
-        <h1 class={cn('text-6xl font-semibold')}>404</h1>
-        <p class={cn('mt-2 text-xl')}>Not Found</p>
-        <Button variant="secondary" asChild className={cn('mt-6')}>
-            <a href="/">Go to docs</a>
-        </Button>
-    </div>
-</div>
+    <NotFound />
 </BaseLayout>

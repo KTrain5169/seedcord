@@ -61,26 +61,26 @@
     pointer-events: none;
 }
 
-/* PageTransition sets page-next or page-prev on the content area */
+/* the direction script sets data-nav-dir on the document root before the swap, after comparing
+   where the reader is going against the sidebar order riding on main#main-content */
 /* the content snaps to its new height while only the snapshots move */
-::view-transition-group(.page-next),
-::view-transition-group(.page-prev) {
+::view-transition-group(page) {
     animation: none;
 }
 
-::view-transition-old(.page-next) {
+html[data-nav-dir='next'] ::view-transition-old(page) {
     --page-shift: -8px;
     animation: 100ms ease-in both page-shift-out;
 }
-::view-transition-new(.page-next) {
+html[data-nav-dir='next'] ::view-transition-new(page) {
     --page-shift: 8px;
     animation: 120ms ease-out both page-shift-in;
 }
-::view-transition-old(.page-prev) {
+html[data-nav-dir='prev'] ::view-transition-old(page) {
     --page-shift: 8px;
     animation: 100ms ease-in both page-shift-out;
 }
-::view-transition-new(.page-prev) {
+html[data-nav-dir='prev'] ::view-transition-new(page) {
     --page-shift: -8px;
     animation: 120ms ease-out both page-shift-in;
 }

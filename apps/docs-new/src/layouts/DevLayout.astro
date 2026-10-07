@@ -1,0 +1,32 @@
+---
+import { cn } from '@seedcord/ui';
+
+import { DocsPage, type PageHead } from '#lib/docs/DocsPage';
+import { toPageHref } from '#lib/docs/pageHref';
+
+import BaseLayout from './BaseLayout.astro';
+
+// the playground answers no index and follows no link
+const head: PageHead = {
+    ...DocsPage.root().head(),
+    title: 'Dev playground: @seedcord/ui',
+    noindex: true,
+    nofollow: true
+};
+---
+
+<BaseLayout head={head}>
+    <div class={cn('min-h-[calc(100vh-4rem)]')}>
+        <div class={cn('border-b border-(--border) px-6 py-3')}>
+            <a
+                href={toPageHref('/dev')}
+                class={cn('text-subtle text-xs font-semibold tracking-widest uppercase hover:text-(--text)')}
+            >
+                ← @seedcord/ui · /dev
+            </a>
+        </div>
+        <main class={cn('mx-auto max-w-5xl px-6 py-10')}>
+            <slot />
+        </main>
+    </div>
+</BaseLayout>

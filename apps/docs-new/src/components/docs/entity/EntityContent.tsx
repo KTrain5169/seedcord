@@ -3,6 +3,7 @@
 import { cn } from '@seedcord/ui';
 import { useEffect, type ReactElement } from 'react';
 
+import { IslandProviders } from '#components/providers/IslandProviders';
 import { log } from '#lib/logger';
 
 import { EntityHeader } from './EntityHeader';
@@ -15,6 +16,7 @@ interface EntityContentProps {
     model: EntityModel;
 }
 
+// the page mounts this as its one hydrated island, so the providers its body needs ride along
 export function EntityContent({ model }: EntityContentProps): ReactElement {
     const { tone, badgeLabel } = useEntityTone(model.kind);
 
@@ -34,24 +36,26 @@ export function EntityContent({ model }: EntityContentProps): ReactElement {
     }
 
     return (
-        <article className={cn('w-full min-w-0 space-y-6 lg:space-y-8')}>
-            <EntityHeader
-                badgeLabel={badgeLabel}
-                pkg={model.displayPackage}
-                signature={model.signature}
-                summary={model.summary}
-                summaryExamples={model.summaryExamples}
-                symbolName={model.name}
-                tone={tone}
-                sourceUrl={model.sourceUrl ?? null}
-                tags={model.tags ?? []}
-                seeAlso={model.seeAlso}
-                throws={model.throws}
-                {...(model.version ? { version: model.version } : {})}
-                deprecationStatus={model.deprecationStatus}
-                {...(functionSignatures ? { functionSignatures } : {})}
-            />
-            {body ?? null}
-        </article>
+        <IslandProviders>
+            <article className={cn('w-full min-w-0 space-y-6 lg:space-y-8')}>
+                <EntityHeader
+                    badgeLabel={badgeLabel}
+                    pkg={model.displayPackage}
+                    signature={model.signature}
+                    summary={model.summary}
+                    summaryExamples={model.summaryExamples}
+                    symbolName={model.name}
+                    tone={tone}
+                    sourceUrl={model.sourceUrl ?? null}
+                    tags={model.tags ?? []}
+                    seeAlso={model.seeAlso}
+                    throws={model.throws}
+                    {...(model.version ? { version: model.version } : {})}
+                    deprecationStatus={model.deprecationStatus}
+                    {...(functionSignatures ? { functionSignatures } : {})}
+                />
+                {body ?? null}
+            </article>
+        </IslandProviders>
     );
 }

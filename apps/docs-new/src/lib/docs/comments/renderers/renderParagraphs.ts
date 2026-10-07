@@ -1,9 +1,9 @@
+import { highlightToHtml, highlightInlineToHtml } from '@seedcord/ui/shiki';
 import { marked } from 'marked';
 
 import { markdownFence } from '#lib/docs/comments/fence';
 import { resolveInlineHref } from '#lib/docs/comments/resolvers';
 import { sanitizeHtml } from '#lib/sanitizeHtml';
-import { highlightToHtml, highlightInlineToHtml } from '@seedcord/ui/shiki';
 
 import { decorateProseLinks } from './decorateProseLinks';
 

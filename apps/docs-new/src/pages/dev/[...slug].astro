@@ -1,0 +1,155 @@
+---
+import { BadgePage } from '#components/dev/BadgePage';
+import { ButtonPage } from '#components/dev/ButtonPage';
+import { CardPage } from '#components/dev/CardPage';
+import { CodeBlockPage } from '#components/dev/CodeBlockPage';
+import { CodePanelPage } from '#components/dev/CodePanelPage';
+import { CopyAnchorButtonPage } from '#components/dev/CopyAnchorButtonPage';
+import { CopyButtonPage } from '#components/dev/CopyButtonPage';
+import { CrossPkgLinkPage } from '#components/dev/CrossPkgLinkPage';
+import { crossPkgLinkCase } from '#components/dev/crossPkgLinkCase';
+import { DevIndexPage } from '#components/dev/DevIndexPage';
+import { DisclosurePage } from '#components/dev/DisclosurePage';
+import { DropdownPage } from '#components/dev/DropdownPage';
+import { IconPage } from '#components/dev/IconPage';
+import { InputPage } from '#components/dev/InputPage';
+import { LINK_PREVIEW_CASES, LinkPreviewCasePage } from '#components/dev/LinkPreviewCasePage';
+import { PackageOverviewTabsPage } from '#components/dev/PackageOverviewTabsPage';
+import { PopoverPage } from '#components/dev/PopoverPage';
+import { SegmentedControlPage } from '#components/dev/SegmentedControlPage';
+import { SkeletonsPage } from '#components/dev/SkeletonsPage';
+import { TooltipPage } from '#components/dev/TooltipPage';
+import { highlightCode } from '#lib/docs/formatting';
+import { renderReadme } from '#lib/docs/renderReadme';
+
+import type { CodeRepresentation } from '@seedcord/ui';
+
+import DevLayout from '../../layouts/DevLayout.astro';
+
+// a prod build emits no dev page at all, matching the old app's pageExtensions exclusion: astro
+// build always runs with DEV=false, so this list stays empty and /dev/* 404s at the worker. the
+// dev server renders on demand and never calls getStaticPaths. the return type keeps the slug
+// param a string, which an empty literal would collapse to never
+export function getStaticPaths(): { params: { slug: string | undefined } }[] {
+    return [];
+}
+
+const PAGES = [
+    'button',
+    'icon',
+    'copy-button',
+    'copy-anchor-button',
+    'code-panel',
+    'code-block',
+    'card',
+    'tooltip',
+    'badge',
+    'popover',
+    'dropdown',
+    'segmented-control',
+    'disclosure',
+    'input',
+    'package-overview-tabs',
+    'skeletons',
+    'cross-pkg-link'
+] as const satisfies readonly string[];
+
+const LINK_PREVIEW_PREFIX = 'link-preview/';
+
+const slugs = new Set<string>(['', ...PAGES, ...LINK_PREVIEW_CASES.map((name) => `${LINK_PREVIEW_PREFIX}${name}`)]);
+
+const slug = Astro.params.slug ?? '';
+
+if (!slugs.has(slug)) return Astro.rewrite('/404');
+
+// the fixtures the build-only branches need. each fills only for its own slug
+const EMPTY_REPRESENTATION: CodeRepresentation = { text: '', html: null };
+const CODE_BLOCK_SAMPLE = `function publish<K extends SubscriptionKey>(name: K, data: SubscriptionData<K>): void {
+    this.bus.publish(name, data);
+}`;
+const SAMPLE_README = `<p align="center"><img src="https://raw.githubusercontent.com/seedcord/seedcord/main/assets/banner.png" alt="seedcord" width="100%" /></p>
+
+_This repository is a work in progress._
+
+- There are no stable releases yet but changes are being made actively.
+- Until a major v1.0.0 release for seedcord, expect breaking changes in minor versions.
+- Documentation will come soon as well!
+
+If you'd like to try it out, you can check out the code in \`mock\`.
+`;
+const LONG_README = `# @seedcord/utils
+
+Utility helpers used across the seedcord framework.
+
+## Installation
+
+\`\`\`sh
+pnpm add @seedcord/utils
+\`\`\`
+
+## Usage
+
+\`\`\`ts
+import { round } from '@seedcord/utils';
+
+round(1.2345, 2); // 1.23
+\`\`\`
+
+## Features
+
+- **numbers**: \`round\`, \`ordinal\`, \`percentage\`
+- **strings**: \`prettify\`
+- **objects**: \`keepDefined\`, \`filterCirculars\`
+
+> Note: pre-1.0, public APIs may change between minors.
+
+| Export | Kind |
+| --- | --- |
+| round | function |
+| ordinal | function |
+`;
+
+let codeBlockRepresentation: CodeRepresentation = EMPTY_REPRESENTATION;
+let shortReadmeHtml = '';
+let longReadmeHtml = '';
+let proseHtml = '';
+let crossPkgRepresentation: CodeRepresentation = EMPTY_REPRESENTATION;
+
+if (slug === 'code-block') codeBlockRepresentation = await highlightCode(CODE_BLOCK_SAMPLE, 'ts');
+if (slug === 'package-overview-tabs') {
+    [shortReadmeHtml, longReadmeHtml] = await Promise.all([renderReadme(SAMPLE_README), renderReadme(LONG_README)]);
+}
+if (slug === 'cross-pkg-link') {
+    const crossPkg = await crossPkgLinkCase();
+    proseHtml = crossPkg.proseHtml;
+    crossPkgRepresentation = crossPkg.representation;
+}
+---
+
+<DevLayout>
+    {slug === '' && <DevIndexPage />}
+    {slug === 'button' && <ButtonPage client:load />}
+    {slug === 'icon' && <IconPage client:load />}
+    {slug === 'copy-button' && <CopyButtonPage client:load />}
+    {slug === 'copy-anchor-button' && <CopyAnchorButtonPage client:load />}
+    {slug === 'code-panel' && <CodePanelPage />}
+    {slug === 'code-block' && <CodeBlockPage client:load representation={codeBlockRepresentation} />}
+    {slug === 'card' && <CardPage />}
+    {slug === 'tooltip' && <TooltipPage client:load />}
+    {slug === 'badge' && <BadgePage />}
+    {slug === 'popover' && <PopoverPage client:load />}
+    {slug === 'dropdown' && <DropdownPage client:load />}
+    {slug === 'segmented-control' && <SegmentedControlPage client:load />}
+    {slug === 'disclosure' && <DisclosurePage client:load />}
+    {slug === 'input' && <InputPage client:load />}
+    {slug === 'package-overview-tabs' && (
+        <PackageOverviewTabsPage client:load shortHtml={shortReadmeHtml} longHtml={longReadmeHtml} />
+    )}
+    {slug === 'skeletons' && <SkeletonsPage />}
+    {slug === 'cross-pkg-link' && (
+        <CrossPkgLinkPage client:load proseHtml={proseHtml} representation={crossPkgRepresentation} />
+    )}
+    {slug.startsWith('link-preview/') && (
+        <LinkPreviewCasePage client:load caseName={slug.slice(LINK_PREVIEW_PREFIX.length)} />
+    )}
+</DevLayout>

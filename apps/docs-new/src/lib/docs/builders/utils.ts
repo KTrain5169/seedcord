@@ -1,3 +1,5 @@
+import { memberModifiers } from '@seedcord/docs-engine';
+
 import { cloneCommentParagraphs, createPlainParagraph } from '#lib/docs/comments/creators';
 import { formatDeclarationHeader, formatSignature, highlightCode } from '#lib/docs/formatting';
 
@@ -8,10 +10,9 @@ import type {
     FormattedComment,
     DeprecationStatus
 } from '#lib/docs/types';
-import type { CodeRepresentation } from '@seedcord/ui';
-import { memberModifiers } from '@seedcord/docs-engine';
-
 import type { DocNode, DocSignature } from '@seedcord/docs-engine';
+import type { CodeRepresentation } from '@seedcord/ui';
+
 
 export type DocNodeLike = Pick<DocNode, 'flags' | 'comment'>;
 

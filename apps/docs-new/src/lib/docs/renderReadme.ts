@@ -1,8 +1,8 @@
+import { highlightToHtml } from '@seedcord/ui/shiki';
 import GithubSlugger from 'github-slugger';
 import { Marked, TextRenderer } from 'marked';
 
 import { sanitizeHtml } from '#lib/sanitizeHtml';
-import { highlightToHtml } from '@seedcord/ui/shiki';
 
 import type { Tokens } from 'marked';
 import type { BundledLanguage } from 'shiki';

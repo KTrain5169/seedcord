@@ -2,8 +2,8 @@ import { PACKAGES_URL, searchFileUrl } from './files';
 import { SearchCatalog } from './SearchCatalog';
 import { SearchResults } from './SearchResults';
 
-import type { SearchIndexEntry, SearchPackage } from './types';
 import type { ActiveDocsTarget } from '#components/search/command-palette/activeTarget';
+import type { SearchIndexEntry, SearchPackage } from './types';
 
 class DownloadCache<Value> {
     private readonly downloads = new Map<string, Promise<Value>>();

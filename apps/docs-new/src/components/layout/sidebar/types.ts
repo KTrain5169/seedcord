@@ -11,6 +11,8 @@ type SidebarVariant = 'desktop' | 'mobile';
 
 export interface SidebarProps {
     catalog: readonly PackageCatalogEntry[];
+    // the island's caller passes this from the page url, because no router serves it to an island
+    pathname: string;
     activePackageId: string;
     activeVersionId: string;
     variant?: SidebarVariant;

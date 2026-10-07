@@ -1,7 +1,6 @@
 import { toneToDirectory } from '@seedcord/docs-engine/client';
 
-import type { EntityTone } from '@seedcord/docs-engine/client';
-import type { ParsedEntityPath } from '@seedcord/docs-engine/client';
+import type { EntityTone, ParsedEntityPath  } from '@seedcord/docs-engine/client';
 
 /**
  * The same symbol's path in the latest version, as segments. Returns `undefined` when the latest

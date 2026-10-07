@@ -1,8 +1,8 @@
-import { createPrettierConfig } from '@seedcord/eslint-config/prettier'
+import { createPrettierConfig } from '@seedcord/eslint-config/prettier';
 
-const config = createPrettierConfig({ tailwind: { stylesheet: './src/styles/globals.css' } })
+const config = createPrettierConfig({ tailwind: { stylesheet: './src/styles/globals.css' } });
 
 export default {
     ...config,
     plugins: [...config.plugins!, 'prettier-plugin-astro']
-}
+};

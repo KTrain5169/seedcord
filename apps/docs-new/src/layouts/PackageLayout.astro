@@ -1,0 +1,59 @@
+---
+import { DEFAULT_VERSION } from '@seedcord/docs-engine/client';
+import { cn } from '@seedcord/ui';
+
+import { PackageSidebar } from '#components/layout/sidebar/utils/container/PackageSidebar';
+import { SIDEBAR_WIDTH } from '#components/layout/sidebar/utils/constants';
+import { loadActiveVersion } from '#lib/docs/ActiveVersion';
+import { loadDocsCatalog, servedAtLatest, withVersion } from '#lib/docs/catalog';
+import { toPageHref } from '#lib/docs/pageHref';
+import type { PageContext } from '#lib/docs/pageContext';
+import { relativePath } from '#lib/pathname';
+
+interface Props {
+    // the page resolves this from its own params, after handling its 404
+    context: PageContext;
+}
+
+const { entry, version, versionSegment } = Astro.props.context;
+
+const [catalog, active] = await Promise.all([loadDocsCatalog(), loadActiveVersion(entry.id, versionSegment)]);
+const filled = { ...version, categories: active?.categories ?? [] };
+const shown = versionSegment === DEFAULT_VERSION ? servedAtLatest(filled, entry.manifestName) : filled;
+
+const sidebarCatalog = withVersion(catalog, entry.id, shown);
+
+// the order the content slide follows. it carries the served /docs prefix so it compares against
+// the urls the router reports
+const order = [shown.basePath, ...shown.categories.flatMap(({ items }) => items.map(({ href }) => href))].map(
+    toPageHref
+);
+---
+
+<div class={cn('flex w-full flex-1 flex-col gap-5')} style={`--sidebar-width: ${SIDEBAR_WIDTH}px`}>
+    <div class={cn('flex w-full min-w-0 flex-1')}>
+        <PackageSidebar
+            client:load
+            catalog={sidebarCatalog}
+            pathname={relativePath(Astro.url.pathname)}
+            activePackageId={entry.id}
+            activeVersionId={version.id}
+        />
+        <div class={cn('flex min-h-0 min-w-0 flex-1 flex-col')}>
+            <div
+                class={cn(
+                    'mx-auto w-full max-w-none min-w-0 px-(--page-gutter) pt-6 pb-(--jump-clearance) md:pt-8 lg:pt-10'
+                )}
+            >
+                <main
+                    id="main-content"
+                    class={cn('min-w-0')}
+                    transition:name="page"
+                    data-nav-order={JSON.stringify(order)}
+                >
+                    <slot />
+                </main>
+            </div>
+        </div>
+    </div>
+</div>

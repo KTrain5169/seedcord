@@ -38,7 +38,8 @@ type Extension = keyof typeof CONTENT_TYPES;
 
 const EXTENSIONLESS_ROUTES: Partial<Record<string, string>> = { icon: 'image/png' };
 
-const HASHED_BUILD_FILES = '_next/static/';
+// the astro build hashes its bundled assets into _astro/, so they can answer immutable
+const HASHED_BUILD_FILES = '_astro/';
 const IMMUTABLE = 'public, max-age=31536000, immutable';
 const SHORT_LIVED = 'public, max-age=300';
 

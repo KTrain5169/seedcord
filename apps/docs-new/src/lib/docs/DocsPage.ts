@@ -1,15 +1,14 @@
 import { buildPackageBasePath, DEFAULT_VERSION } from '@seedcord/docs-engine/client';
 import { ogPageCardAlt } from '@seedcord/ui/OgCard';
+import { CARD, TWIN } from '@seedcord/ui/page-asset';
 import { BRAND } from '@seedcord/ui/palette';
 
-import { CARD, TWIN } from '@seedcord/ui/page-asset';
 import { plainSummary } from '#lib/docs/plainSummary';
 import { ENTITY_TONE_HEX } from '#lib/entityColors';
-import { canonicalUrl, OG_IMAGE_H, OG_IMAGE_W, OG_SITE_NAME, SITE_DESCRIPTION, SITE_NAME } from '#lib/site';
+import { canonicalUrl, OG_IMAGE_H, OG_IMAGE_W, SITE_DESCRIPTION, SITE_NAME } from '#lib/site';
 
 import type { EntityModel, PackageCatalogEntry, PackageVersionCatalog } from '#lib/docs/types';
 import type { OgPageCardProps } from '@seedcord/ui/OgCard';
-import type { Metadata } from 'next';
 
 export type DocsCard = Omit<OgPageCardProps, 'domain'>;
 
@@ -74,6 +73,22 @@ interface PageFacts {
     canonicalPath?: string | undefined;
 }
 
+// what the base layout renders into the document head, in plain values no framework owns
+export interface PageHead {
+    title: string;
+    description: string;
+    // the url search engines should index for this page
+    canonical: string;
+    ogType: 'website' | 'article';
+    image: { url: string; width: number; height: number; alt: string };
+    // the markdown twin of the page, when one is generated
+    markdownUrl?: string;
+    // a page with no canonical has no page to merge into, so it leaves the index
+    noindex?: boolean;
+    // the dev playground never leaves the local build
+    nofollow?: boolean;
+}
+
 export class DocsPage {
     private constructor(private readonly facts: PageFacts) {}
 
@@ -83,6 +98,23 @@ export class DocsPage {
 
     get markdownUrl(): string | undefined {
         return this.facts.markdownPath === undefined ? undefined : canonicalUrl(this.facts.markdownPath);
+    }
+
+    head(): PageHead {
+        const { path, title, card, image, isArticle, canonicalPath } = this.facts;
+        // reduced to plain text because social embeds render markdown and newlines literally
+        const description = truncate(plainSummary(card.description), DESCRIPTION_MAX);
+        const imageUrl = canonicalUrl(image);
+
+        return {
+            title,
+            description,
+            canonical: canonicalUrl(canonicalPath ?? path),
+            ogType: isArticle ? 'article' : 'website',
+            image: { url: imageUrl, width: OG_IMAGE_W, height: OG_IMAGE_H, alt: ogPageCardAlt(card) },
+            ...(this.markdownUrl ? { markdownUrl: this.markdownUrl } : {}),
+            ...(canonicalPath === undefined ? { noindex: true } : {})
+        };
     }
 
     static root(): DocsPage {
@@ -124,36 +156,5 @@ export class DocsPage {
             isArticle: true,
             canonicalPath
         });
-    }
-
-    // Next replaces the whole openGraph and twitter block per route
-    metadata(): Metadata {
-        const { path, title, card, image, markdownPath, isArticle, canonicalPath } = this.facts;
-        const url = canonicalUrl(canonicalPath ?? path);
-        // reduced to plain text because social embeds render markdown and newlines literally
-        const description = truncate(plainSummary(card.description), DESCRIPTION_MAX);
-        const imageUrl = canonicalUrl(image);
-        const images = [{ url: imageUrl, width: OG_IMAGE_W, height: OG_IMAGE_H, alt: ogPageCardAlt(card) }];
-
-        return {
-            // the root layout's template would add the site name again
-            title: { absolute: title },
-            description,
-            alternates: {
-                canonical: url,
-                ...(markdownPath ? { types: { 'text/markdown': canonicalUrl(markdownPath) } } : {})
-            },
-            // google merges a canonical between near-duplicates. a dropped symbol has no page to merge into
-            ...(canonicalPath === undefined ? { robots: { index: false, follow: true } } : {}),
-            openGraph: {
-                type: isArticle ? 'article' : 'website',
-                siteName: OG_SITE_NAME,
-                url,
-                title,
-                description,
-                images
-            },
-            twitter: { card: 'summary_large_image', title, description, images: [imageUrl] }
-        };
     }
 }

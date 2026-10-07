@@ -1,7 +1,6 @@
 'use client';
 
 import { cn } from '@seedcord/ui';
-import Link from 'next/link';
 
 import { MEMBER_TITLES } from '#components/docs/entity/constants';
 
@@ -32,7 +31,8 @@ export function MemberList({ items, prefix, onNavigate }: MemberListProps): Reac
             <ul className={cn('space-y-2')}>
                 {items.map((item) => (
                     <li key={item.id} className={cn('min-w-0')}>
-                        <Link
+                        {/* a same-page anchor needs no router, so a plain link answers it */}
+                        <a
                             href={`#${item.id}`}
                             onClick={() => {
                                 onNavigate(item.id);
@@ -46,7 +46,7 @@ export function MemberList({ items, prefix, onNavigate }: MemberListProps): Reac
                             <span className={cn('truncate font-medium')}>
                                 {prefix === 'method' ? `${item.label}()` : item.label}
                             </span>
-                        </Link>
+                        </a>
                     </li>
                 ))}
             </ul>

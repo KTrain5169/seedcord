@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import createConfig from '@seedcord/eslint-config';
 import reactCompiler from 'eslint-plugin-react-compiler';
+import eslintPluginAstro from 'eslint-plugin-astro';
 
 import type { Linter } from 'eslint';
 
@@ -40,14 +41,17 @@ export default createConfig({
             }
         },
 
-        // next reads each of these files through its default export
         {
-            files: [
-                'src/app/**/{page,layout,loading,error,global-error,not-found,template,default,route,sitemap,robots,manifest}.{ts,tsx,dev.ts,dev.tsx}'
-            ],
-            rules: { 'import/no-default-export': 'off' }
+            settings: {
+                "import/core-modules": ["astro:content", "astro:transitions"],
+                "import/parsers": {
+                    "astro-eslint-parser": [".astro"],
+                    "espree": [".js", ".mjs", ".cjs"],
+                    "@typescript-eslint/parser": [".ts", ".tsx"]
+                }
+            }
         },
 
-        { ignores: ['.next/**', '.wrangler/**', '.preview/**', 'build/**', 'next-env.d.ts'] }
+        { ignores: ['.wrangler/**', '.preview/**', 'build/**'] }
     ]
 });

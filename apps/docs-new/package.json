@@ -1,40 +1,66 @@
 {
-  "name": "docs-new",
-  "type": "module",
-  "version": "0.0.1",
-  "engines": {
-    "node": ">=22.12.0"
-  },
-  "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro",
-    "generate-types": "wrangler types"
-  },
-  "dependencies": {
-    "@astrojs/cloudflare": "^14.3.3",
-    "@astrojs/markdown-satteri": "^0.4.2",
-    "@astrojs/mdx": "^8.0.2",
-    "@astrojs/react": "^7.0.0",
-    "@astrojs/sitemap": "^3.7.4",
-    "@tailwindcss/vite": "^4.3.3",
-    "@types/react": "^19.3.0",
-    "@types/react-dom": "^19.3.0",
-    "astro": "^7.3.5",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "tailwindcss": "^4.3.3",
-    "wrangler": "^4.147.0"
-  },
-  "allowScripts": {
-    "esbuild": true
-  },
-  "devDependencies": {
-    "@seedcord/eslint-config": "workspace:^",
-    "@seedcord/ui": "workspace:^",
-    "eslint-plugin-react-compiler": "19.1.0-rc.2",
-    "prettier": "^3.9.9",
-    "prettier-plugin-astro": "^1.1.0"
-  }
+    "name": "docs-new",
+    "type": "module",
+    "version": "0.0.1",
+    "engines": {
+        "node": ">=22.12.0"
+    },
+    "scripts": {
+        "dev": "astro dev",
+        "build": "astro build",
+        "preview": "astro preview",
+        "astro": "astro",
+        "generate-types": "wrangler types",
+        "lint": "eslint . --cache --no-error-on-unmatched-pattern",
+        "lint:fix": "eslint . --fix --cache --no-error-on-unmatched-pattern",
+        "fmt": "prettier --write . --cache --no-error-on-unmatched-pattern",
+        "fmt:check": "prettier --check . --cache --no-error-on-unmatched-pattern",
+        "tc": "astro check",
+        "test": "vitest run --passWithNoTests"
+    },
+    "dependencies": {
+        "@astrojs/cloudflare": "^14.3.3",
+        "@astrojs/markdown-satteri": "^0.4.2",
+        "@astrojs/mdx": "^8.0.2",
+        "@astrojs/react": "^7.0.0",
+        "@seedcord/types": "workspace:^",
+        "@seedcord/ui": "workspace:^",
+        "@seedcord/utils": "workspace:^",
+        "@tailwindcss/vite": "^4.3.3",
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "@vercel/og": "^1.0.3",
+        "astro": "^7.3.5",
+        "discord-component-embed": "workspace:^",
+        "github-slugger": "^2.0.0",
+        "isomorphic-dompurify": "^4.4.0",
+        "lucide-react": "catalog:deps",
+        "marked": "^18.0.14",
+        "motion": "catalog:deps",
+        "react": "^19.3.0",
+        "react-dom": "^19.3.0",
+        "shiki": "catalog:deps",
+        "tailwindcss": "^4.3.3",
+        "type-fest": "catalog:deps",
+        "wrangler": "^4.147.0",
+        "zustand": "^5.0.15"
+    },
+    "allowScripts": {
+        "esbuild": true
+    },
+    "devDependencies": {
+        "@astrojs/check": "^0.9.5",
+        "@seedcord/docs-engine": "workspace:^",
+        "@seedcord/eslint-config": "workspace:^",
+        "eslint-plugin-astro": "^3.2.1",
+        "eslint-plugin-import-x": "catalog:eslint",
+        "eslint-plugin-jsx-a11y": "^6.10.2",
+        "eslint-plugin-react": "^7.37.5",
+        "eslint-plugin-react-compiler": "19.1.0-rc.2",
+        "eslint-plugin-react-hooks": "^7.1.1",
+        "prettier": "^3.9.9",
+        "prettier-plugin-astro": "^1.1.0",
+        "typescript": "catalog:peer",
+        "vitest": "catalog:test"
+    }
 }

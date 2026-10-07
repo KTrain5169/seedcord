@@ -3,8 +3,9 @@
 import { Button, SegmentedControl, cn, easeOutStrong, tw, type SegmentedControlOption } from '@seedcord/ui';
 import { ExternalLink } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
-import Link from 'next/link';
 import { useState, useSyncExternalStore } from 'react';
+
+import { IslandProviders } from '#components/providers/IslandProviders';
 
 import type { Variants } from 'motion/react';
 import type { ReactElement, ReactNode } from 'react';
@@ -66,8 +67,70 @@ interface PackageOverviewTabsProps {
     title: string;
     version: string;
     changelogHref?: string | null;
-    readme: ReactNode | null;
-    reference: ReactNode;
+    // the panels arrive as named slots, which astro hands the island as props. astro's checker
+    // reads slot children as plain children, so the props type stays optional
+    readme?: ReactNode | null;
+    reference?: ReactNode;
+}
+
+interface OverviewHeaderProps {
+    title: string;
+    version: string;
+    changelogHref?: string | null;
+    options: readonly SegmentedControlOption<OverviewTab>[];
+    tab: OverviewTab;
+    onTabChange: (next: OverviewTab) => void;
+}
+
+function OverviewHeader({
+    title,
+    version,
+    changelogHref,
+    options,
+    tab,
+    onTabChange
+}: OverviewHeaderProps): ReactElement {
+    return (
+        <div className={cn('space-y-4')}>
+            <div className={cn('flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between')}>
+                <div className={cn('min-w-0 space-y-1 text-center lg:text-left')}>
+                    <p className={cn('text-subtle text-xs font-semibold tracking-[0.35em] uppercase')}>Package</p>
+                    <h1 className={cn('font-display text-2xl font-semibold wrap-break-word text-(--text)')}>
+                        {title} <span className={cn('font-normal text-(--text-muted)')}>{version}</span>
+                    </h1>
+                </div>
+                <div className={cn('flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-2')}>
+                    {changelogHref ? (
+                        <Button asChild variant="ghost" size="md" className={cn('w-full lg:w-auto')}>
+                            {/* the router never intercepts an external link, so it needs no link component */}
+                            <a href={changelogHref} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink size={16} aria-hidden />
+                                Changelog
+                            </a>
+                        </Button>
+                    ) : null}
+                    <SegmentedControl
+                        options={options}
+                        value={tab}
+                        onChange={onTabChange}
+                        size="md"
+                        fullWidth
+                        aria-label="Package view"
+                        className={cn('lg:hidden')}
+                    />
+                    <SegmentedControl
+                        options={options}
+                        value={tab}
+                        onChange={onTabChange}
+                        size="md"
+                        aria-label="Package view"
+                        className={cn('hidden lg:inline-flex')}
+                    />
+                </div>
+            </div>
+            <hr className={cn('border-(--border)')} />
+        </div>
+    );
 }
 
 export function PackageOverviewTabs({
@@ -77,7 +140,7 @@ export function PackageOverviewTabs({
     readme,
     reference
 }: PackageOverviewTabsProps): ReactElement {
-    const hasReadme = readme !== null;
+    const hasReadme = readme !== null && readme !== undefined;
     // the server snapshot is null so hydration matches the default render. the stored preference applies after
     const storedTab = useSyncExternalStore(subscribeStoredTab, readStoredTab, () => null);
     const tab = resolveTab(storedTab, hasReadme);
@@ -95,62 +158,35 @@ export function PackageOverviewTabs({
         { value: 'reference', label: 'Reference' }
     ];
 
+    // the page mounts this as its one hydrated island, so the providers its controls need ride along
     return (
-        <div className={cn('space-y-6')}>
-            <div className={cn('space-y-4')}>
-                <div className={cn('flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between')}>
-                    <div className={cn('min-w-0 space-y-1 text-center lg:text-left')}>
-                        <p className={cn('text-subtle text-xs font-semibold tracking-[0.35em] uppercase')}>Package</p>
-                        <h1 className={cn('font-display text-2xl font-semibold wrap-break-word text-(--text)')}>
-                            {title} <span className={cn('font-normal text-(--text-muted)')}>{version}</span>
-                        </h1>
-                    </div>
-                    <div className={cn('flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-2')}>
-                        {changelogHref ? (
-                            <Button asChild variant="ghost" size="md" className={cn('w-full lg:w-auto')}>
-                                <Link href={changelogHref} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink size={16} aria-hidden />
-                                    Changelog
-                                </Link>
-                            </Button>
-                        ) : null}
-                        <SegmentedControl
-                            options={options}
-                            value={tab}
-                            onChange={handleTabChange}
-                            size="md"
-                            fullWidth
-                            aria-label="Package view"
-                            className={cn('lg:hidden')}
-                        />
-                        <SegmentedControl
-                            options={options}
-                            value={tab}
-                            onChange={handleTabChange}
-                            size="md"
-                            aria-label="Package view"
-                            className={cn('hidden lg:inline-flex')}
-                        />
-                    </div>
+        <IslandProviders>
+            <div className={cn('space-y-6')}>
+                <OverviewHeader
+                    title={title}
+                    version={version}
+                    changelogHref={changelogHref}
+                    options={options}
+                    tab={tab}
+                    onTabChange={handleTabChange}
+                />
+                <div className={panelGridClassName}>
+                    <AnimatePresence initial={false} custom={direction}>
+                        <m.div
+                            key={tab}
+                            custom={direction}
+                            variants={panelVariants}
+                            initial="enter"
+                            animate="center"
+                            exit="exit"
+                            transition={{ duration: SLIDE_DURATION, ease: [...easeOutStrong] }}
+                            className={cn('col-start-1 row-start-1')}
+                        >
+                            {tab === 'readme' ? readme : reference}
+                        </m.div>
+                    </AnimatePresence>
                 </div>
-                <hr className={cn('border-(--border)')} />
             </div>
-            <div className={panelGridClassName}>
-                <AnimatePresence initial={false} custom={direction}>
-                    <m.div
-                        key={tab}
-                        custom={direction}
-                        variants={panelVariants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        transition={{ duration: SLIDE_DURATION, ease: [...easeOutStrong] }}
-                        className={cn('col-start-1 row-start-1')}
-                    >
-                        {tab === 'readme' ? readme : reference}
-                    </m.div>
-                </AnimatePresence>
-            </div>
-        </div>
+        </IslandProviders>
     );
 }

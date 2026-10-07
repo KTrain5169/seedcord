@@ -2,10 +2,10 @@ import { buildEntityHref, buildPackageBasePath, kindName, memberFragment } from 
 import { DocKind } from '@seedcord/docs-engine/client';
 
 import { loadDocsCatalog } from '#lib/docs/catalog';
-import { getDocsEngine } from '#lib/docs/engine';
+import { openDocsEngine } from '#lib/docs/engine';
 
-import type { SearchIndexEntry, SearchPackage } from './types';
 import type { CommandAction, SearchResultKind } from '#components/search/command-palette/types';
+import type { SearchIndexEntry, SearchPackage } from './types';
 import type { DocNode, DocSearchEntry, VersionedDocsEngine } from '@seedcord/docs-engine';
 
 const RESULT_KINDS: Partial<Record<number, SearchResultKind>> = {
@@ -124,7 +124,8 @@ export async function searchPackages(): Promise<SearchPackage[]> {
 }
 
 export async function searchIndexFor(packageId: string, versionId: string): Promise<SearchIndexEntry[] | null> {
-    const engine = await getDocsEngine();
+    // setVersion below mutates the engine, so this route builds its index on its own instance
+    const engine = openDocsEngine();
     const pkg = (await engine.listPackages()).find(({ folder }) => folder === packageId);
     if (!pkg) return null;
 

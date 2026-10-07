@@ -14,8 +14,8 @@ import type {
     FormattedComment,
     EntityMemberSummary
 } from '#lib/docs/types';
-import type { CodeRepresentation } from '@seedcord/ui';
 import type { DocSignature, DocNode, DocCommentBlockTag, DocComment } from '@seedcord/docs-engine';
+import type { CodeRepresentation } from '@seedcord/ui';
 
 interface SignatureDetailsOptions {
     node: DocNode;

@@ -7,7 +7,6 @@ import {
     servedPrerelease,
     servedStableVersions
 } from '@seedcord/docs-engine';
-import { cache } from 'react';
 
 import { getDocsEngine } from './engine';
 
@@ -81,20 +80,26 @@ function isRendered(packageId: string): boolean {
     return only === undefined || only.includes(packageId);
 }
 
-// reads only index.json
-export const loadDocsCatalog = cache(async (): Promise<DocsCatalog> => {
-    const engine = await getDocsEngine();
-    await engine.ready();
-    const entries = await Promise.all(
-        (await engine.listPackages()).map(async ({ folder, fullName }): Promise<PackageCatalogEntry | null> => {
-            if (!isRendered(formatDisplayPackageName(fullName))) return null;
-            const entry = await engine.getEntry(folder);
-            return entry ? buildPackageEntry(fullName, entry) : null;
-        })
-    );
+// reads only index.json. the build resolves it once, so every route render shares one catalog
+let catalog: Promise<DocsCatalog> | undefined;
 
-    return entries.filter((entry): entry is PackageCatalogEntry => entry !== null).sort(byCatalogOrder);
-});
+export function loadDocsCatalog(): Promise<DocsCatalog> {
+    catalog ??= (async (): Promise<DocsCatalog> => {
+        const engine = await getDocsEngine();
+        await engine.ready();
+        const entries = await Promise.all(
+            (await engine.listPackages()).map(async ({ folder, fullName }): Promise<PackageCatalogEntry | null> => {
+                if (!isRendered(formatDisplayPackageName(fullName))) return null;
+                const entry = await engine.getEntry(folder);
+                return entry ? buildPackageEntry(fullName, entry) : null;
+            })
+        );
+
+        return entries.filter((entry): entry is PackageCatalogEntry => entry !== null).sort(byCatalogOrder);
+    })();
+
+    return catalog;
+}
 
 export function findCatalogVersion(entry: PackageCatalogEntry, versionId: string): PackageVersionCatalog | undefined {
     if (versionId === DEFAULT_VERSION) {

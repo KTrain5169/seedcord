@@ -1,6 +1,6 @@
 import { parseEntityPathSegments } from '@seedcord/docs-engine';
 
-import { getDocsEngine } from './engine';
+import { openDocsEngine } from './engine';
 import { loadEntityModel } from './loadEntityModel';
 import { getCatalogContext } from './pageContext';
 
@@ -16,21 +16,22 @@ export interface ResolvedEntity {
 
 function normalizeSegments(raw: string | string[] | undefined): string[] {
     if (Array.isArray(raw)) return raw;
-    if (typeof raw === 'string') return [raw];
+    if (typeof raw === 'string') return raw.split('/').filter(Boolean);
     return [];
 }
 
 export async function resolveEntity(params: PageParams): Promise<ResolvedEntity | null> {
-    const { entry, version } = await getCatalogContext(params);
+    const context = await getCatalogContext(params);
+    if (!context) return null;
+    const { entry, version } = context;
 
     const segments = normalizeSegments(params.entitySegments);
     const parsed = parseEntityPathSegments(segments);
     if (!parsed.slug) return null;
 
-    // this keeps one engine instance for setVersion and the lookup. og route handlers skip react's
-    // per-request cache() dedup that a page render gets, so a second getDocsEngine() call would read
-    // a version that was never set.
-    const engine = await getDocsEngine();
+    // one engine keeps setVersion and the lookup on the same version. the routes generate
+    // concurrently, so this call takes its own instance instead of a shared one.
+    const engine = openDocsEngine();
     try {
         await engine.setVersion(entry.id, version.id);
     } catch {

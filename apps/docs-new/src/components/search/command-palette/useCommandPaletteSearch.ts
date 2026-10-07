@@ -1,16 +1,16 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+import { relativePath } from '#lib/pathname';
 import { searchFiles } from '#lib/search/SearchFiles';
 
 import { parseActiveDocsTarget } from './activeTarget';
 import { MIN_SEARCH_QUERY_LENGTH } from './constants';
 
+import type { SearchResults } from '#lib/search/SearchResults';
 import type { KindFilter } from './constants';
 import type { CommandAction } from './types';
-import type { SearchResults } from '#lib/search/SearchResults';
 
 type SearchStatus = 'idle' | 'loading' | 'success' | 'error';
 
@@ -39,7 +39,8 @@ export function useCommandPaletteSearch({
     kind,
     prerelease
 }: UseCommandPaletteSearchOptions): SearchState {
-    const { pkg, version } = parseActiveDocsTarget(usePathname());
+    // the dialog renders only once mounted, so the location the reader opened it from is on screen
+    const { pkg, version } = parseActiveDocsTarget(relativePath(window.location.pathname));
     const key = `${pkg}::${version}::${scope}::${prerelease ? '1' : '0'}`;
     const [lastLoaded, setLastLoaded] = useState<Loaded | null>(null);
     const hasCurrentResults = lastLoaded?.key === key && 'results' in lastLoaded;
