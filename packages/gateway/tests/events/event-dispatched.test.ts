@@ -143,7 +143,8 @@ describe('eventDispatched', () => {
         seedcord.bus.on('eventDispatched', (payload) => ends.push(payload));
 
         const fire = onSpy.mock.calls.find(([event]) => event === 'messageCreate')?.[1] as
-            ((...args: unknown[]) => void) | undefined;
+            | ((...args: unknown[]) => void)
+            | undefined;
         expect(fire).toBeDefined();
 
         fire?.({ reply: vi.fn() });

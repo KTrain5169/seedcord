@@ -1,18 +1,20 @@
 {
     "name": "@seedcord/ui",
     "version": "0.2.1",
-    "engines": {
-        "node": ">=24.11",
-        "bun": ">=1.4.2"
-    },
     "private": true,
-    "type": "module",
     "description": "Internal UI primitives for seedcord apps (docs, guide, home)",
     "repository": {
         "type": "git",
         "url": "https://github.com/seedcord/seedcord.git",
         "directory": "tooling/ui"
     },
+    "files": [
+        "dist",
+        "src/styles",
+        "package.json",
+        "LICENSE"
+    ],
+    "type": "module",
     "types": "./dist/index.d.mts",
     "exports": {
         ".": {
@@ -28,34 +30,18 @@
         "./styles/globals.css": "./src/styles/globals.css",
         "./styles/tokens.css": "./src/styles/tokens.css"
     },
-    "files": [
-        "dist",
-        "src/styles",
-        "package.json",
-        "LICENSE"
-    ],
     "scripts": {
         "build": "vp pack",
         "dev": "vp pack --watch",
         "clean": "rm -rf dist",
         "lint": "eslint '**/*.{ts,tsx}' --cache --no-error-on-unmatched-pattern",
         "lint:fix": "eslint '**/*.{ts,tsx}' --fix --cache --no-error-on-unmatched-pattern",
-        "fmt": "prettier --write '**/*.{ts,tsx,json,md,css}' --cache --no-error-on-unmatched-pattern",
-        "fmt:check": "prettier --check '**/*.{ts,tsx,json,md,css}' --cache --no-error-on-unmatched-pattern",
+        "fmt": "vp fmt --write '**/*.{ts,tsx,json,md,css}' --no-error-on-unmatched-pattern",
+        "fmt:check": "vp fmt --check '**/*.{ts,tsx,json,md,css}' --no-error-on-unmatched-pattern",
         "tc": "tsgo --noEmit",
         "test": "vitest run",
         "test:watch": "vitest dev",
         "coverage": "vitest run --coverage"
-    },
-    "peerDependencies": {
-        "next": "catalog:deps",
-        "react": "catalog:react",
-        "react-dom": "catalog:react"
-    },
-    "peerDependenciesMeta": {
-        "next": {
-            "optional": true
-        }
     },
     "dependencies": {
         "@radix-ui/react-dialog": "^1.1.23",
@@ -90,5 +76,19 @@
         "next": "catalog:deps",
         "prettier-plugin-tailwindcss": "catalog:deps",
         "tailwindcss": "catalog:deps"
+    },
+    "peerDependencies": {
+        "next": "catalog:deps",
+        "react": "catalog:react",
+        "react-dom": "catalog:react"
+    },
+    "peerDependenciesMeta": {
+        "next": {
+            "optional": true
+        }
+    },
+    "engines": {
+        "bun": ">=1.4.2",
+        "node": ">=24.11"
     }
 }

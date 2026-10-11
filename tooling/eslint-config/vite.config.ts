@@ -4,7 +4,7 @@ export default defineConfig({
     // inlined to avoid circular dependency. Keep in sync with tooling/tsdown-config/src/index.ts.
     pack: {
         format: ['esm'],
-        entry: ['src/index.ts', 'src/prettier.ts'],
+        entry: ['src/index.ts', 'src/prettier.ts', 'src/oxfmt.ts'],
         dts: true,
         shims: true,
         clean: true,

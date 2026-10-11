@@ -1,10 +1,20 @@
 {
     "name": "@seedcord/seedcord",
     "version": "0.1.0",
-    "description": "A TypeScript framework for Discord bots, typed end to end",
     "private": true,
+    "description": "A TypeScript framework for Discord bots, typed end to end",
+    "keywords": [
+        "bot",
+        "cli",
+        "discord",
+        "discord.js",
+        "framework",
+        "oop",
+        "typescript"
+    ],
+    "license": "Apache-2.0",
+    "author": "Dhruv <materwelondhruv@gmail.com>",
     "type": "module",
-    "packageManager": "pnpm@12.4.2",
     "scripts": {
         "build": "turbo build --filter='!./apps/*'",
         "build:all": "turbo build",
@@ -14,8 +24,8 @@
         "lint:fix:md": "markdownlint-cli2 --fix",
         "fmt": "turbo fmt && vp run fmt:root",
         "fmt:check": "turbo fmt:check && vp run fmt:check:root",
-        "fmt:root": "prettier --write '*.{json,md,mjs,ts,yml,yaml}' '.changeset/*.md' '.github/**/*.{yml,yaml,md}' --cache --no-error-on-unmatched-pattern",
-        "fmt:check:root": "prettier --check '*.{json,md,mjs,ts,yml,yaml}' '.changeset/*.md' '.github/**/*.{yml,yaml,md}' --cache --no-error-on-unmatched-pattern",
+        "fmt:root": "vp fmt --write '*.{json,md,mjs,ts,yml,yaml}' '.changeset/*.md' '.github/**/*.{yml,yaml,md}' --no-error-on-unmatched-pattern",
+        "fmt:check:root": "vp fmt --check '*.{json,md,mjs,ts,yml,yaml}' '.changeset/*.md' '.github/**/*.{yml,yaml,md}' --no-error-on-unmatched-pattern",
         "tc": "turbo tc",
         "tc:root": "tsgo --noEmit -p tsconfig.json",
         "test": "turbo test",
@@ -37,7 +47,7 @@
         "cs:pre:exit": "changeset pre exit",
         "cs:publish": "changeset publish",
         "cs:status": "changeset status --output .changeset/status.json",
-        "cs:version": "cross-env-shell \"NODE_OPTIONS='--import tsx'\" \"changeset version && vp exec tsx scripts/src/release/tidy-changelogs.ts && prettier --write '**/CHANGELOG.md'\"",
+        "cs:version": "cross-env-shell \"NODE_OPTIONS='--import tsx'\" \"changeset version && vp exec tsx scripts/src/release/tidy-changelogs.ts && vp fmt --write '**/CHANGELOG.md'\"",
         "release": "vp run build && vp run cs:publish",
         "release:notes": "tsx scripts/src/release/release-notes.ts",
         "deps:check": "taze major",
@@ -51,17 +61,6 @@
         "docs:prune": "vp exec tsx scripts/src/docs/prune-docs-site.ts",
         "docs:preview": "vp exec tsx scripts/src/docs/preview-docs.ts"
     },
-    "keywords": [
-        "discord",
-        "discord.js",
-        "bot",
-        "framework",
-        "oop",
-        "typescript",
-        "cli"
-    ],
-    "author": "Dhruv <materwelondhruv@gmail.com>",
-    "license": "Apache-2.0",
     "devDependencies": {
         "@changesets/cli": "^3.0.2",
         "@commitlint/cli": "^21.2.1",
@@ -88,9 +87,6 @@
         "vite-plus": "catalog:deps",
         "vitest": "catalog:test"
     },
-    "engines": {
-        "node": ">=26"
-    },
     "devEngines": {
         "packageManager": {
             "name": "pnpm",
@@ -102,5 +98,9 @@
             "version": "^26",
             "onFail": "download"
         }
-    }
+    },
+    "engines": {
+        "node": ">=26"
+    },
+    "packageManager": "pnpm@12.4.2"
 }

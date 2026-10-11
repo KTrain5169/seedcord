@@ -111,7 +111,8 @@ const it = base.extend<{ client: ClientHarness; bootWith: BootWith; dispatchedFo
         await controller.init();
 
         const fire = onSpy.mock.calls.find(([event]) => event === 'interactionCreate')?.[1] as
-            ((i: unknown) => void) | undefined;
+            | ((i: unknown) => void)
+            | undefined;
         expect(fire).toBeDefined();
         await use({ seedcord, controller, fire });
     },
@@ -203,7 +204,8 @@ describe('InteractionDispatcher Integration', () => {
         });
 
         const fire = onSpy.mock.calls.find(([event]) => event === 'interactionCreate')?.[1] as
-            ((i: unknown) => void) | undefined;
+            | ((i: unknown) => void)
+            | undefined;
 
         expect(fire).toBeDefined();
         expect(() => fire?.(fakeSlash('ping'))).not.toThrow();
