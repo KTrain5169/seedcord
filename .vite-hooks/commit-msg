@@ -2,4 +2,4 @@
 
 echo "Commit-msg hook triggered."
 
-pnpm exec commitlint --edit "$1"
+vp exec commitlint --edit "$1"
