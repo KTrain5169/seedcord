@@ -35,7 +35,19 @@ export { slowGateMonitor, type SlowGateMonitor } from '#gates/slowGate';
 export type { GateObserver } from '#gates/runGates';
 export { accessorStore, clearStore, guardedAccessor } from '#src/miscellaneous/guarded';
 export { isEmojiTuple } from '#src/miscellaneous/emojiConfig';
+export { currentApplication } from '#src/miscellaneous/currentApplication';
+export { resolveEmojis } from '#src/miscellaneous/resolveEmojis';
 
+export { BAKED_IDS_KEY, type BakedIds } from '#src/bakedIds';
+export { installLinks, warnLinks } from '#src/commands/CommandInjector';
+export { resolveDeployTarget } from '#src/commands/deployTarget';
+export {
+    commandRefOf,
+    indexById,
+    linkCommands,
+    type CommandRef,
+    type LinkedCommands
+} from '#src/commands/linkCommands';
 export { contextMenuLeaves } from '#src/commands/contextMenuLeaves';
 export type { ContextMenuLeaves } from '#src/commands/contextMenuLeaves';
 export { isCommandClass, type CommandCtor } from '#src/commands/isCommandClass';

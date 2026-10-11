@@ -3,15 +3,14 @@ import 'reflect-metadata';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { isCommandClass } from '@seedcord/core/internal';
+import { CommandMetadataKey, isCommandClass } from '@seedcord/core/internal';
 import { SeedcordErrorCode, isSeedcordError } from '@seedcord/errors';
 import { SeedcordError, throwSingleOrAggregate } from '@seedcord/errors/internal';
 import { isTsOrJsFile } from '@seedcord/utils/node';
 import { ApplicationCommandType } from 'discord-api-types/v10';
 
 import type { ModuleLoader } from '#core/modules/ModuleLoader';
-import type { ScannedCommand } from './AugmentationBuilder';
-import type { CommandCtor } from '@seedcord/core/internal';
+import type { CommandCtor, CommandMeta } from '@seedcord/core/internal';
 import type { ILogger } from '@seedcord/types';
 import type { RESTPostAPIApplicationCommandsJSONBody } from 'discord-api-types/v10';
 
@@ -33,22 +32,28 @@ function isApplicationCommand(json: unknown): json is RESTPostAPIApplicationComm
     );
 }
 
-function construct({ sourceFile, Command }: CommandClassFile): ScannedCommand | SeedcordError | undefined {
+export interface FoundCommand {
+    sourceFile: string;
+    className: string;
+    json: RESTPostAPIApplicationCommandsJSONBody;
+    meta: CommandMeta;
+}
+
+function construct({ sourceFile, Command }: CommandClassFile): FoundCommand | SeedcordError | undefined {
     let json: unknown;
     try {
         json = new Command().component.toJSON();
     } catch (error: unknown) {
         const reason = Error.isError(error) ? error.message : 'Unknown error';
-        return new SeedcordError(
-            SeedcordErrorCode.CliCodegenCommandConstructorThrew,
-            [Command.name, sourceFile, reason],
-            {
-                cause: error
-            }
-        );
+        return new SeedcordError(SeedcordErrorCode.CliCommandConstructorThrew, [Command.name, sourceFile, reason], {
+            cause: error
+        });
     }
 
-    return isApplicationCommand(json) ? { sourceFile, json } : undefined;
+    if (!isApplicationCommand(json)) return undefined;
+    // justified: isCommandClass checked this key before the walk yielded the class
+    const meta = Reflect.getMetadata(CommandMetadataKey, Command) as CommandMeta;
+    return { sourceFile, className: Command.name, json, meta };
 }
 
 export class CommandScanner {
@@ -57,8 +62,8 @@ export class CommandScanner {
         private readonly logger: ILogger
     ) {}
 
-    public async scan(commandsDir: string): Promise<ScannedCommand[]> {
-        const commands: ScannedCommand[] = [];
+    public async scan(commandsDir: string): Promise<FoundCommand[]> {
+        const commands: FoundCommand[] = [];
         const problems: unknown[] = [];
         try {
             for await (const commandClass of this.walk(commandsDir, new Set(), true)) {
@@ -71,7 +76,7 @@ export class CommandScanner {
             problems.push(error);
         }
 
-        throwSingleOrAggregate(problems, SeedcordErrorCode.CliCodegenCommandProblems);
+        throwSingleOrAggregate(problems, SeedcordErrorCode.CliCommandProblems);
         return commands;
     }
 
@@ -81,8 +86,8 @@ export class CommandScanner {
             entries = await readdir(dir, { withFileTypes: true });
         } catch (error: unknown) {
             const reason = Error.isError(error) ? error.message : 'Unknown error';
-            // an unreadable commands dir would pass --check against a stale registry
-            if (isRoot) throw new SeedcordError(SeedcordErrorCode.CliCodegenCommandsDirUnreadable, [dir, reason]);
+            // skipping the root would read as a bot with no commands
+            if (isRoot) throw new SeedcordError(SeedcordErrorCode.CliCommandsDirUnreadable, [dir, reason]);
             this.logger.warn(`Skipping unreadable directory ${dir}. ${reason}.`);
             return;
         }

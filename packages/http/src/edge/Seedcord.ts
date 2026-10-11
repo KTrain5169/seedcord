@@ -1,7 +1,9 @@
 import {
     attachmentsOf,
+    BAKED_IDS_KEY,
     bindBotColor,
     CoordinatedStartup,
+    installLinks,
     PluginLifecycle,
     sealAttachments
 } from '@seedcord/core/internal';
@@ -11,6 +13,7 @@ import { SeedcordError } from '@seedcord/errors/internal';
 import { Logger } from '@seedcord/logger';
 import { HostAugmentTarget, HostVersion, SeedcordBrand } from '@seedcord/types/internal';
 
+import { installEmojis } from '#src/emojis/EmojiInjector';
 import { rejectNonPost } from '#src/engine';
 import { InteractionsService } from '#src/InteractionsService';
 import { version as packageVersion } from '#src/version';
@@ -21,15 +24,24 @@ import type { HttpEdgeConfig } from '#interfaces/Config';
 import type { Engine, EngineContext } from '#src/engine';
 import type { REST } from '@discordjs/rest';
 import type { Bus } from '@seedcord/core';
+import type { BakedIds } from '@seedcord/core/internal';
 import type { IRateLimiter } from '@seedcord/types';
+
+// seedcord build's worker entry writes these before bot.ts loads
+function bakedIds(): BakedIds {
+    const ids = Reflect.get(globalThis, Symbol.for(BAKED_IDS_KEY)) as BakedIds | undefined;
+    if (!ids) throw new SeedcordError(SeedcordErrorCode.CoreEdgeUnbuilt);
+    return ids;
+}
 
 /**
  * The HTTP-interactions bot on Cloudflare Workers. Default-export it from `bot.ts`. Cloudflare
  * calls `fetch` for every request.
  *
  * The constructor stores the config. The first POST in each isolate reads `DISCORD_BOT_TOKEN`
- * and `DISCORD_PUBLIC_KEY`, loads the handler and subscriber folders, then runs the startup tasks
- * and every plugin's `init()` and `ready()`. Requests that arrive meanwhile wait for it.
+ * and the public key, command ids, and emoji ids that `seedcord build` wrote into the worker. It
+ * loads the handler and subscriber folders, then runs the startup tasks and every plugin's `init()`
+ * and `ready()`. Requests that arrive meanwhile wait for it.
  */
 export class Seedcord extends PluginHost<'http', 'edge'> {
     // the CLI reads these to detect and augment the instance
@@ -110,10 +122,13 @@ export class Seedcord extends PluginHost<'http', 'edge'> {
     }
 
     async #prepare(): Promise<Engine> {
+        const ids = bakedIds();
         this.#service.authenticate();
         await this.#service.subscribers.init();
         await this.#service.interactions?.init();
-        return this.#service.prepareEngine();
+        installLinks(ids);
+        installEmojis(ids.emojis);
+        return this.#service.prepareEngine(ids.publicKey);
     }
 
     async #runStartup(): Promise<void> {

@@ -22,6 +22,8 @@ export enum SeedcordErrorCode {
     ConfigTokenUnreadable = 1009,
     /** An edge config sets a REST sweeper interval. */
     ConfigEdgeRestSweeper = 1010,
+    /** `DISCORD_PUBLIC_KEY` is unset and reading the key from Discord failed. */
+    ConfigPublicKeyUnavailable = 1011,
 
     /** Attempted to add lifecycle tasks after startup already completed. */
     LifecycleAddAfterCompletion = 1101,
@@ -84,6 +86,8 @@ export enum SeedcordErrorCode {
     CorePluginScopeMismatch = 1221,
     /** A node http bot received a request through `fetch` before `start()` was called. */
     CoreFetchBeforeStart = 1222,
+    /** An edge worker received a POST without the ids `seedcord build` writes into it. */
+    CoreEdgeUnbuilt = 1223,
 
     /** A command decorator attempted to re-register an existing command scope. */
     DecoratorCommandAlreadyRegistered = 1301,
@@ -247,8 +251,8 @@ export enum SeedcordErrorCode {
     CliBuildFailed = 3112,
     /** Two commands resolve to the same slash route during codegen. */
     CliCodegenDuplicateRoute = 3114,
-    /** The commands directory could not be read during codegen. */
-    CliCodegenCommandsDirUnreadable = 3115,
+    /** The commands directory could not be read. */
+    CliCommandsDirUnreadable = 3115,
     /** Two context-menu commands of the same kind share a name during codegen. */
     CliCodegenDuplicateContextMenu = 3116,
     /** Could not resolve the application from the bot token during `commands --clean`. */
@@ -271,8 +275,8 @@ export enum SeedcordErrorCode {
     CliTunnelUnreachable = 3125,
     /** A config field is present with the wrong shape. */
     CliConfigInvalidField = 3126,
-    /** A class carrying `@RegisterCommand` threw while codegen constructed it. */
-    CliCodegenCommandConstructorThrew = 3127,
+    /** A class carrying `@RegisterCommand` threw while seedcord constructed it. */
+    CliCommandConstructorThrew = 3127,
     /** Vite threw while bundling the bot. */
     CliBundleFailed = 3128,
     /** `build.outDir` is `root` or a folder that contains it. */
@@ -289,8 +293,8 @@ export enum SeedcordErrorCode {
     CliBuildOutDirNotEmpty = 3134,
     /** Two or more fields in the seedcord config are missing or invalid. */
     CliConfigProblems = 3135,
-    /** Two or more command constructors threw during codegen. */
-    CliCodegenCommandProblems = 3136,
+    /** Two or more command constructors threw while seedcord read the commands. */
+    CliCommandProblems = 3136,
     /** `seedcord codegen --check` found the committed augmentations stale. */
     CliCodegenOutOfDate = 3137,
     /** A file or folder in the project has a `#` in its path. */
@@ -317,6 +321,12 @@ export enum SeedcordErrorCode {
     CliEdgeBootFailed = 3148,
     /** An edge bot's `root` holds its seedcord config. */
     CliEdgeRootHoldsConfig = 3149,
+    /** An edge build could not read the application from Discord with `DISCORD_BOT_TOKEN`. */
+    CliEdgeApplicationUnreadable = 3150,
+    /** An edge build could not read the commands deployed globally or to a guild its commands target. */
+    CliEdgeCommandsUnreadable = 3151,
+    /** An edge build found commands in code that have no deployed id on Discord. */
+    CliEdgeCommandsNotDeployed = 3152,
 
     /** A create prompt was cancelled (Ctrl-C), and nothing has been written yet. */
     CreateCancelled = 3201,

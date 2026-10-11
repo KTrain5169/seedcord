@@ -1,12 +1,13 @@
-import { ContextMenuCommandBuilder, SlashCommandBuilder } from '@discordjs/builders';
+import { SlashCommandBuilder } from '@discordjs/builders';
 import { isSeedcordError, SeedcordErrorCode } from '@seedcord/errors';
 import { ApplicationCommandType } from 'discord-api-types/v10';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
-import { CommandInjector, Commands, ContextMenus } from '#src/commands/CommandInjector';
+import { CommandInjector, Commands, ContextMenus, warnLinks } from '#src/commands/CommandInjector';
+import { deployed, grouped, guildBucket, messageMenu, ping, userMenu, withSubcommand } from '#tests/commands/fixtures';
 
 import type { CommandInfo, ContextMenuInfo } from '#src/commands/CommandInjector';
-import type { APIApplicationCommand } from 'discord-api-types/v10';
+import type { ILogger } from '@seedcord/types';
 
 // justified: SlashRegistry is empty in tests, so runtime values read through a plain record
 const commands = Commands as Record<string, CommandInfo>;
@@ -15,51 +16,6 @@ const mentionOf = (route: string): string => commands[route]!.mention;
 // justified: both context-menu registries are empty in tests, same as above
 const userMenus = ContextMenus.user as Record<string, ContextMenuInfo>;
 const messageMenus = ContextMenus.message as Record<string, ContextMenuInfo>;
-
-type DeployedEntry = [id: string, name: string, type?: ApplicationCommandType];
-
-function deployed(entries: DeployedEntry[]): Map<string, APIApplicationCommand> {
-    const built = new Map<string, APIApplicationCommand>();
-    // justified: only the id, name, and type are read downstream
-    for (const [id, name, type = ApplicationCommandType.ChatInput] of entries)
-        built.set(id, { id, name, type } as unknown as APIApplicationCommand);
-    return built;
-}
-
-function guildBucket(guildId: string, entries: DeployedEntry[]): Map<string, Map<string, APIApplicationCommand>> {
-    const guilds = new Map<string, Map<string, APIApplicationCommand>>();
-    guilds.set(guildId, deployed(entries));
-    return guilds;
-}
-
-function ping(): SlashCommandBuilder {
-    return new SlashCommandBuilder().setName('ping').setDescription('Replies with Pong!');
-}
-
-function grouped(): SlashCommandBuilder {
-    const builder = new SlashCommandBuilder().setName('mod').setDescription('moderation');
-    builder.addSubcommandGroup((group) =>
-        group
-            .setName('case')
-            .setDescription('cases')
-            .addSubcommand((sub) => sub.setName('close').setDescription('close a case'))
-    );
-    return builder;
-}
-
-function userMenu(name = 'View Profile'): ContextMenuCommandBuilder {
-    return new ContextMenuCommandBuilder().setName(name).setType(ApplicationCommandType.User);
-}
-
-function messageMenu(name = 'Report Message'): ContextMenuCommandBuilder {
-    return new ContextMenuCommandBuilder().setName(name).setType(ApplicationCommandType.Message);
-}
-
-function withSubcommand(): SlashCommandBuilder {
-    const builder = new SlashCommandBuilder().setName('ban').setDescription('ban');
-    builder.addSubcommand((sub) => sub.setName('list').setDescription('list bans'));
-    return builder;
-}
 
 describe('CommandInjector', () => {
     it('links a global command to a clickable mention', () => {
@@ -318,6 +274,19 @@ describe('CommandInjector', () => {
             expect(userMenus['Inspect User']?.id).toBe('2');
             expect(() => userMenus['View Profile']).toThrow();
         });
+    });
+
+    it('warns "user menu" for a deployed user menu that has no command in code', () => {
+        const warn = vi.fn();
+        // justified: warnLinks only calls warn
+        const logger = { warn } as unknown as ILogger;
+
+        warnLinks(logger, {
+            multiGuild: [],
+            notInCode: [{ name: 'probe', type: ApplicationCommandType.User }]
+        });
+
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('user menu'));
     });
 
     it('takes each nested route description from its own subcommand', () => {

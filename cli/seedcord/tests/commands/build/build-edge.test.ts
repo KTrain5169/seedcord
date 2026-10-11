@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { appendFile, mkdir, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
 import { cloudflare } from '@cloudflare/vite-plugin';
@@ -7,16 +7,24 @@ import { SeedcordErrorCode } from '@seedcord/errors';
 import { preview } from 'vite';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { BuildRunner } from '#commands/build/BuildRunner';
-import { quietSteps } from '#core/output/quietSteps';
-
-import { copyEdgeBot, copyEdgeBotForTest, writeSigningEnv } from './edgeBot';
+import { copyEdgeBot, copyEdgeBotForTest, edgeBuildRunner, fakeDiscord, writeSigningEnv } from './edgeBot';
 
 import type { BuildResult } from '#commands/build/BuildRunner';
 import type { SignRequest } from './edgeBot';
 
 const WRANGLER = join(import.meta.dirname, '../../../node_modules/wrangler/bin/wrangler.js');
 const PING = '{"type":1}';
+
+const HELLO_COMMAND = `import { BuilderComponent, RegisterCommand } from '@seedcord/http';
+
+export class Hello extends BuilderComponent<'command'> {
+    public constructor() {
+        super('command');
+        this.instance.setName('hello').setDescription('Says hello');
+    }
+}
+RegisterCommand('global')(Hello);
+`;
 
 describe('seedcord build on an edge bot', () => {
     let projectDir: string;
@@ -26,8 +34,9 @@ describe('seedcord build on an edge bot', () => {
 
     beforeAll(async () => {
         ({ projectDir, remove } = await copyEdgeBot());
-        sign = await writeSigningEnv(projectDir);
-        result = await BuildRunner.create(quietSteps).run(projectDir);
+        const signing = await writeSigningEnv(projectDir);
+        sign = signing.sign;
+        result = await edgeBuildRunner(fakeDiscord(signing.publicKey)).run(projectDir);
     }, 120_000);
 
     afterAll(() => remove());
@@ -47,7 +56,7 @@ describe('seedcord build on an edge bot', () => {
         expect(status).toBe(0);
     }, 60_000);
 
-    it('answers a signed PING once it loads its handlers from the built files', async () => {
+    it('answers a PING signed with the key discord returned at build time', async () => {
         const server = await preview({
             root: projectDir,
             configFile: false,
@@ -79,7 +88,7 @@ describe('seedcord build on an edge bot with files it never loads', () => {
         await mkdir(join(projectDir, 'src/scripts'));
         await writeFile(join(projectDir, 'src/scripts/oneOff.ts'), 'setTimeout(() => undefined, 1);\n');
 
-        await expect(BuildRunner.create(quietSteps).run(projectDir)).resolves.toBeDefined();
+        await expect(edgeBuildRunner().run(projectDir)).resolves.toBeDefined();
     }, 120_000);
 
     it('passes a named export of the instance file through to the worker', async () => {
@@ -93,28 +102,44 @@ describe('seedcord build on an edge bot with files it never loads', () => {
         };
         await writeFile(join(projectDir, 'wrangler.jsonc'), JSON.stringify(wrangler));
 
-        await expect(BuildRunner.create(quietSteps).run(projectDir)).resolves.toBeDefined();
+        await expect(edgeBuildRunner().run(projectDir)).resolves.toBeDefined();
     }, 120_000);
 
     it('builds an instance file with a top-level await', async () => {
         const projectDir = await copyEdgeBotForTest();
         await appendFile(join(projectDir, 'src/bot.ts'), '\nawait Promise.resolve();\n');
 
-        await expect(BuildRunner.create(quietSteps).run(projectDir)).resolves.toBeDefined();
+        await expect(edgeBuildRunner().run(projectDir)).resolves.toBeDefined();
     }, 120_000);
 
     it('leaves a constant the instance file exports out of the worker', async () => {
         const projectDir = await copyEdgeBotForTest();
         await appendFile(join(projectDir, 'src/bot.ts'), "\nexport const BOT_NAME = 'edge-bot';\n");
 
-        await expect(BuildRunner.create(quietSteps).run(projectDir)).resolves.toBeDefined();
+        await expect(edgeBuildRunner().run(projectDir)).resolves.toBeDefined();
+    }, 120_000);
+
+    it('throws CliEdgeCommandsNotDeployed with the file of a command discord has no id for', async () => {
+        const projectDir = await copyEdgeBotForTest();
+        await mkdir(join(projectDir, 'src/commands'));
+        await writeFile(join(projectDir, 'src/commands/Hello.ts'), HELLO_COMMAND);
+        const bot = await readFile(join(projectDir, 'src/bot.ts'), 'utf8');
+        await writeFile(
+            join(projectDir, 'src/bot.ts'),
+            bot.replace('commands: { path: null }', "commands: { path: resolve(import.meta.dirname, './commands') }")
+        );
+
+        await expect(edgeBuildRunner().run(projectDir)).rejects.toMatchObject({
+            code: SeedcordErrorCode.CliEdgeCommandsNotDeployed,
+            message: expect.stringContaining('Hello.ts') as string
+        });
     }, 120_000);
 
     it('throws CliEdgeRootHoldsConfig for a root that holds the seedcord config', async () => {
         const projectDir = await copyEdgeBotForTest();
         await writeFile(join(projectDir, 'seedcord.config.ts'), "export default { instance: './src/bot.ts' };\n");
 
-        await expect(BuildRunner.create(quietSteps).run(projectDir)).rejects.toMatchObject({
+        await expect(edgeBuildRunner().run(projectDir)).rejects.toMatchObject({
             code: SeedcordErrorCode.CliEdgeRootHoldsConfig
         });
     }, 120_000);
@@ -124,7 +149,7 @@ describe('seedcord build on an edge bot with files it never loads', () => {
         const config = { root: '..', instance: `./${basename(projectDir)}/src/bot.ts` };
         await writeFile(join(projectDir, 'seedcord.config.ts'), `export default ${JSON.stringify(config)};\n`);
 
-        await expect(BuildRunner.create(quietSteps).run(projectDir)).rejects.toMatchObject({
+        await expect(edgeBuildRunner().run(projectDir)).rejects.toMatchObject({
             code: SeedcordErrorCode.CliEdgeRootHoldsConfig
         });
     }, 120_000);
