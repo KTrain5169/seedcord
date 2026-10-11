@@ -52,24 +52,6 @@ function scoped(rootDir: string | undefined, command: string): string {
     return rootDir === undefined ? `vp exec ${command}` : `vp -C ${quote(rootDir)} exec ${command}`;
 }
 
-export function runPrettier(files: readonly string[]): string[] {
-    if (files.length === 0) return [];
-
-    const commands: string[] = [];
-
-    for (const info of groupByConfig(files, 'prettier.config.ts').values()) {
-        const fileList = quoteFiles(info.files);
-        if (!fileList) continue;
-
-        const base = ['prettier', '--ignore-unknown', '--write'];
-        if (info.configPath) base.push('--config', quote(info.configPath));
-
-        commands.push(scoped(info.rootDir, [...base, fileList].join(' ')));
-    }
-
-    return commands;
-}
-
 export function runEslint(files: readonly string[]): string[] {
     const linted = files.filter((file) => !file.endsWith('.d.ts'));
     const commands: string[] = [];
