@@ -1,4 +1,4 @@
-import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
+import { cloudflareTest } from '@cloudflare/vitest-plugin';
 import { aliasFromTsconfig, createVitestConfig } from '@seedcord/vitest-config';
 
 // the project entries are separate configs and do not inherit the top-level resolve

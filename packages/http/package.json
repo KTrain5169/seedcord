@@ -82,7 +82,7 @@
         "type-fest": "catalog:deps"
     },
     "devDependencies": {
-        "@cloudflare/vitest-pool-workers": "^0.22.0",
+        "@cloudflare/vitest-plugin": "^1.4.0",
         "@discordjs/builders": "catalog:deps",
         "@seedcord/eslint-config": "workspace:^",
         "@seedcord/tsconfig": "workspace:^",
