@@ -3,6 +3,15 @@
     "version": "0.1.18",
     "private": true,
     "type": "module",
+    "imports": {
+        "#tests/*": "./tests/*",
+        "#src/*": "./src/*",
+        "#components/*": "./src/components/*",
+        "#ui/*": "./src/components/ui/*",
+        "#lib/*": "./src/lib/*",
+        "#store/*": "./src/store/*",
+        "#styles/*": "./src/app/*"
+    },
     "scripts": {
         "dev": "next dev",
         "build": "next build",

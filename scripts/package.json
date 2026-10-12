@@ -10,7 +10,8 @@
     },
     "type": "module",
     "imports": {
-        "#src/*": "./src/*.ts"
+        "#tests/*": "./tests/*",
+        "#src/*": "./src/*"
     },
     "scripts": {
         "lint": "eslint '**/*.ts' --cache --no-error-on-unmatched-pattern",

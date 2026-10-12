@@ -28,6 +28,15 @@
     ],
     "type": "module",
     "types": "./dist/index.d.mts",
+    "imports": {
+        "#tests/*": "./tests/*",
+        "#src/*": "./src/*",
+        "#handlers/*": "./src/handlers/*",
+        "#inputs/*": "./src/inputs/*",
+        "#interfaces/*": "./src/interfaces/*",
+        "#reply/*": "./src/reply/*",
+        "#subscribers/*": "./src/subscribers/*"
+    },
     "exports": {
         ".": {
             "workerd": {

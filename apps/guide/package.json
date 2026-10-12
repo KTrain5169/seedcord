@@ -3,6 +3,13 @@
     "version": "0.0.2",
     "private": true,
     "type": "module",
+    "imports": {
+        "#tests/*": "./tests/*",
+        "#src/*": "./src/*",
+        "#components/*": "./src/components/*",
+        "#lib/*": "./src/lib/*",
+        "#styles/*": "./src/app/*"
+    },
     "scripts": {
         "dev": "cross-env TWOSLASH=0 next dev",
         "dev:twoslash": "cross-env NODE_OPTIONS=--max-old-space-size=8192 next dev",

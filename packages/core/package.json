@@ -27,6 +27,24 @@
     ],
     "type": "module",
     "types": "./dist/index.d.mts",
+    "imports": {
+        "#tests/*": "./tests/*",
+        "#src/*": "./src/*",
+        "#components/*": "./src/components/*",
+        "#customId/*": "./src/customId/*",
+        "#decorators/*": "./src/decorators/*",
+        "#gates/*": "./src/gates/*",
+        "#hmr/*": "./src/hmr/*",
+        "#inputs/*": "./src/inputs/*",
+        "#interfaces/*": "./src/interfaces/*",
+        "#node/*": "./src/node/*",
+        "#notices/*": "./src/notices/*",
+        "#pagination/*": "./src/pagination/*",
+        "#registries/*": "./src/registries/*",
+        "#reply/*": "./src/reply/*",
+        "#stops/*": "./src/stops/*",
+        "#subscribers/*": "./src/subscribers/*"
+    },
     "exports": {
         ".": {
             "import": {

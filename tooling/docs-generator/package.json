@@ -25,6 +25,9 @@
             ]
         }
     },
+    "imports": {
+        "#src/*": "./src/*"
+    },
     "exports": {
         ".": {
             "import": {
