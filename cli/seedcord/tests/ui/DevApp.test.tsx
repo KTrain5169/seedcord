@@ -1,6 +1,7 @@
 import React from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { NO_FILTER_ROOM } from '#ui/components/primitives/FilterPanel';
 import { NO_ROOM } from '#ui/components/primitives/ScrollableLogView';
 import { DevApp } from '#ui/DevApp';
 import { DevStore } from '#ui/stores/DevStore';
@@ -10,7 +11,9 @@ import { COMPACT_ROWS } from '#ui/tier';
 import { renderAt } from './renderAt';
 import { settled, stableFrame } from './settled';
 
+import type { LogFilters } from '#ui/devPrefs';
 import type { LogRecord } from '@seedcord/types';
+import type { ComponentProps } from 'react';
 
 const FULL = { rows: 40, columns: 120 };
 const COMPACT = { rows: COMPACT_ROWS, columns: 120 };
@@ -33,9 +36,35 @@ function squeezedStore(): DevStore {
     return store;
 }
 
-function view(size: { rows: number; columns: number }, store = runningStore()): ReturnType<typeof renderAt> {
-    return renderAt(<DevApp store={store} onReady={() => undefined} />, size);
+const NO_FILTERS: LogFilters = { channels: new Set(), levels: new Set() };
+
+function view(
+    size: { rows: number; columns: number },
+    props: Partial<ComponentProps<typeof DevApp>> = {}
+): ReturnType<typeof renderAt> {
+    return renderAt(
+        <DevApp store={runningStore()} onReady={() => undefined} initialFilters={NO_FILTERS} {...props} />,
+        size
+    );
 }
+
+// every channel the framework logs on
+const MANY_CHANNELS = [
+    'default',
+    'bot',
+    'lifecycle',
+    'health',
+    'interactions',
+    'events',
+    'commands',
+    'subscribers',
+    'errors',
+    'gates',
+    'plugins',
+    'hmr',
+    'cli',
+    'tsc'
+];
 
 function logOn(channel: string): LogRecord {
     return { level: 'info', message: `from ${channel}`, label: 'Bot', channel, timestamp: 1_700_000_000_000 };
@@ -67,7 +96,7 @@ describe('DevApp tiers', () => {
 
     it('replaces the rail with the status line once the collapsed form stops fitting', async () => {
         const { lastFrame, unmount } = view(LOGS);
-        await settled(() => expect(lastFrame()).toContain('resize'));
+        await settled(() => expect(lastFrame()).toContain('f filters'));
 
         const frame = lastFrame();
         expect(frame).toContain('seedcord');
@@ -81,7 +110,7 @@ describe('DevApp tiers', () => {
     it('names the pending notice on the status line', async () => {
         const store = runningStore();
         store.apply({ type: 'command-update-prompt', files: ['a.ts', 'b.ts'] });
-        const { lastFrame, unmount } = view(LOGS, store);
+        const { lastFrame, unmount } = view(LOGS, { store });
 
         await settled(() => expect(lastFrame()).toContain('2 commands updated'));
         unmount();
@@ -89,33 +118,31 @@ describe('DevApp tiers', () => {
 
     it('follows the terminal back up through the tiers', async () => {
         const { lastFrame, resize, unmount } = view(LOGS);
-        await settled(() => expect(lastFrame()).toContain('resize'));
+        await settled(() => expect(lastFrame()).toContain('f filters'));
 
         resize(FULL);
         await settled(() => expect(lastFrame()).toContain('▾ channels'));
 
-        expect(lastFrame()).not.toContain('resize');
+        expect(lastFrame()).not.toContain('f filters');
         unmount();
     });
 
-    // the chips are hidden below full, so a keypress that filters them changes what the pane shows with
-    // nothing on screen to explain it
-    it('ignores the filter keys once the chips are hidden', async () => {
-        const view = renderAt(<DevApp store={runningStore()} onReady={() => undefined} />, COMPACT);
-        await settled(() => expect(view.lastFrame()).toContain('▸ channels'));
+    it('ignores the filter keys while the chips are collapsed', async () => {
+        const app = view(COMPACT);
+        await settled(() => expect(app.lastFrame()).toContain('▸ channels'));
 
         for (const record of ['bot', 'hmr'].map(logOn)) LogStore.instance.onLog(record);
         await LogStore.instance.flush();
-        await settled(() => expect(view.lastFrame()).toContain('from hmr'));
+        await settled(() => expect(app.lastFrame()).toContain('from hmr'));
 
-        view.press(' ');
-        expect(await stableFrame(view.lastFrame)).toContain('from hmr');
+        app.press(' ');
+        expect(await stableFrame(app.lastFrame)).toContain('from hmr');
 
-        view.unmount();
+        app.unmount();
     });
 
     it('opens with a rule across the whole terminal, so nothing sits on the top edge', async () => {
-        const app = renderAt(<DevApp store={runningStore()} onReady={() => undefined} />, FULL);
+        const app = view(FULL);
         const frame = await stableFrame(app.lastFrame);
 
         expect(frame.split('\n')[0]).toBe('─'.repeat(FULL.columns));
@@ -128,7 +155,7 @@ describe('DevApp tiers', () => {
         const store = squeezedStore();
 
         for (let rows = 20; rows <= 34; rows++) {
-            const squeezed = view({ rows, columns: 120 }, store);
+            const squeezed = view({ rows, columns: 120 }, { store });
             const frame = await stableFrame(squeezed.lastFrame);
             squeezed.unmount();
 
@@ -137,3 +164,133 @@ describe('DevApp tiers', () => {
         }
     });
 }, 30_000);
+
+describe('DevApp filters below the full layout', () => {
+    it('opens the filters in compact on f and closes them on f again', async () => {
+        const app = view(COMPACT);
+        await settled(() => expect(app.lastFrame()).toContain('▸ channels'));
+
+        app.press('f');
+        await settled(() => expect(app.lastFrame()).toContain('▾ channels'));
+        expect(app.lastFrame()).toContain('back');
+
+        app.press('f');
+        await settled(() => expect(app.lastFrame()).toContain('▸ channels'));
+        app.unmount();
+    });
+
+    it('swaps the log pane for the filters in the logs layout on f', async () => {
+        const app = view(LOGS);
+        LogStore.instance.onLog(logOn('hmr'));
+        await LogStore.instance.flush();
+        await settled(() => expect(app.lastFrame()).toContain('from hmr'));
+
+        app.press('f');
+        await settled(() => expect(app.lastFrame()).toContain('▾ channels'));
+        expect(app.lastFrame()).not.toContain('from hmr');
+
+        app.press('f');
+        await settled(() => expect(app.lastFrame()).toContain('from hmr'));
+        app.unmount();
+    });
+
+    it('closes the filters on a trip through full', async () => {
+        const app = view(COMPACT);
+        await settled(() => expect(app.lastFrame()).toContain('▸ channels'));
+        app.press('f');
+        await settled(() => expect(app.lastFrame()).toContain('f back'));
+
+        app.resize(FULL);
+        await settled(() => expect(app.lastFrame()).toContain('q quit'));
+        app.resize(COMPACT);
+
+        await settled(() => expect(app.lastFrame()).toContain('▸ channels'));
+        app.unmount();
+    });
+
+    it('asks for more room and holds the filter keys when the chips do not fit', async () => {
+        const onFiltersChange = vi.fn();
+        const app = view({ rows: 9, columns: 79 }, { onFiltersChange });
+        for (const record of MANY_CHANNELS.map(logOn)) LogStore.instance.onLog(record);
+        await LogStore.instance.flush();
+
+        app.press('f');
+        await settled(() => expect(app.lastFrame()).toContain(NO_FILTER_ROOM));
+        app.press(' ');
+
+        expect(await stableFrame(app.lastFrame)).toContain(NO_FILTER_ROOM);
+        expect(onFiltersChange).not.toHaveBeenCalled();
+        app.unmount();
+    });
+
+    it('shows every chip once the panel has room', async () => {
+        const app = view({ rows: 12, columns: 79 });
+        for (const record of MANY_CHANNELS.map(logOn)) LogStore.instance.onLog(record);
+        await LogStore.instance.flush();
+
+        app.press('f');
+        await settled(() => expect(app.lastFrame()).toContain('o toggle'));
+
+        expect(app.lastFrame()).not.toContain(NO_FILTER_ROOM);
+        app.unmount();
+    });
+
+    it('ignores f in full, where the chips always show', async () => {
+        const app = view(FULL);
+        await settled(() => expect(app.lastFrame()).toContain('▾ channels'));
+
+        app.press('f');
+        app.resize(COMPACT);
+
+        await settled(() => expect(app.lastFrame()).toContain('▸ channels'));
+        app.unmount();
+    });
+
+    it('takes the filter keys once f opens the filters in compact', async () => {
+        const onFiltersChange = vi.fn();
+        const app = view(COMPACT, { onFiltersChange });
+        for (const record of ['bot', 'hmr'].map(logOn)) LogStore.instance.onLog(record);
+        await LogStore.instance.flush();
+        await settled(() => expect(app.lastFrame()).toContain('from hmr'));
+        const [focused] = LogStore.instance.getChannels();
+
+        app.press('f');
+        await settled(() => expect(app.lastFrame()).toContain('▾ channels'));
+        app.press(' ');
+
+        await settled(() =>
+            expect(onFiltersChange).toHaveBeenCalledWith({ channels: new Set([focused]), levels: new Set() })
+        );
+        app.unmount();
+    });
+});
+
+describe('DevApp saved filters', () => {
+    it('opens with the saved filters applied', async () => {
+        const app = view(FULL, { initialFilters: { channels: new Set(['hmr']), levels: new Set() } });
+
+        for (const record of ['bot', 'hmr'].map(logOn)) LogStore.instance.onLog(record);
+        await LogStore.instance.flush();
+        await settled(() => expect(app.lastFrame()).toContain('from hmr'));
+
+        expect(app.lastFrame()).not.toContain('from bot');
+        app.unmount();
+    });
+
+    it('reports the filters after a filter key', async () => {
+        const onFiltersChange = vi.fn();
+        const app = view(FULL, { onFiltersChange });
+
+        for (const record of ['bot', 'hmr'].map(logOn)) LogStore.instance.onLog(record);
+        await LogStore.instance.flush();
+        await settled(() => expect(app.lastFrame()).toContain('from hmr'));
+        const [focused] = LogStore.instance.getChannels();
+
+        app.press(' ');
+
+        await settled(() =>
+            expect(onFiltersChange).toHaveBeenCalledWith({ channels: new Set([focused]), levels: new Set() })
+        );
+        app.unmount();
+    });
+});

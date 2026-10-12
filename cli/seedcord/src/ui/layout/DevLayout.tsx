@@ -1,6 +1,7 @@
 import { Box } from 'ink';
 import React from 'react';
 
+import { FilterPanel } from '#ui/components/primitives/FilterPanel';
 import { LogHeader } from '#ui/components/primitives/LogHeader';
 import { NotificationStack } from '#ui/components/primitives/NotificationStack';
 import { Rule } from '#ui/components/primitives/Rule';
@@ -8,13 +9,15 @@ import { ScrollableLogView } from '#ui/components/primitives/ScrollableLogView';
 import { Sidebar } from '#ui/components/primitives/Sidebar';
 import { StatusLine } from '#ui/components/primitives/StatusLine';
 
+import type { LogFilters } from '#ui/devPrefs';
 import type { FilterCursor } from '#ui/filterCursor';
+import type { FilterView } from '#ui/hooks/useFilters';
+import type { PanelFit } from '#ui/hooks/usePanelFit';
 import type { ScrollApi } from '#ui/hooks/useScroll';
 import type { LogRow } from '#ui/logRows';
 import type { Notice } from '#ui/notices';
 import type { DevState } from '#ui/stores/DevStore';
 import type { Tier } from '#ui/tier';
-import type { LogLevel } from '@seedcord/types';
 import type { DOMElement } from 'ink';
 import type { ReactElement, Ref } from 'react';
 
@@ -30,9 +33,9 @@ export interface DevLayoutProps {
     readonly scroll: ScrollApi<LogRow>;
     readonly viewportHeight: number;
     readonly measured: boolean;
-    readonly columns: number;
-    readonly enabled: ReadonlySet<string>;
-    readonly enabledLevels: ReadonlySet<LogLevel>;
+    readonly filters: LogFilters;
+    readonly filterView: FilterView;
+    readonly panelFit: PanelFit;
     readonly cursor: FilterCursor;
     readonly interactive: boolean;
     readonly uptimeMs: number | null;
@@ -41,7 +44,7 @@ export interface DevLayoutProps {
 // notification cards render below the logs so stack traces have room
 export function DevLayout(props: DevLayoutProps): ReactElement {
     const { state, tier, notices, railRef, railWidth, logBoxRef, scroll, viewportHeight, measured } = props;
-    const { columns, enabled, enabledLevels, cursor, interactive, uptimeMs } = props;
+    const { filters, filterView, panelFit, cursor, interactive, uptimeMs } = props;
     const railed = tier === 'full' || tier === 'compact';
 
     return (
@@ -50,14 +53,13 @@ export function DevLayout(props: DevLayoutProps): ReactElement {
                 <Sidebar
                     ref={railRef}
                     state={state}
-                    enabled={enabled}
-                    enabledLevels={enabledLevels}
+                    filters={filters}
                     uptimeMs={uptimeMs}
                     following={scroll.following}
                     interactive={interactive}
                     cursor={cursor}
                     width={railWidth}
-                    filtersOpen={tier === 'full'}
+                    view={filterView}
                 />
             ) : null}
             <Box
@@ -73,13 +75,30 @@ export function DevLayout(props: DevLayoutProps): ReactElement {
                 paddingLeft={railed ? 1 : 0}
                 overflow="hidden"
             >
-                {railed ? null : <StatusLine state={state} notices={notices} columns={columns} />}
+                {railed ? null : (
+                    <StatusLine
+                        state={state}
+                        notices={notices}
+                        filtered={filters.channels.size > 0 || filters.levels.size > 0}
+                        filtersShown={filterView === 'shown'}
+                    />
+                )}
                 {railed ? null : <Rule />}
-                <LogHeader following={scroll.following} below={scroll.below} />
-                {/* the notification stack is unbounded, so the pane keeps a row back for its own message */}
-                <Box ref={logBoxRef} flexGrow={1} minHeight={1} overflow="hidden">
-                    <ScrollableLogView visible={scroll.visible} viewportHeight={viewportHeight} measured={measured} />
-                </Box>
+                {!railed && filterView === 'shown' ? (
+                    <FilterPanel filters={filters} cursor={cursor} {...panelFit} />
+                ) : (
+                    <>
+                        <LogHeader following={scroll.following} below={scroll.below} />
+                        {/* the notification stack is unbounded, so the pane keeps a row back for its own message */}
+                        <Box ref={logBoxRef} flexGrow={1} minHeight={1} overflow="hidden">
+                            <ScrollableLogView
+                                visible={scroll.visible}
+                                viewportHeight={viewportHeight}
+                                measured={measured}
+                            />
+                        </Box>
+                    </>
+                )}
                 {railed ? <NotificationStack notices={notices} /> : null}
             </Box>
         </Box>

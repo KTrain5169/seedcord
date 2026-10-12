@@ -1,6 +1,8 @@
 import { TypedEventEmitter } from '@seedcord/event-emitter';
 import { assertNever } from '@seedcord/utils';
 
+import { isSessionLive } from './devPhase';
+
 import type { DevEvent } from '#commands/dev/runtime/events';
 import type { TunnelStatus } from '#commands/dev/tunnel/TunnelCoordinator';
 import type { DevPhase } from './devPhase';
@@ -23,6 +25,7 @@ export interface DevState {
     readonly tunnel: TunnelStatus | null;
     readonly quitArmed: boolean;
     readonly idleAnimation: boolean;
+    readonly liveSinceMs: number | null;
 }
 
 const INITIAL: DevState = {
@@ -36,7 +39,8 @@ const INITIAL: DevState = {
     port: null,
     tunnel: null,
     quitArmed: false,
-    idleAnimation: true
+    idleAnimation: true,
+    liveSinceMs: null
 };
 
 export class DevStore extends TypedEventEmitter<{ change: [] }> {
@@ -141,7 +145,9 @@ export class DevStore extends TypedEventEmitter<{ change: [] }> {
     }
 
     private patch(next: Partial<DevState>): void {
-        this.state = { ...this.state, ...next };
+        const merged = { ...this.state, ...next };
+        const liveSinceMs = isSessionLive(merged.phase) ? (this.state.liveSinceMs ?? Date.now()) : null;
+        this.state = { ...merged, liveSinceMs };
         this.emit('change');
     }
 }

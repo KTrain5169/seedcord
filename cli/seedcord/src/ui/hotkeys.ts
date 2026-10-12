@@ -3,36 +3,25 @@ import { focusedIn, moveCursor } from '#ui/filterCursor';
 import { isSessionLive } from '#ui/stores/devPhase';
 import { LogStore } from '#ui/stores/LogStore';
 
+import type { LogFilters } from '#ui/devPrefs';
 import type { CursorMove, FilterCursor } from '#ui/filterCursor';
+import type { FilterView } from '#ui/hooks/useFilters';
 import type { ScrollApi } from '#ui/hooks/useScroll';
 import type { LogRow } from '#ui/logRows';
 import type { DevState, DevStore } from '#ui/stores/DevStore';
-import type { LogLevel } from '@seedcord/types';
 import type { Key } from 'ink';
 
-// empty set means all. toggling every channel on collapses back to empty, keeping later channels visible by default
-function toggleChannel(prev: ReadonlySet<string>, channel: string, all: readonly string[]): ReadonlySet<string> {
-    const base = prev.size === 0 ? new Set(all) : new Set(prev);
-    if (base.has(channel)) base.delete(channel);
-    else base.add(channel);
-    return base.size === all.length ? new Set<string>() : base;
-}
+type FilterChange = <ItemT>(prev: ReadonlySet<ItemT>, item: ItemT, all: readonly ItemT[]) => ReadonlySet<ItemT>;
 
-function toggleLevel(prev: ReadonlySet<LogLevel>, level: LogLevel): ReadonlySet<LogLevel> {
-    const base = prev.size === 0 ? new Set(FILTER_LEVELS) : new Set(prev);
-    if (base.has(level)) base.delete(level);
-    else base.add(level);
-    return base.size === FILTER_LEVELS.length ? new Set<LogLevel>() : base;
-}
+// empty means every item, including channels that log later
+const toggle: FilterChange = (prev, item, all) => {
+    const base = new Set(prev.size === 0 ? all : prev);
+    if (base.has(item)) base.delete(item);
+    else base.add(item);
+    return all.every((each) => base.has(each)) ? new Set() : base;
+};
 
-// re-soloing the soloed item restores all (empty set = all)
-function soloChannel(prev: ReadonlySet<string>, channel: string): ReadonlySet<string> {
-    return prev.size === 1 && prev.has(channel) ? new Set<string>() : new Set([channel]);
-}
-
-function soloLevel(prev: ReadonlySet<LogLevel>, level: LogLevel): ReadonlySet<LogLevel> {
-    return prev.size === 1 && prev.has(level) ? new Set<LogLevel>() : new Set([level]);
-}
+const solo: FilterChange = (prev, item) => (prev.size === 1 && prev.has(item) ? new Set() : new Set([item]));
 
 interface HotkeyContext {
     readonly input: string;
@@ -41,13 +30,12 @@ interface HotkeyContext {
     readonly interactive: boolean;
     readonly scroll: ScrollApi<LogRow>;
     readonly store: DevStore;
-    readonly enabled: ReadonlySet<string>;
-    readonly setEnabled: (next: ReadonlySet<string>) => void;
-    readonly enabledLevels: ReadonlySet<LogLevel>;
-    readonly setEnabledLevels: (next: ReadonlySet<LogLevel>) => void;
+    readonly filters: LogFilters;
+    readonly setFilters: (next: LogFilters) => void;
+    readonly filterView: FilterView;
+    readonly toggleFilterView: () => void;
     readonly cursor: FilterCursor;
     readonly setCursor: (next: FilterCursor) => void;
-    readonly filtersOpen: boolean;
     readonly onQuit?: (() => Promise<void> | void) | undefined;
     readonly onDisconnect?: (() => Promise<void> | void) | undefined;
     readonly onRestart?: (() => Promise<void> | void) | undefined;
@@ -80,25 +68,27 @@ function handlePrompt(ctx: HotkeyContext): boolean {
     return true;
 }
 
-function applyAtCursor(
-    ctx: HotkeyContext,
-    channels: readonly string[],
-    onChannel: (prev: ReadonlySet<string>, channel: string, all: readonly string[]) => ReadonlySet<string>,
-    onLevel: (prev: ReadonlySet<LogLevel>, level: LogLevel) => ReadonlySet<LogLevel>
-): void {
+function applyAtCursor(ctx: HotkeyContext, channels: readonly string[], change: FilterChange): void {
+    const { filters } = ctx;
     if (ctx.cursor.group === 'channels') {
         const index = focusedIn(ctx.cursor, 'channels', channels.length);
         const channel = index === null ? undefined : channels[index];
-        if (channel !== undefined) ctx.setEnabled(onChannel(ctx.enabled, channel, channels));
+        if (channel === undefined) return;
+        ctx.setFilters({ ...filters, channels: change(filters.channels, channel, channels) });
         return;
     }
     const index = focusedIn(ctx.cursor, 'levels', FILTER_LEVELS.length);
     const level = index === null ? undefined : FILTER_LEVELS[index];
-    if (level !== undefined) ctx.setEnabledLevels(onLevel(ctx.enabledLevels, level));
+    if (level === undefined) return;
+    ctx.setFilters({ ...filters, levels: change(filters.levels, level, FILTER_LEVELS) });
 }
 
 function handleFilters(ctx: HotkeyContext): boolean {
-    if (!ctx.filtersOpen) return false;
+    if (ctx.input === 'f' && ctx.filterView !== 'always') {
+        ctx.toggleFilterView();
+        return true;
+    }
+    if (ctx.filterView === 'collapsed') return false;
 
     const channels = LogStore.instance.getChannels();
     const move = (dir: CursorMove): void =>
@@ -107,8 +97,8 @@ function handleFilters(ctx: HotkeyContext): boolean {
     if (ctx.key.leftArrow) move('left');
     else if (ctx.key.rightArrow) move('right');
     else if (ctx.key.tab) move('switch');
-    else if (ctx.input === ' ') applyAtCursor(ctx, channels, soloChannel, soloLevel);
-    else if (ctx.input === 'o') applyAtCursor(ctx, channels, toggleChannel, toggleLevel);
+    else if (ctx.input === ' ') applyAtCursor(ctx, channels, solo);
+    else if (ctx.input === 'o') applyAtCursor(ctx, channels, toggle);
     else return false;
     return true;
 }
