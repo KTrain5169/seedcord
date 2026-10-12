@@ -3,13 +3,13 @@ import { OXFMT_CONFIG } from './rules/oxfmt-config';
 
 export interface CreateOxfmtConfigOptions {
     /**
-     * When provided, layers in `prettier-plugin-tailwindcss` and its class-sorting options.
-     * Omit it to get the base seedcord prettier config unchanged.
+     * Whether or not to sort Tailwind classes with Oxfmt.
+     * Omit it to get the base seedcord oxfmt config unchanged.
      */
-    tailwind?: Pick<SortTailwindcssConfig, 'stylesheet' | 'functions' | 'attributes' | 'preserveDuplicates'>;
+    tailwind?: SortTailwindcssConfig;
 
     /**
-     * Per-glob option overrides, passed through to prettier's own `overrides` field.
+     * Per-glob option overrides, passed through to oxfmt's own `overrides` field.
      */
     overrides?: OxfmtConfig['overrides'];
 }
@@ -22,15 +22,10 @@ export function createOxfmtConfig(options: CreateOxfmtConfigOptions = {}): Oxfmt
 
     if (!options.tailwind) return base;
 
-    const { stylesheet, functions = ['cn', 'tw'], attributes, preserveDuplicates = false } = options.tailwind;
+    const { functions = ['cn', 'tw'], preserveDuplicates = false, ...rest } = options.tailwind;
 
     return {
         ...base,
-        sortTailwindcss: {
-            functions,
-            preserveDuplicates,
-            ...(stylesheet ? { stylesheet } : {}),
-            ...(attributes ? { attributes } : {})
-        }
+        sortTailwindcss: { functions, preserveDuplicates, ...rest }
     };
 }
