@@ -206,11 +206,8 @@ const messages = {
     [SeedcordErrorCode.PluginKyselyInvalidStepCount]: () => 'Migration step count must be a non-negative integer.',
     [SeedcordErrorCode.PluginKyselyUnknownDirection]: (direction: unknown) =>
         `Unknown migration direction: ${String(direction)}.`,
-    [SeedcordErrorCode.PluginKyselyUnresolvedMigrationsPath]: (label: string) =>
-        `Unable to resolve migrations at path: ${label}.`,
-    [SeedcordErrorCode.PluginKyselyNoMigrationFiles]: () => 'No migration files provided.',
     [SeedcordErrorCode.PluginKyselyInvalidMigrationModule]: (filePath: string) =>
-        `Migration file ${paint.path(filePath)} must export async functions up and down.`,
+        `${paint.path(filePath)} needs an up function because it is in the migrations folder. Export up, and down if you need it, by name or on a default export object. Move a helper file out of the folder.`,
     [SeedcordErrorCode.PluginKyselyNonErrorFailure]: (message: string) => `Migration failure: ${message}.`,
     [SeedcordErrorCode.PluginKyselyDisconnectFailed]: () =>
         'Failed to close the Postgres pool cleanly during shutdown.',
@@ -221,7 +218,7 @@ const messages = {
     [SeedcordErrorCode.PluginKyselyBootstrapFailed]: (databaseName: string) =>
         `Failed to ensure database ${databaseName} exists.`,
     [SeedcordErrorCode.PluginKyselyDuplicateMigrationName]: (name: string, first: string, second: string) =>
-        `${paint.path(first)} and ${paint.path(second)} are both the migration ${paint.sky(name)}. Kysely identifies a migration by its file name without the extension. Rename one file, or list only one of them.`,
+        `${paint.path(first)} and ${paint.path(second)} are both the migration ${paint.sky(name)}. A migration's name is its file name without the folder or extension. Rename one of the files.`,
 
     [SeedcordErrorCode.CliConfigInvalidExport]: () => 'Config file must default export an object.',
     [SeedcordErrorCode.CliConfigMissingInstance]: () =>

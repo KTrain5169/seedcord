@@ -8,8 +8,8 @@ import type { Except } from 'type-fest';
  * behave.
  */
 export interface KyselyMigrationsOptions {
-    /** Directory path, single file path, or array of migration files */
-    readonly path: string | string[];
+    /** Folder holding your migration files, subfolders included. A relative path resolves against `root` from `seedcord.config.ts`. */
+    readonly dir: string;
     /** Allow running migrations even if new ones are inserted out of order */
     readonly allowUnorderedMigrations?: boolean;
     /** Custom table name used to track executed migrations */
@@ -18,7 +18,7 @@ export interface KyselyMigrationsOptions {
     readonly migrationLockTableName?: string;
     /** Schema that contains the migration bookkeeping tables */
     readonly migrationTableSchema?: string;
-    /** Comparator that determines execution order for migrations */
+    /** Orders two migrations that ran at the same timestamp. Kysely runs pending migrations sorted by name with `Array.prototype.sort()`. */
     readonly nameComparator?: (nameA: string, nameB: string) => number;
     /** Behavior when the plugin connects. `true`/`undefined` runs to latest. */
     readonly onStartup?: boolean | MigrationOptions;
