@@ -13,7 +13,8 @@ export const OXFMT_CONFIG: OxfmtConfig = {
         '**/.turbo/**',
         '**/coverage/**',
         'pnpm-lock.yaml',
-        '**/seedcord-gen.d.ts'
+        '**/seedcord-gen.d.ts',
+        '**/.wrangler/**'
     ],
     tabWidth: 4,
     semi: true,

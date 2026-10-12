@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite-plus';
 
-import { runEslint } from './scripts/src/lint-staged.ts';
 import { createOxfmtConfig } from '@seedcord/eslint-config/oxfmt';
+
+import { runEslint } from './scripts/src/lint-staged.ts';
 
 export default defineConfig({
     staged: {
@@ -10,12 +11,38 @@ export default defineConfig({
     },
     fmt: createOxfmtConfig({
         overrides: [
-            { files: ['*.yml', '*.yaml'], options: { tabWidth: 2 } },
+            {
+                files: ['*.yml', '*.yaml'],
+                options: { tabWidth: 2 }
+            },
             {
                 files: ['tooling/ui/**/*.{ts,tsx,json,md,css}'],
                 options: {
                     sortTailwindcss: { stylesheet: './tooling/ui/src/styles/globals.css' }
                 }
+            },
+            {
+                files: ['apps/docs/**/*.{ts,tsx,json,md,css}'],
+                options: {
+                    sortTailwindcss: { stylesheet: './apps/docs/src/app/globals.css' }
+                }
+            },
+            {
+                files: ['apps/home/**/*.{ts,tsx,json,md,css}'],
+                options: {
+                    sortTailwindcss: { stylesheet: './apps/home/src/app/globals.css' }
+                }
+            },
+            {
+                files: ['apps/guide/**/*.{ts,tsx,json,md,css}'],
+                options: {
+                    sortTailwindcss: { stylesheet: './apps/guide/src/app/globals.css' }
+                }
+            },
+            {
+                // 68 characters is what the 680px code column fits at the 1280px shell
+                files: ['apps/guide/content/**/*.mdx'],
+                options: { printWidth: 68 }
             }
         ]
     })
