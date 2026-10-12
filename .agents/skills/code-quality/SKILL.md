@@ -13,7 +13,7 @@ The seedcord monorepo enforces quality through layered checks. Most are tool-enf
 | --- | --- | --- |
 | **ESLint + TypeScript** (tool) | Type errors, lint violations, import order, formatting, rule violations | `vp -C <pkg> lint:fix && vp -C <pkg> tc` (or `vp run lint:fix && vp run tc` from repo root via turbo) |
 | **Vitest** (tool) | Behavior regressions | `vp -C <pkg> test` (only after lint + tc pass) |
-| **Prettier** (tool) | Formatting | `vp -C <pkg> fmt` / `fmt:check` |
+| **Oxfmt** (tool) | Formatting | `vp -C <pkg> fmt` / `fmt:check` |
 | **changesets** (tool) | Missing version bump on published packages | `vp run cs` when touching a published package. `vp run cs:status` to check |
 | **React 19 antipatterns** (tool) | Mutable deps, index keys, deprecated APIs, hydration mismatches, hand-rolled `useContext`, giant components | `vp run react-doctor --verbose` from repo root. Configured via `doctor.config.ts`. Run deliberately, NOT on every `prePush` (it's slow + interactive). Use the verbose flag for per-file diagnostics. |
 | **Dead code / unused deps** (tool) | Unused files, exports, types, deps, devDeps, binaries | `vp run knip` from repo root. Configured via `knip.json`. Run deliberately, NOT on every `prePush`. Triage false positives into `knip.json` `ignoreDependencies` / `ignoreBinaries` / extra `entry` patterns with a comment explaining why. |

@@ -78,9 +78,9 @@ If you find yourself adding a test in `src/`, putting setup in a non-conventiona
 
 ### 6. Was this asked for?
 
-If you're tempted to add a tsup `external` block, a custom prettier plugin, a "performance" optimization, a config tweak, a feature flag, a backward-compat shim, an abstraction, or anything else that wasn't in the task description: **don't.** Scope discipline is non-negotiable.
+If you're tempted to add a tsdown `deps.neverBundle` block, a "performance" optimization, a config tweak, a feature flag, a backward-compat shim, an abstraction, or anything else that wasn't in the task description: **don't.** Scope discipline is non-negotiable.
 
-If you genuinely think the addition is needed, surface it as a question to the user _before_ implementing. "I'm about to add X to tsup.config because Y. Does that match what you want?" is cheap. Adding it silently and getting reviewed at PR time is expensive, because the diff buries the question in 200 lines of legitimate changes and the user can't tell what's their requirement and what's your improvisation.
+If you genuinely think the addition is needed, surface it as a question to the user _before_ implementing. "I'm about to add X to vite.config because Y. Does that match what you want?" is cheap. Adding it silently and getting reviewed at PR time is expensive, because the diff buries the question in 200 lines of legitimate changes and the user can't tell what's their requirement and what's your improvisation.
 
 ### 7. Are you using a new npm package?
 
