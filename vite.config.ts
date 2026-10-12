@@ -1,7 +1,5 @@
 import { defineConfig } from 'vite-plus';
 
-import { createOxfmtConfig } from '@seedcord/eslint-config/oxfmt';
-
 import { runEslint } from './scripts/src/lint-staged.ts';
 
 export default defineConfig({
@@ -9,7 +7,36 @@ export default defineConfig({
         '*': 'vp fmt --no-error-on-unmatched-pattern',
         '*.{ts,tsx,js,jsx,cjs,mjs}': runEslint
     },
-    fmt: createOxfmtConfig({
+    fmt: {
+        // importing the defaults with createOxfmtConfig() ignores that
+        // templates are apart of ignorePatterns and formats them anyway
+        ignorePatterns: [
+            'node_modules/**',
+            '.eslintcache',
+            '.eslintrc.js',
+            '.env',
+            'turbo/generators/templates/**',
+            'cli/create-seedcord/templates/**',
+            '**/.next/**',
+            '**/dist/**',
+            '**/.turbo/**',
+            '**/coverage/**',
+            'pnpm-lock.yaml',
+            '**/seedcord-gen.d.ts',
+            '**/.wrangler/**'
+        ],
+        tabWidth: 4,
+        semi: true,
+        singleQuote: true,
+        trailingComma: 'none',
+        printWidth: 120,
+        bracketSpacing: true,
+        arrowParens: 'always',
+        endOfLine: 'lf',
+        useTabs: false,
+        quoteProps: 'as-needed',
+        bracketSameLine: false,
+        proseWrap: 'never',
         overrides: [
             {
                 files: ['*.yml', '*.yaml'],
@@ -73,5 +100,5 @@ export default defineConfig({
                 options: { printWidth: 68 }
             }
         ]
-    })
+    }
 });
