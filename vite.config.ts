@@ -23,6 +23,7 @@ export default defineConfig({
             '**/coverage/**',
             'pnpm-lock.yaml',
             '**/seedcord-gen.d.ts',
+            '**/.seedcord/**',
             '**/.wrangler/**'
         ],
         tabWidth: 4,
