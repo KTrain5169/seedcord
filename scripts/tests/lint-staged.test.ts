@@ -16,7 +16,7 @@ describe('lint-staged commands', () => {
     it('runs eslint on a staged file from the folder of its nearest eslint config', () => {
         expect(argvOf(runEslint([FILE]))).toEqual([
             [
-                'pnpm',
+                'vp',
                 '-C',
                 PACKAGE,
                 'exec',
