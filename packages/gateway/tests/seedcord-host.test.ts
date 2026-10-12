@@ -2,7 +2,7 @@ import { ShutdownPhase, shutdownOf, StartupPhase } from '@seedcord/core/node/int
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { LoggerChannelRegistry } from '@seedcord/logger';
 import { Events } from 'discord.js';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vite-plus/test';
 
 import { Plugin } from '#src/Plugin';
 import { Seedcord } from '#src/Seedcord';

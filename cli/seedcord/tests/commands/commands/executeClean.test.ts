@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, type Mock } from 'vitest';
+import { describe, expect, it, vi, type Mock } from 'vite-plus/test';
 
 import { emptyOutcome, executeClean, LARGE_BOT_THRESHOLD } from '#commands/commands/executeClean';
 

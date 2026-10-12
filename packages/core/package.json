@@ -95,9 +95,9 @@
         "fmt": "vp fmt --write '**/*.{ts,tsx,json,md}' --no-error-on-unmatched-pattern",
         "fmt:check": "vp fmt --check '**/*.{ts,tsx,json,md}' --no-error-on-unmatched-pattern",
         "tc": "tsgo --noEmit",
-        "test": "vitest run",
-        "test:watch": "vitest dev",
-        "coverage": "vitest run --coverage"
+        "test": "vp test run",
+        "test:watch": "vp test dev",
+        "coverage": "vp test run --coverage"
     },
     "dependencies": {
         "@discordjs/builders": "catalog:deps",
@@ -119,7 +119,8 @@
         "@seedcord/vitest-config": "workspace:^",
         "envapt": "catalog:peer",
         "type-fest": "catalog:deps",
-        "vite": "catalog:deps"
+        "vite": "catalog:deps",
+        "vitest": "catalog:test"
     },
     "peerDependencies": {
         "envapt": "catalog:peer",

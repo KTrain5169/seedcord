@@ -6,7 +6,7 @@ import { BuilderComponent, RegisterCommand } from '@seedcord/core';
 import { SeedcordErrorCode, isSeedcordError } from '@seedcord/errors';
 import { HostAugmentTarget, HostPluginKeys, SeedcordBrand } from '@seedcord/types/internal';
 import { ApplicationCommandType } from 'discord.js';
-import { assert, describe, expect, it, onTestFinished } from 'vitest';
+import { assert, describe, expect, it, onTestFinished } from 'vite-plus/test';
 
 import { AugmentationBuilder } from '#commands/codegen/AugmentationBuilder';
 import { CodegenRunner } from '#commands/codegen/CodegenRunner';

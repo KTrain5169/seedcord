@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { NO_ROOM } from '#ui/components/primitives/ScrollableLogView';
 import { DevApp } from '#ui/DevApp';

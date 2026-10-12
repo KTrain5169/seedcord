@@ -1,6 +1,13 @@
 import { defineConfig } from 'vite-plus';
 
 export default defineConfig({
+    test: {
+      // Vitest v4 compatibility: preserve mock call history.
+      // Remove after tests no longer rely on calls from setup or earlier tests.
+      // https://viteplus.dev/guide/vitest-v5#remove-unneeded-compatibility-settings
+      // https://vitest.dev/guide/migration/#clearmocks-is-enabled-by-default
+      clearMocks: false
+    },
     // inlined to avoid circular dependency. Keep in sync with tooling/tsdown-config/src/index.ts.
     pack: {
         format: ['esm'],

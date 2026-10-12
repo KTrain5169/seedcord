@@ -1,6 +1,6 @@
 import { setDevChannel } from '@seedcord/core/internal';
 import { Plugin } from '@seedcord/core/plugin';
-import { describe, expect, afterEach, vi } from 'vitest';
+import { describe, expect, afterEach, vi } from 'vite-plus/test';
 
 import { commandRegistryOf } from '#bot/Bot';
 import { Seedcord } from '#src/Seedcord';
@@ -13,7 +13,7 @@ import '#tests/utils/mock-env';
 import type { Core } from '#interfaces/Core';
 import type { CommandRegistry } from '@seedcord/core/node/internal';
 import type { DevChannel, SeedcordCliEvents, SeedcordFrameworkEvents } from '@seedcord/types/internal';
-import type { Mock } from 'vitest';
+import type { Mock } from 'vite-plus/test';
 
 function registryOf(instance: Seedcord): CommandRegistry {
     const registry = commandRegistryOf(instance.bot);

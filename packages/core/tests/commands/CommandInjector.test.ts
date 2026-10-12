@@ -1,7 +1,7 @@
 import { ContextMenuCommandBuilder, SlashCommandBuilder } from '@discordjs/builders';
 import { isSeedcordError, SeedcordErrorCode } from '@seedcord/errors';
 import { ApplicationCommandType } from 'discord-api-types/v10';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 
 import { CommandInjector, Commands, ContextMenus } from '#src/commands/CommandInjector';
 

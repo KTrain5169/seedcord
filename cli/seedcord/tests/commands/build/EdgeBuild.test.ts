@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { assert, describe, expect, it } from 'vitest';
+import { assert, describe, expect, it } from 'vite-plus/test';
 
 import { EdgeBuild } from '#commands/build/builder/EdgeBuild';
 import { ProjectLoader } from '#core/config/ProjectLoader';

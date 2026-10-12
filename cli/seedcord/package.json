@@ -67,9 +67,9 @@
         "fmt": "vp fmt --write '**/*.{ts,tsx,json,md}' 'bin/**/*.mjs' --no-error-on-unmatched-pattern",
         "fmt:check": "vp fmt --check '**/*.{ts,tsx,json,md}' 'bin/**/*.mjs' --no-error-on-unmatched-pattern",
         "tc": "tsgo --noEmit",
-        "test": "vitest run",
-        "test:watch": "vitest dev",
-        "coverage": "vitest run --coverage"
+        "test": "vp test run",
+        "test:watch": "vp test dev",
+        "coverage": "vp test run --coverage"
     },
     "dependencies": {
         "@clack/prompts": "catalog:deps",
@@ -108,6 +108,7 @@
         "ink-testing-library": "^4.0.0",
         "tsx": "catalog:deps",
         "typescript": "catalog:peer",
+        "vitest": "catalog:test",
         "wrangler": "catalog:deps"
     },
     "peerDependencies": {

@@ -1,4 +1,4 @@
-import { describe, expect, afterEach, vi } from 'vitest';
+import { describe, expect, afterEach, vi } from 'vite-plus/test';
 
 import { commandRegistryOf, interactionsOf } from '#bot/Bot';
 import { Seedcord } from '#src/Seedcord';

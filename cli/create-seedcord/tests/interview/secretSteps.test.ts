@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { publicKeyStep } from '#interview/steps/publicKey';
 import { tokenStep } from '#interview/steps/token';

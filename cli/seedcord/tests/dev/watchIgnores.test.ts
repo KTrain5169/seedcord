@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { createServer, mergeConfig } from 'vite';
-import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 
 import { devServerConfig, logsIgnore } from '#commands/dev/runtime/devServerConfig';
 

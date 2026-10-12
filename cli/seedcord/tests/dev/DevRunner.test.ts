@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { DevRunner } from '#commands/dev/DevRunner';
 import { silentLogger } from '#tests/silentLogger';

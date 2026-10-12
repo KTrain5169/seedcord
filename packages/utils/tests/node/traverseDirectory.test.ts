@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vite-plus/test';
 
 import { readTextFiles, traverseDirectory } from '#src/node/directory';
 

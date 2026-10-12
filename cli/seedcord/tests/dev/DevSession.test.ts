@@ -1,6 +1,6 @@
 import { SeedcordErrorCode, isSeedcordError } from '@seedcord/errors';
 import { HostAugmentTarget, HostShutdown, HostStartup, HostVersion, SeedcordBrand } from '@seedcord/types/internal';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { DevSession } from '#commands/dev/DevSession';
 import { DevStore } from '#ui/stores/DevStore';

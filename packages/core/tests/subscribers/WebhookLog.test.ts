@@ -1,6 +1,6 @@
 import { Logger } from '@seedcord/logger';
 import { ComponentType } from 'discord-api-types/v10';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 
 import { PublishDefault } from '#src/subscribers/publishDefault';
 import { WebhookLog } from '#subscribers/bases/WebhookLog';

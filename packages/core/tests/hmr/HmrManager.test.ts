@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vite-plus/test';
 
 import { getDevChannel, setDevChannel } from '#hmr/devChannel';
 import { HmrManager } from '#hmr/HmrManager';

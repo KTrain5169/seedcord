@@ -1,7 +1,7 @@
 import { Box, Text } from 'ink';
 import { render } from 'ink-testing-library';
 import React, { useRef } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { settled } from '#tests/ui/settled';
 import { useMeasuredBox } from '#ui/hooks/useMeasuredBox';

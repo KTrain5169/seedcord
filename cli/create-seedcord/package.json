@@ -52,9 +52,9 @@
         "fmt": "vp fmt --write '**/*.{ts,tsx,json,md}' --no-error-on-unmatched-pattern",
         "fmt:check": "vp fmt --check '**/*.{ts,tsx,json,md}' --no-error-on-unmatched-pattern",
         "tc": "tsgo --noEmit",
-        "test": "vitest run",
-        "test:watch": "vitest dev",
-        "coverage": "vitest run --coverage"
+        "test": "vp test run",
+        "test:watch": "vp test dev",
+        "coverage": "vp test run --coverage"
     },
     "devDependencies": {
         "@clack/prompts": "catalog:deps",
@@ -68,7 +68,8 @@
         "handlebars": "^4.7.9",
         "package-manager-detector": "^1.8.0",
         "tsx": "catalog:deps",
-        "typescript": "catalog:peer"
+        "typescript": "catalog:peer",
+        "vitest": "catalog:test"
     },
     "engines": {
         "bun": ">=1.4.2",

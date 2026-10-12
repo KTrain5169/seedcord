@@ -1,5 +1,5 @@
 import { SeedcordErrorCode, isSeedcordError } from '@seedcord/errors';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import { requireAnswer } from '#interview/steps/requireAnswer';
 

@@ -65,6 +65,7 @@ catalogs:
     vite: npm:@voidzero-dev/vite-plus-core@1.1.0
     wrangler: ^4.149.0
     yaml: ^2.9.1
+    vite-plus: 1.1.0
   eslint:
     '@typescript-eslint/rule-tester': ^8.65.0
     '@typescript-eslint/utils': ^8.65.0
@@ -102,9 +103,10 @@ catalogs:
     '@testing-library/jest-dom': ^7.0.1
     '@testing-library/react': ^16.3.3
     '@testing-library/user-event': ^14.6.7
-    '@vitest/coverage-v8': ^4.1.11
+    '@vitest/coverage-v8': 5.0.3
+    '@vitest/coverage-istanbul': 5.0.3
     jsdom: ^30.1.1
-    vitest: ^4.1.11
+    vitest: 5.0.3
   react:
     '@types/react': ^19.3.0
     '@types/react-dom': ^19.3.0

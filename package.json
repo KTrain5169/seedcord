@@ -84,7 +84,7 @@
         "tsx": "catalog:deps",
         "turbo": "^2.11.2",
         "typescript": "catalog:peer",
-        "vite-plus": "1.1.0",
+        "vite-plus": "catalog:deps",
         "vitest": "catalog:test"
     },
     "devEngines": {

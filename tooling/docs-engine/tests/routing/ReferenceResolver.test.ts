@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 import type { CrossPackageEntity, NodeLookup, PackageRegistry } from '#routing/lookup';
 import type { EntityTone } from '#src/tones';

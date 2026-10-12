@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { join } from 'node:path';
 
-import { type Mock, beforeEach, describe, expect, it, vi } from 'vitest';
+import { type Mock, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { HmrPlugin } from '#commands/dev/runtime/HmrPlugin';
 

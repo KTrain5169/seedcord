@@ -4,7 +4,7 @@ import { CustomId, InteractionKind } from '@seedcord/core';
 import { shutdownOf } from '@seedcord/core/node/internal';
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { Logger } from '@seedcord/logger';
-import { describe, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, expect, beforeEach, afterEach, vi } from 'vite-plus/test';
 
 import { botLoggerOf, interactionsOf } from '#bot/Bot';
 import { CONFIRM_DEF } from '#bot/confirm/reserved';

@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi } from 'vite-plus/test';
 
 vi.mock('kysely', async () => {
     const actual = await vi.importActual('kysely');

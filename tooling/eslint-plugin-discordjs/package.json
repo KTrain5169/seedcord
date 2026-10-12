@@ -49,9 +49,9 @@
         "fmt": "vp fmt --write '**/*.{ts,tsx,json,md}' --no-error-on-unmatched-pattern",
         "fmt:check": "vp fmt --check '**/*.{ts,tsx,json,md}' --no-error-on-unmatched-pattern",
         "tc": "tsgo --noEmit",
-        "test": "vitest run",
-        "test:watch": "vitest dev",
-        "coverage": "vitest run --coverage"
+        "test": "vp test run",
+        "test:watch": "vp test dev",
+        "coverage": "vp test run --coverage"
     },
     "dependencies": {
         "@typescript-eslint/utils": "catalog:eslint"
@@ -65,7 +65,8 @@
         "@typescript-eslint/rule-tester": "catalog:eslint",
         "dedent": "catalog:test",
         "discord.js": "catalog:peer",
-        "eslint": "catalog:eslint"
+        "eslint": "catalog:eslint",
+        "vitest": "catalog:test"
     },
     "peerDependencies": {
         "eslint": "^9.0.0 || ^10.0.0",

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 
 import { Notice } from '#stops/Notice';
 import { HandledException } from '#subscribers/default/HandledException';

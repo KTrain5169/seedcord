@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 
 import { HostPluginKeys } from '@seedcord/types/internal';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { ProjectLoader } from '#core/config/ProjectLoader';
 import { importInstance } from '#core/modules/importInstance';

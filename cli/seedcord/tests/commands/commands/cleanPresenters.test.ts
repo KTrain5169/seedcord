@@ -1,5 +1,5 @@
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { FlagPresenter } from '#commands/commands/cleanPresenters';
 import { silentLogger } from '#tests/silentLogger';

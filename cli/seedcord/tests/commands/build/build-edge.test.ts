@@ -5,7 +5,7 @@ import { basename, join } from 'node:path';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { preview } from 'vite';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 
 import { BuildRunner } from '#commands/build/BuildRunner';
 import { quietSteps } from '#core/output/quietSteps';

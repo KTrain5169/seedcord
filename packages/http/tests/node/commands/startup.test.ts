@@ -2,7 +2,7 @@ import path from 'node:path';
 
 import { Commands } from '@seedcord/core';
 import { ApplicationCommandType, Routes } from 'discord-api-types/v10';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { InteractionDispatcher } from '#src/dispatch/InteractionDispatcher';
 import { Seedcord } from '#src/node/Seedcord';

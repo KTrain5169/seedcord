@@ -42,9 +42,9 @@
         "fmt": "vp fmt --write '**/*.{ts,tsx,json,md,css}' --no-error-on-unmatched-pattern",
         "fmt:check": "vp fmt --check '**/*.{ts,tsx,json,md,css}' --no-error-on-unmatched-pattern",
         "tc": "tsgo --noEmit",
-        "test": "vitest run",
-        "test:watch": "vitest dev",
-        "coverage": "vitest run --coverage"
+        "test": "vp test run",
+        "test:watch": "vp test dev",
+        "coverage": "vp test run --coverage"
     },
     "dependencies": {
         "@radix-ui/react-dialog": "^1.1.23",
@@ -78,7 +78,8 @@
         "jsdom": "catalog:test",
         "next": "catalog:deps",
         "prettier-plugin-tailwindcss": "catalog:deps",
-        "tailwindcss": "catalog:deps"
+        "tailwindcss": "catalog:deps",
+        "vitest": "catalog:test"
     },
     "peerDependencies": {
         "next": "catalog:deps",

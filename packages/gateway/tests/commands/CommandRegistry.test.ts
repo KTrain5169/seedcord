@@ -1,5 +1,5 @@
 import { HostVersion } from '@seedcord/types/internal';
-import { describe, expect, afterEach, vi } from 'vitest';
+import { describe, expect, afterEach, vi } from 'vite-plus/test';
 
 import { commandRegistryOf } from '#bot/Bot';
 import { Seedcord } from '#src/Seedcord';

@@ -22,8 +22,8 @@
         "fmt": "vp fmt --write '**/*.{ts,tsx,json,md,css}' 'content/**/*.mdx' --no-error-on-unmatched-pattern",
         "fmt:check": "vp fmt --check '**/*.{ts,tsx,json,md,css}' 'content/**/*.mdx' --no-error-on-unmatched-pattern",
         "tc": "fumadocs-mdx && tsgo --noEmit",
-        "test": "vitest run",
-        "test:watch": "vitest dev"
+        "test": "vp test run",
+        "test:watch": "vp test dev"
     },
     "dependencies": {
         "@seedcord/docs-engine": "workspace:^",

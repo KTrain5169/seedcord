@@ -1,7 +1,7 @@
 import { stripVTControlCharacters } from 'node:util';
 
 import { Logger, LoggerChannelRegistry } from '@seedcord/logger';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { StepPrinter } from '#core/output/StepPrinter';
 

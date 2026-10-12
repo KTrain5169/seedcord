@@ -1,7 +1,7 @@
 import path from 'node:path';
 
 import { parseArgsStringToArgv } from 'string-argv';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { runEslint } from '#src/lint-staged';
 

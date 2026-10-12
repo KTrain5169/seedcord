@@ -1,5 +1,5 @@
 import { PublishDefault } from '@seedcord/core/internal';
-import { afterEach, describe, expect, vi } from 'vitest';
+import { afterEach, describe, expect, vi } from 'vite-plus/test';
 
 import { botLoggerOf, eventsOf } from '#bot/Bot';
 import { Seedcord } from '#src/Seedcord';

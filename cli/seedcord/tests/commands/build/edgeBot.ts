@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { cp, rm, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
-import { onTestFinished } from 'vitest';
+import { onTestFinished } from 'vite-plus/test';
 
 import { FAKE_TOKEN } from './smoke';
 
