@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 
-import { isInside } from './paths';
+import { isInside, resolveFromRoot } from './paths';
 
 import type * as fs from 'node:fs';
 
@@ -119,10 +119,35 @@ interface BuiltFileLoaders {
 // seedcord build writes a BuiltFileLoaders object here from the entry it generates
 export const BUILT_FILES_KEY = 'seedcord:utils:built-files';
 
+// a global because dev loads the bot with its own copy of this module
+const ROOT_SLOT = Symbol.for('seedcord:utils:root');
+
 const builtSources = new WeakMap<BuiltFileLoaders, BuiltFiles>();
 
+function builtFiles(): BuiltFileLoaders | undefined {
+    return Reflect.get(globalThis, Symbol.for(BUILT_FILES_KEY)) as BuiltFileLoaders | undefined;
+}
+
+export function setBotRoot(root: string | undefined): void {
+    if (root === undefined) Reflect.deleteProperty(globalThis, ROOT_SLOT);
+    else Reflect.set(globalThis, ROOT_SLOT, root);
+}
+
+function devRoot(): string | undefined {
+    const root: unknown = Reflect.get(globalThis, ROOT_SLOT);
+    return typeof root === 'string' ? root : undefined;
+}
+
+export function resolveFolder(dir: string): string {
+    if (path.isAbsolute(dir)) return path.resolve(dir);
+
+    const root = builtFiles()?.root ?? devRoot();
+    if (!root) throw new SeedcordError(SeedcordErrorCode.CoreDirectoryRootUnknown, [dir]);
+    return resolveFromRoot(root, dir);
+}
+
 function fileSource(): FileSource {
-    const built = Reflect.get(globalThis, Symbol.for(BUILT_FILES_KEY)) as BuiltFileLoaders | undefined;
+    const built = builtFiles();
     if (!built) return new DiskFiles();
 
     const source = builtSources.get(built) ?? new BuiltFiles(built);
@@ -145,8 +170,9 @@ interface TextFile {
 /**
  * Imports every .ts and .js file under a directory, recursively and sorted by path, yielding each module in turn.
  * It skips dotfiles and dot-folders. A `break` stops the walk before the next import.
+ * A relative `dir` resolves against `root` from seedcord.config.ts, whichever file calls this.
  *
- * @throws A **SeedcordError** when the directory cannot be read or a file throws while importing, or in a built bot when the directory is outside `root`.
+ * @throws A **SeedcordError** when the directory cannot be read or a file throws while importing, when `dir` is relative and the bot did not start through `seedcord dev` or its built output, or in a built bot when the directory is outside `root`.
  *
  * @example
  * ```ts
@@ -156,7 +182,7 @@ interface TextFile {
  * ```
  */
 export async function* traverseDirectory(dir: string): AsyncGenerator<ImportedFile> {
-    for (const [fullPath, load] of await fileSource().modules(dir)) {
+    for (const [fullPath, load] of await fileSource().modules(resolveFolder(dir))) {
         const relativePath = path.relative(process.cwd(), fullPath);
         let imported: Record<string, unknown>;
         try {
@@ -171,9 +197,9 @@ export async function* traverseDirectory(dir: string): AsyncGenerator<ImportedFi
 /**
  * Reads every file under a directory, recursively and sorted by path, yielding its text.
  * It skips every .ts, .js, or .map file. Dotfiles and dot-folders are skipped too.
- * In a built bot the files come from the build output.
+ * In a built bot the files come from the build output. A relative `dir` resolves against `root`, the same as {@link traverseDirectory}.
  *
- * @throws A **SeedcordError** when the directory or a file in it cannot be read, or in a built bot when the directory is outside `root`.
+ * @throws A **SeedcordError** when the directory or a file in it cannot be read, when `dir` is relative and the bot did not start through `seedcord dev` or its built output, or in a built bot when the directory is outside `root`.
  *
  * @example
  * ```ts
@@ -183,7 +209,7 @@ export async function* traverseDirectory(dir: string): AsyncGenerator<ImportedFi
  * ```
  */
 export async function* readTextFiles(dir: string): AsyncGenerator<TextFile> {
-    for (const [fullPath, load] of await fileSource().texts(dir)) {
+    for (const [fullPath, load] of await fileSource().texts(resolveFolder(dir))) {
         const relativePath = path.relative(process.cwd(), fullPath);
         let text: string;
         try {

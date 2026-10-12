@@ -51,6 +51,8 @@ const messages = {
     [SeedcordErrorCode.CoreFileUnreadable]: (file: string) => `${paint.path(file)} could not be read as text.`,
     [SeedcordErrorCode.CoreDirectoryOutsideRoot]: (dir: string, root: string) =>
         `${paint.path(dir)} is outside ${paint.bold('root')} (${paint.path(root)}). ${paint.bold('seedcord build')} bundles only the files under ${paint.bold('root')}. Move the folder under it, or set ${paint.bold('root')} in seedcord.config.ts to a folder that holds both.`,
+    [SeedcordErrorCode.CoreDirectoryRootUnknown]: (dir: string) =>
+        `${paint.path(dir)} is relative to ${paint.bold('root')}, and this process has no ${paint.bold('root')} to resolve it against. ${paint.bold('seedcord dev')} and a built bot set ${paint.bold('root')} from seedcord.config.ts. Start the bot one of those ways, or pass an absolute path like ${paint.sky(`resolve(import.meta.dirname, '${dir}')`)}.`,
     [SeedcordErrorCode.CorePluginGroupTaken]: (head: string, key: string) =>
         `${paint.sky(head)} is already taken on this bot, so ${paint.sky(key)} cannot nest under it. Pick another group name.`,
     [SeedcordErrorCode.CorePluginKeyMalformed]: (key: string, reason: string) =>
@@ -257,8 +259,6 @@ const messages = {
         `${count} command${count === 1 ? ' is' : 's are'} in your code with no deployed id on Discord, so the build cannot link ${count === 1 ? 'it' : 'them'}. Deploy with ${paint.bold('seedcord commands')}, then build again.\n${commands}`,
     [SeedcordErrorCode.CliBuildFolderProblems]: (count: number) =>
         `${count} folders in the bot config need fixing before ${paint.bold('seedcord build')} can bundle the bot. Each one is listed below.`,
-    [SeedcordErrorCode.CliBuildRelativeFolder]: (folder: string) =>
-        `${paint.path(folder)} in the bot config is a relative path. A built bot resolves it against the folder it starts in. Build the path from the bot file's folder, like ${paint.sky("resolve(import.meta.dirname, './handlers')")}.`,
     [SeedcordErrorCode.CliCodegenDuplicateRoute]: (route: string, firstFile: string, secondFile: string) =>
         `Two commands resolve to the same slash route \`${route}\`. Defined in ${paint.path(firstFile)} and ${paint.path(secondFile)}. Rename one.`,
     [SeedcordErrorCode.CliCommandsDirUnreadable]: (dir: string, reason: string) =>

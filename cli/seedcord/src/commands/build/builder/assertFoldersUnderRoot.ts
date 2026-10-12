@@ -1,9 +1,8 @@
-import { isAbsolute } from 'node:path';
-
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError, throwSingleOrAggregate } from '@seedcord/errors/internal';
 import { isInside } from '@seedcord/utils/node/internal';
 
+import type { Project } from '#core/project/Project';
 import type { EventsConfig } from '@seedcord/gateway';
 import type { BotConfig, CommandsConfig, Config, InteractionsConfig, SubscribersConfig } from '@seedcord/types';
 
@@ -23,17 +22,17 @@ function configuredFolders({ bot, subscribers }: Config): string[] {
     });
 }
 
-function* folderProblems(config: Config, root: string): Generator<SeedcordError> {
+function* folderProblems(config: Config, project: Project): Generator<SeedcordError> {
+    const { root } = project.config;
     for (const folder of configuredFolders(config)) {
-        if (!isAbsolute(folder)) {
-            yield new SeedcordError(SeedcordErrorCode.CliBuildRelativeFolder, [folder]);
-        } else if (!isInside(root, folder)) {
-            yield new SeedcordError(SeedcordErrorCode.CoreDirectoryOutsideRoot, [folder, root]);
+        const resolved = project.fromRoot(folder);
+        if (!isInside(root, resolved)) {
+            yield new SeedcordError(SeedcordErrorCode.CoreDirectoryOutsideRoot, [resolved, root]);
         }
     }
 }
 
 // plugin folders get only the runtime check in @seedcord/utils
-export function assertFoldersUnderRoot(config: Config, root: string): void {
-    throwSingleOrAggregate([...folderProblems(config, root)], SeedcordErrorCode.CliBuildFolderProblems);
+export function assertFoldersUnderRoot(config: Config, project: Project): void {
+    throwSingleOrAggregate([...folderProblems(config, project)], SeedcordErrorCode.CliBuildFolderProblems);
 }

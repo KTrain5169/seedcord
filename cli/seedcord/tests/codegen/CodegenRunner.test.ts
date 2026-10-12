@@ -11,8 +11,8 @@ import { assert, describe, expect, it, onTestFinished } from 'vitest';
 import { AugmentationBuilder } from '#commands/codegen/AugmentationBuilder';
 import { CodegenRunner } from '#commands/codegen/CodegenRunner';
 import { quietSteps } from '#core/output/quietSteps';
+import { Project } from '#core/project/Project';
 
-import type { ProjectLoader } from '#core/config/ProjectLoader';
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { ModuleLoader } from '#core/modules/ModuleLoader';
 import type { ILogger } from '@seedcord/types';
@@ -60,15 +60,9 @@ function runnerWith(
     importModule: (entryPath: string) => Promise<unknown>,
     logger: ILogger
 ): CodegenRunner {
-    // justified: codegen reaches the loader through open() and the returned importModule
-    const projectLoader = {
-        open: () =>
-            Promise.resolve({
-                config,
-                modules: { importModule } as ModuleLoader,
-                [Symbol.asyncDispose]: () => Promise.resolve()
-            })
-    } as unknown as ProjectLoader;
+    // justified: codegen reads only importModule off the loader
+    const modules = { importModule, [Symbol.asyncDispose]: () => Promise.resolve() } as ModuleLoader & AsyncDisposable;
+    const projectLoader = { open: () => Promise.resolve(new Project(config, modules)) };
 
     return new CodegenRunner({ steps: quietSteps, projectLoader, generator: new AugmentationBuilder(logger), logger });
 }
@@ -271,7 +265,7 @@ describe('CodegenRunner', () => {
         expect(warnings.some((warning) => warning.includes('locked'))).toBe(true);
     });
 
-    it('resolves the commands path relative to cwd', async () => {
+    it('resolves the commands path against root', async () => {
         const root = await tempDir('codegen-');
         const relativePath = 'no/such/rel';
 
@@ -283,7 +277,7 @@ describe('CodegenRunner', () => {
         }
 
         expect(caught).toMatchObject({ code: SeedcordErrorCode.CliCommandsDirUnreadable });
-        expect((caught as Error).message).toContain(resolve(process.cwd(), relativePath));
+        expect((caught as Error).message).toContain(resolve(root, relativePath));
     });
 
     it('throws CliInstanceInvalid when the instance is not a Seedcord instance', async () => {

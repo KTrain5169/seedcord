@@ -2,6 +2,7 @@ import { dirname, relative } from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
+import { setBotRoot } from '@seedcord/utils/node/internal';
 import { createServer, createServerModuleRunner, mergeConfig } from 'vite';
 
 import { seedcordDependents } from '#core/modules/seedcordDependents';
@@ -26,6 +27,7 @@ export class ViteDevRuntime implements DevRuntime {
         this.eventHandler = context.onEvent ?? null;
 
         const projectRoot = this.context.config.root;
+        setBotRoot(projectRoot);
 
         this.emit({ type: 'module-loading', path: projectRoot });
 
@@ -102,6 +104,7 @@ export class ViteDevRuntime implements DevRuntime {
         this.hmrPlugin = null;
         this.context = null;
         this.eventHandler = null;
+        setBotRoot(undefined);
     }
 
     private emit(event: DevEvent): void {

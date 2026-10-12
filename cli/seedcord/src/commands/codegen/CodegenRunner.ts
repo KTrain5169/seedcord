@@ -42,7 +42,7 @@ interface CodegenResult {
 
 interface CodegenRunnerDeps {
     readonly steps: Steps<CodegenStep>;
-    readonly projectLoader: ProjectLoader;
+    readonly projectLoader: Pick<ProjectLoader, 'open'>;
     readonly generator: AugmentationBuilder;
     readonly logger: ILogger;
 }
@@ -96,13 +96,12 @@ export class CodegenRunner {
         });
     }
 
-    private async resolveInstance({ modules, config }: Project): Promise<ResolvedInstance> {
-        const instance = await importInstance(modules, config.instance);
+    private async resolveInstance(project: Project): Promise<ResolvedInstance> {
+        const instance = await importInstance(project.modules, project.config.instance);
 
-        // the bot resolves commands.path against cwd
         const commandsPath = instance.config.bot.commands.path;
         return {
-            commandsDir: commandsPath ? resolve(process.cwd(), commandsPath) : undefined,
+            commandsDir: commandsPath ? project.fromRoot(commandsPath) : undefined,
             emojis: instance.config.bot.emojis ?? {},
             augmentTarget: instance[HostAugmentTarget],
             pluginKeys: instance[HostPluginKeys]
