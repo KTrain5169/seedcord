@@ -62,6 +62,7 @@
         "eslint-plugin-better-tailwindcss": "catalog:eslint",
         "eslint-plugin-mdx": "catalog:eslint",
         "eslint-plugin-tailwind-canonical-classes": "catalog:eslint",
+        "prettier": "catalog:deps",
         "prettier-plugin-tailwindcss": "catalog:deps",
         "tailwindcss": "catalog:deps",
         "typescript": "catalog:peer"
