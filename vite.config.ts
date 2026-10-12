@@ -52,7 +52,10 @@ export default defineConfig({
                     'tooling/ui/**/*.css'
                 ],
                 options: {
-                    sortTailwindcss: { stylesheet: './tooling/ui/src/styles/globals.css' }
+                    sortTailwindcss: {
+                        stylesheet: './tooling/ui/src/styles/globals.css',
+                        functions: ['cn', 'tw']
+                    }
                 }
             },
             {
@@ -65,7 +68,10 @@ export default defineConfig({
                     'apps/docs/**/*.css'
                 ],
                 options: {
-                    sortTailwindcss: { stylesheet: './apps/docs/src/app/globals.css' }
+                    sortTailwindcss: {
+                        stylesheet: './apps/docs/src/app/globals.css',
+                        functions: ['cn', 'tw']
+                    }
                 }
             },
             {
@@ -78,7 +84,10 @@ export default defineConfig({
                     'apps/home/**/*.css'
                 ],
                 options: {
-                    sortTailwindcss: { stylesheet: './apps/home/src/app/globals.css' }
+                    sortTailwindcss: {
+                        stylesheet: './apps/home/src/app/globals.css',
+                        functions: ['cn', 'tw']
+                    }
                 }
             },
             {
@@ -91,7 +100,10 @@ export default defineConfig({
                     'apps/guide/**/*.css'
                 ],
                 options: {
-                    sortTailwindcss: { stylesheet: './apps/guide/src/app/globals.css' }
+                    sortTailwindcss: {
+                        stylesheet: './apps/guide/src/app/globals.css',
+                        functions: ['cn', 'tw']
+                    }
                 }
             },
             {
