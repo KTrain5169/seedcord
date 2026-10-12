@@ -242,12 +242,12 @@ Until a dead-code scanner is wired into the repo, run this checklist on the pack
     # CLI / runtime deps
     rg "from ['\"]<pkg>" packages/<pkg>/src packages/<pkg>/tests --type ts --type tsx
     rg "require\(['\"]<pkg>" packages/<pkg>/src
-    # CLI deps invoked via pnpm exec
+    # CLI deps invoked via vp exec
     rg "<pkg>" packages/<pkg>/package.json
     ```
 
     - Nothing found in src/tests and nothing in scripts → **remove from package.json**, then `vp install`.
-    - Nothing found in src/tests but it appears as a `pnpm exec <pkg>` in scripts → it's a CLI dep, so leave it.
+    - Nothing found in src/tests but it appears as a `vp exec <pkg>` in scripts → it's a CLI dep, so leave it.
 
 2. **Unused exports.** Before adding `export` to a symbol, verify it's consumed outside the file. After moving code, re-grep:
 

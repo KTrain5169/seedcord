@@ -51,10 +51,10 @@ Run on `main` so the clean version reaches `latest`. Exiting pre mode and versio
 
 ```sh
 git switch main && git pull
-git merge next                       # resolve any changelog or pre.json conflicts
-pnpm changeset pre exit              # set pre.json to exit mode, then review the changesets in .changeset/pre/
+git merge next                    # resolve any changelog or pre.json conflicts
+vp run cs:pre:exit                # set pre.json to exit mode, then review the changesets in .changeset/pre/
 vp run cs:version                 # write the clean X.Y.Z and delete the superseded prerelease sections
-vp install                         # update the lockfile
+vp install                        # update the lockfile
 git add .changeset
 git commit -am "chore(release): version packages"
 git push origin main
@@ -73,7 +73,7 @@ Bring the clean version back and re-enter pre mode for the next cycle.
 ```sh
 git switch next && git pull
 git merge main                       # brings the clean versions and changelogs
-pnpm changeset pre enter next        # re-enter pre mode
+vp run cs:pre:enter                  # re-enter pre mode
 git add .changeset/pre.json          # pre enter writes a new file, -a would skip it
 git commit -m "chore: re-enter pre mode"
 git push origin next
@@ -101,7 +101,7 @@ npm dist-tag ls seedcord
 ## Don't
 
 - Don't run `changeset pre exit` or `cs:version` on `next` to make a stable release. Graduate on `main` (Flow 2). The gate refuses a non-pre publish on `next`.
-- Don't run `pnpm changeset version` directly. Node cannot load the TypeScript changelog module without `--import tsx`, and the changelogs skip the tidy pass.
+- Don't run `changeset version` directly. Node cannot load the TypeScript changelog module without `--import tsx`, and the changelogs skip the tidy pass.
 - Don't run `npm publish` or `pnpm publish` by hand, except for a new package's first release. CI publishes through changesets.
 - Don't push `main` while it is in pre mode. Exit pre mode first.
 - Don't let a new changeset land between versioning and the publish. The gate skips the publish while one is pending, and the next versioning run bumps past the skipped version.

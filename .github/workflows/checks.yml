@@ -180,7 +180,7 @@ jobs:
           bun run build
         working-directory: mocks/http
       - run: vp exec turbo build --filter='seedcord^...'
-      - run: pnpm exec vitest run tests/commands/build
+      - run: vp exec vitest run tests/commands/build
         working-directory: cli/seedcord
 
   audit:
