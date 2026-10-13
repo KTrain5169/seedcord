@@ -3,7 +3,13 @@ import { createServer } from 'node:http';
 
 import { attachmentsOf, bindBotColor, busLoggerOf, getDevChannel, HmrManager } from '@seedcord/core/internal';
 import { CoordinatedShutdown, CoordinatedStartup, ServerHost } from '@seedcord/core/node';
-import { CommandRegistry, DRAIN_TASK_TIMEOUT_MS, ShutdownPhase, StartupPhase } from '@seedcord/core/node/internal';
+import {
+    COMMAND_DEPLOY_TIMEOUT_MS,
+    CommandRegistry,
+    DRAIN_TASK_TIMEOUT_MS,
+    ShutdownPhase,
+    StartupPhase
+} from '@seedcord/core/node/internal';
 import { paint } from '@seedcord/errors';
 import { Logger } from '@seedcord/logger';
 import { installNodeDefaults } from '@seedcord/logger/node';
@@ -59,6 +65,7 @@ export class Seedcord extends ServerHost<'http'> implements SeedcordInstance {
     readonly #endpoint: NodeEndpoint;
     readonly #commandRegistry?: CommandRegistry;
     readonly #emojiInjector = new EmojiInjector(this);
+    readonly #emojisLoaded = Promise.withResolvers<boolean>();
     readonly #hmrManager: HmrManager;
     readonly #logger = new Logger('Server', { channel: 'bot' });
 
@@ -158,17 +165,24 @@ export class Seedcord extends ServerHost<'http'> implements SeedcordInstance {
         this.startup.addTask(StartupPhase.Login, 'interactions-engine', async () => {
             this.#service.prepareEngine(await publicKeyOf(this.rest));
         });
-        this.startup.addTask(StartupPhase.Login, 'emoji-injection', () => this.#emojiInjector.init());
+        this.startup.addTask(StartupPhase.Login, 'emoji-injection', (signal) => this.#injectEmojis(signal));
 
         const commandRegistry = this.#commandRegistry;
         if (commandRegistry) {
             // one task because tasks in a phase run concurrently and the deploy reads the id
-            this.startup.addTask(StartupPhase.Login, 'command-deploy', async () => {
-                await commandRegistry.init();
-                await commandRegistry.setCommands();
-                interactions?.warnUnhandledRoutes(commandRegistry.routeLeaves());
-                interactions?.warnUnhandledContextMenuRoutes(commandRegistry.contextMenuLeaves());
-            });
+            this.startup.addTask(
+                StartupPhase.Login,
+                'command-deploy',
+                async (signal) => {
+                    // emoji-injection reports why it failed
+                    if (!(await this.#emojisLoaded.promise)) return;
+                    await commandRegistry.init();
+                    await commandRegistry.setCommands(signal);
+                    interactions?.warnUnhandledRoutes(commandRegistry.routeLeaves());
+                    interactions?.warnUnhandledContextMenuRoutes(commandRegistry.contextMenuLeaves());
+                },
+                COMMAND_DEPLOY_TIMEOUT_MS
+            );
         }
 
         this.startup.addTask(StartupPhase.Ready, 'http-server', () => {
@@ -179,6 +193,17 @@ export class Seedcord extends ServerHost<'http'> implements SeedcordInstance {
         if (!Envapter.isTest) {
             this.startup.addTask(StartupPhase.Ready, 'identity', () => this.#fetchUsername());
         }
+    }
+
+    async #injectEmojis(signal: AbortSignal): Promise<void> {
+        signal.addEventListener('abort', () => this.#emojisLoaded.resolve(false), { once: true });
+        try {
+            await this.#emojiInjector.init();
+        } catch (error) {
+            this.#emojisLoaded.resolve(false);
+            throw error;
+        }
+        this.#emojisLoaded.resolve(true);
     }
 
     #registerShutdownTasks(): void {

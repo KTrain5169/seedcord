@@ -1,4 +1,11 @@
-import { CommandRegistry, DRAIN_TASK_TIMEOUT_MS, DRAIN_WINDOW_MS, ShutdownPhase } from '@seedcord/core/node/internal';
+import {
+    COMMAND_DEPLOY_TIMEOUT_MS,
+    CommandRegistry,
+    DRAIN_TASK_TIMEOUT_MS,
+    DRAIN_WINDOW_MS,
+    ShutdownPhase,
+    StartupPhase
+} from '@seedcord/core/node/internal';
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { SeedcordError, validateDiscordToken } from '@seedcord/errors/internal';
 import { Logger } from '@seedcord/logger';
@@ -19,7 +26,6 @@ const UNBIND_TIMEOUT_MS = 2000;
 const LOGOUT_TIMEOUT_MS = 2000;
 
 const loggerSlot = Symbol('seedcord:bot:logger');
-const initSlot = Symbol('seedcord:bot:init');
 const controllersSlot = Symbol('seedcord:bot:controllers');
 
 interface Controllers {
@@ -42,6 +48,7 @@ export class Bot implements HmrAware {
     /** @internal */
     readonly [loggerSlot]: Logger = this.#logger;
     #isInitialized = false;
+    readonly #readyToDeploy = Promise.withResolvers<boolean>();
 
     readonly #intents: BitFieldResolvable<GatewayIntentsString, number>;
     readonly #client: Client;
@@ -73,6 +80,7 @@ export class Bot implements HmrAware {
 
         this.#emojiInjector = new EmojiInjector(core);
 
+        this.#registerStartupTasks(core);
         this.#registerShutdownTasks(core);
     }
 
@@ -86,6 +94,23 @@ export class Bot implements HmrAware {
         const { application } = this.#client;
         if (!application) throw new SeedcordError(SeedcordErrorCode.CoreApplicationUnavailable);
         return application.id;
+    }
+
+    #registerStartupTasks(core: Core): void {
+        core.startup.addTask(StartupPhase.Login, 'bot-initialization', async (signal) => {
+            this.#logger.utils.initialization('Bot', 'start');
+            await this.#init(signal);
+            this.#logger.utils.initialization('Bot', 'end');
+        });
+
+        const registry = this.#commandRegistry;
+        if (!registry) return;
+        core.startup.addTask(
+            StartupPhase.Login,
+            'command-deploy',
+            (signal) => this.#deployCommands(registry, signal),
+            COMMAND_DEPLOY_TIMEOUT_MS
+        );
     }
 
     #registerShutdownTasks(core: Core): void {
@@ -112,31 +137,37 @@ export class Bot implements HmrAware {
         await Promise.allSettled([this.#interactions?.drain(DRAIN_WINDOW_MS), this.#events?.drain(DRAIN_WINDOW_MS)]);
     }
 
-    /** @internal */
-    public async [initSlot](): Promise<void> {
+    async #init(signal: AbortSignal): Promise<void> {
         if (this.#isInitialized) {
             return;
         }
         this.#isInitialized = true;
+        signal.addEventListener('abort', () => this.#readyToDeploy.resolve(false), { once: true });
 
-        const token = this.botToken;
+        try {
+            const token = this.botToken;
 
-        if (this.#interactions) await this.#interactions.init();
-        if (this.#events) await this.#events.init();
+            if (this.#interactions) await this.#interactions.init();
+            if (this.#events) await this.#events.init();
 
-        await this.#login(token);
-
-        await this.#emojiInjector.init();
-
-        if (!this.#commandRegistry) {
-            return;
+            await this.#login(token);
+            await this.#emojiInjector.init();
+        } catch (error) {
+            this.#readyToDeploy.resolve(false);
+            throw error;
         }
+        this.#readyToDeploy.resolve(true);
+    }
 
-        await this.#commandRegistry.init();
-        assertGuildsIntent(this.#intents, this.#commandRegistry.allCommands());
-        await this.#commandRegistry.setCommands();
-        this.#interactions?.warnUnhandledRoutes(this.#commandRegistry.routeLeaves());
-        this.#interactions?.warnUnhandledContextMenuRoutes(this.#commandRegistry.contextMenuLeaves());
+    async #deployCommands(registry: CommandRegistry, signal: AbortSignal): Promise<void> {
+        // bot-initialization reports why it failed
+        if (!(await this.#readyToDeploy.promise)) return;
+
+        await registry.init();
+        assertGuildsIntent(this.#intents, registry.allCommands());
+        await registry.setCommands(signal);
+        this.#interactions?.warnUnhandledRoutes(registry.routeLeaves());
+        this.#interactions?.warnUnhandledContextMenuRoutes(registry.contextMenuLeaves());
     }
 
     async #stop(): Promise<void> {
@@ -164,15 +195,11 @@ export class Bot implements HmrAware {
     }
 }
 
+// the gateway integration tests call these off a live host
 export function botLoggerOf(bot: Bot): Logger {
     return bot[loggerSlot];
 }
 
-export function initBot(bot: Bot): Promise<void> {
-    return bot[initSlot]();
-}
-
-// the gateway integration tests call these three off a live host
 export function interactionsOf(bot: Bot): InteractionDispatcher | undefined {
     return bot[controllersSlot].interactions;
 }

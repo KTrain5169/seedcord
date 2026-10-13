@@ -1,6 +1,7 @@
 import { sep } from 'node:path';
 
 import { SlashCommandBuilder } from '@discordjs/builders';
+import { RESTEvents } from '@discordjs/rest';
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 import { Logger } from '@seedcord/logger';
@@ -29,10 +30,28 @@ import type { CommandCtor } from '#src/commands/isCommandClass';
 import type { CommandBuilder, DeployResult } from '#src/commands/types';
 import type { Initializeable } from '#src/plugin/Plugin';
 import type { AllSubscriptions } from '#subscribers/types/Subscriptions';
+import type { RateLimitData } from '@discordjs/rest';
 import type { HmrAware, HmrUpdateEvent } from '@seedcord/types';
 import type { APIApplicationCommand } from 'discord-api-types/v10';
 
 type CommandArtifact = DeployTarget & { name: string };
+
+const MS_PER_SECOND = 1000;
+
+// discord's global command bucket allows 2 PUTs a minute
+// 75s covers a full wait plus the request itself
+export const COMMAND_DEPLOY_TIMEOUT_MS = 75_000;
+
+// @discordjs/rest checks the signal before it sends a request. Its rate-limit sleep ignores it
+function unlessAborted<ResultT>(request: Promise<ResultT>, signal: AbortSignal | undefined): Promise<ResultT> {
+    if (!signal) return request;
+    return new Promise((resolve, reject) => {
+        const stop = (): void => reject(new DOMException('The command deploy was aborted', 'AbortError'));
+        if (signal.aborted) stop();
+        signal.addEventListener('abort', stop, { once: true });
+        void request.then(resolve, reject).finally(() => signal.removeEventListener('abort', stop));
+    });
+}
 
 /**
  * Scans the command directory, builds each command, and PUTs the global and guild scopes to Discord.
@@ -214,12 +233,12 @@ export class CommandRegistry implements Initializeable, HmrAware {
     }
 
     /** @internal */
-    public async setCommands(): Promise<DeployResult> {
+    public async setCommands(signal?: AbortSignal): Promise<DeployResult> {
         const result: DeployResult = { global: new Map(), guilds: new Map() };
         const appId = this.core.applicationId;
 
         if (this.globalCommands.length > 0) {
-            const deployed = await this.put(Routes.applicationCommands(appId), this.globalCommands);
+            const deployed = await this.put(Routes.applicationCommands(appId), this.globalCommands, signal);
             result.global = indexById(deployed);
             const tag = this.globalCommands.length === 1 ? 'command' : 'commands';
             this.logger.utils.block(
@@ -230,7 +249,7 @@ export class CommandRegistry implements Initializeable, HmrAware {
         }
 
         for (const [guildId, commands] of this.guildCommands.entries()) {
-            const deployed = await this.putGuild(appId, guildId, commands);
+            const deployed = await this.putGuild(appId, guildId, commands, signal);
             result.guilds.set(guildId, indexById(deployed));
             const tag = commands.length === 1 ? 'command' : 'commands';
             this.logger.utils.block(
@@ -248,21 +267,37 @@ export class CommandRegistry implements Initializeable, HmrAware {
     private async putGuild(
         appId: string,
         guildId: string,
-        commands: readonly CommandBuilder[]
+        commands: readonly CommandBuilder[],
+        signal: AbortSignal | undefined
     ): Promise<APIApplicationCommand[]> {
         try {
-            return await this.put(Routes.applicationGuildCommands(appId, guildId), commands);
+            return await this.put(Routes.applicationGuildCommands(appId, guildId), commands, signal);
         } catch (error) {
             throw new SeedcordError(SeedcordErrorCode.CoreCommandGuildDeployFailed, [guildId], { cause: error });
         }
     }
 
-    private async put(route: `/${string}`, commands: readonly CommandBuilder[]): Promise<APIApplicationCommand[]> {
+    private async put(
+        route: `/${string}`,
+        commands: readonly CommandBuilder[],
+        signal: AbortSignal | undefined
+    ): Promise<APIApplicationCommand[]> {
         const body = commands.map((command) => command.toJSON());
         // read here because gateway assigns core.rest after this registry is constructed
         const { rest } = this.core;
-        // justified: the bulk-overwrite routes return the deployed command array
-        return (await rest.put(route, { body })) as APIApplicationCommand[];
+        const reportWait = (info: RateLimitData): void => {
+            if (info.method !== 'PUT' || !info.url.endsWith(route)) return;
+            const seconds = Math.ceil(info.timeToReset / MS_PER_SECOND);
+            this.logger.warn(`Discord rate-limited the command deploy. It continues in ${paint.amber(`${seconds}s`)}.`);
+        };
+
+        rest.on(RESTEvents.RateLimited, reportWait);
+        try {
+            // justified: the bulk-overwrite routes return the deployed command array
+            return (await unlessAborted(rest.put(route, { body, signal }), signal)) as APIApplicationCommand[];
+        } finally {
+            rest.off(RESTEvents.RateLimited, reportWait);
+        }
     }
 
     /** Every registered builder, global first. A guild command in N guilds appears once per guild. @internal */

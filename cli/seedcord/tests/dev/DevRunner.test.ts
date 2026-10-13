@@ -53,7 +53,8 @@ function fakeCodegen(writeFrom = vi.fn<CodegenRunner['writeFrom']>().mockResolve
 function makeRunner(
     codegen: FakeCodegen = fakeCodegen(),
     tunnel: TunnelRouter = fakeTunnel(),
-    codegenLogger: ILogger = silentLogger
+    codegenLogger: ILogger = silentLogger,
+    runtime: () => DevRuntime = readyRuntime
 ): DevRunner {
     const project = { config: devConfig, [Symbol.asyncDispose]: () => Promise.resolve() };
     return new DevRunner({
@@ -63,7 +64,7 @@ function makeRunner(
         codegen,
         codegenLogger,
         tunnel,
-        runtime: readyRuntime
+        runtime
     });
 }
 
@@ -136,6 +137,128 @@ describe('DevRunner quit', () => {
         await vi.advanceTimersByTimeAsync(3000);
 
         await expect(quitting).resolves.toBeUndefined();
+    });
+});
+
+interface SlowConfigRun {
+    readonly runner: DevRunner;
+    readonly store: DevStore;
+    readonly running: Promise<void>;
+    readonly start: Mock<() => Promise<void>>;
+    readonly openConfig: Mock;
+    readonly configRequested: Promise<undefined>;
+    readonly finishLoad: () => void;
+}
+
+// no session exists until finishLoad releases projectLoader.open
+function runWithSlowConfig(): SlowConfigRun {
+    const start = vi.fn(() => Promise.resolve());
+    const bot = { ...readyBot, start };
+    const { promise: configRequested, resolve: markRequested } = Promise.withResolvers<undefined>();
+    const { promise: configLoaded, resolve: release } = Promise.withResolvers<undefined>();
+    const project = { config: devConfig, [Symbol.asyncDispose]: () => Promise.resolve() };
+    const store = new DevStore();
+    const openConfig = vi.fn(async () => {
+        markRequested(undefined);
+        await configLoaded;
+        return project;
+    });
+    const runner = new DevRunner({
+        // justified: the session reads only these config fields
+        projectLoader: { open: openConfig } as unknown as Pick<ProjectLoader, 'open'>,
+        store,
+        codegen: fakeCodegen(),
+        codegenLogger: silentLogger,
+        tunnel: fakeTunnel(),
+        runtime: () => ({ ...readyRuntime(), loadEntry: () => Promise.resolve({ module: { default: bot } }) })
+    });
+    const running = runner.run();
+    return { runner, store, running, start, openConfig, configRequested, finishLoad: () => release(undefined) };
+}
+
+describe('DevRunner keys before a session exists', () => {
+    it('keeps the bot offline after d during the config load', async () => {
+        const { runner, store, running, start, configRequested, finishLoad } = runWithSlowConfig();
+        onTestFinished(async () => {
+            await runner.quit();
+            await running;
+        });
+
+        await configRequested;
+        await runner.disconnect();
+        finishLoad();
+
+        await vi.waitFor(() => expect(store.getState().phase).toBe('disconnected'));
+        expect(start).not.toHaveBeenCalled();
+    });
+
+    it('ends the run without starting the bot after q during the config load', async () => {
+        const { runner, running, start, configRequested, finishLoad } = runWithSlowConfig();
+
+        await configRequested;
+        const quitting = runner.quit();
+        finishLoad();
+        await quitting;
+        await running;
+
+        expect(start).not.toHaveBeenCalled();
+    });
+
+    it('reads the config again after r during the config load', async () => {
+        const { runner, running, start, openConfig, configRequested, finishLoad } = runWithSlowConfig();
+        onTestFinished(async () => {
+            await runner.quit();
+            await running;
+        });
+
+        await configRequested;
+        await runner.restart();
+        finishLoad();
+
+        await vi.waitFor(() => expect(start).toHaveBeenCalledOnce());
+        expect(openConfig).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('DevRunner restart', () => {
+    it('swaps in one new session when restarted while the bot starts', async () => {
+        let started = 0;
+        let stopped = 0;
+        // the first bot hangs in startup until it is aborted, every later one starts at once
+        const nextBot = (): typeof readyBot => {
+            const aborted = Promise.withResolvers<undefined>();
+            const hangs = started === 0;
+            return {
+                ...readyBot,
+                start: () => {
+                    started++;
+                    return hangs ? aborted.promise : Promise.resolve();
+                },
+                [HostStartup]: { abort: () => void aborted.resolve(undefined) },
+                [HostShutdown]: {
+                    run: () => {
+                        stopped++;
+                        return Promise.resolve();
+                    }
+                }
+            };
+        };
+        const runtime = (): DevRuntime => {
+            const bot = nextBot();
+            return { ...readyRuntime(), loadEntry: () => Promise.resolve({ module: { default: bot } }) };
+        };
+        const runner = makeRunner(fakeCodegen(), fakeTunnel(), silentLogger, runtime);
+        const running = runner.run();
+        onTestFinished(async () => {
+            await runner.quit();
+            await running;
+        });
+        await vi.waitFor(() => expect(started).toBe(1));
+
+        await runner.restart();
+
+        await vi.waitFor(() => expect(started).toBe(2));
+        expect(started - stopped).toBe(1);
     });
 });
 
