@@ -27,7 +27,7 @@ export interface TemplateContext {
     token: string;
     botColor: string;
     developerUsername: string;
-    pm: { run: string; isBun: boolean };
+    pm: { run: string; isBun: boolean; isPnpm: boolean };
     engines: { node: string; bun: string };
 }
 
@@ -61,7 +61,7 @@ export function buildContext(
         token: answers.token ?? '',
         botColor: answers.botColor,
         developerUsername: extras.developerUsername,
-        pm: { run: runPrefix(extras.agent), isBun: extras.agent === 'bun' },
+        pm: { run: runPrefix(extras.agent), isBun: extras.agent === 'bun', isPnpm: extras.agent === 'pnpm' },
         engines: ownPackage.engines
     };
 }

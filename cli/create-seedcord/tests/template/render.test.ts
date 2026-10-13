@@ -47,6 +47,14 @@ describe('renderTemplates', () => {
         expect(files.find((file) => file.path === 'bunfig.toml')?.contents).toBe('[run]\nbun = true\n');
     });
 
+    it('writes a pnpm-workspace.yaml that ignores unrs-resolver scripts for a pnpm project', async () => {
+        const files = await renderTemplates(TEMPLATES, buildContext(GATEWAY, { ...EXTRAS, agent: 'pnpm' }));
+
+        expect(files.find((file) => file.path === 'pnpm-workspace.yaml')?.contents).toBe(
+            'allowBuilds:\n    unrs-resolver: false\n'
+        );
+    });
+
     it("declares this package's Bun floor for a Bun project and its Node floor for the rest", async () => {
         const own = createRequire(import.meta.url)('../../package.json') as {
             engines: { node: string; bun: string };
@@ -62,10 +70,16 @@ describe('renderTemplates', () => {
         expect(await engines('pnpm')).toEqual({ node: own.engines.node });
     });
 
-    it('writes no bunfig.toml for another package manager', async () => {
-        const files = await render(GATEWAY);
+    it.each(['npm', 'yarn', 'pnpm'] as const)('writes no bunfig.toml for %s projects', async (agent) => {
+        const files = await renderTemplates(TEMPLATES, buildContext(GATEWAY, { ...EXTRAS, agent }));
 
-        expect(files.has('bunfig.toml')).toBe(false);
+        expect(files.find((file) => file.path === 'bunfig.toml')).toBeUndefined();
+    });
+
+    it.each(['npm', 'yarn', 'bun'] as const)('writes no pnpm-workspace.yaml for %s projects', async (agent) => {
+        const files = await renderTemplates(TEMPLATES, buildContext(GATEWAY, { ...EXTRAS, agent }));
+
+        expect(files.find((file) => file.path === 'pnpm-workspace.yaml')).toBeUndefined();
     });
 
     it('drops the .hbs extension', async () => {
