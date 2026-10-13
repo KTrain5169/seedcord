@@ -1,9 +1,12 @@
 import { fileURLToPath } from 'node:url';
 
 import { parseTsconfig } from 'get-tsconfig';
+import { deepMerge } from 'vite-plus/test/plugins/utils-helpers';
 import { configDefaults, defineConfig, mergeConfig } from 'vitest/config';
 
+import type { InlineConfig } from 'vite-plus/test/node';
 import type { ViteUserConfig } from 'vitest/config';
+import type { AliasOptions } from 'vite-plus';
 
 const base = defineConfig({
     test: {
@@ -20,10 +23,8 @@ const base = defineConfig({
     }
 });
 
-type Alias = Extract<NonNullable<NonNullable<ViteUserConfig['resolve']>['alias']>, readonly unknown[]>[number];
-
 // configUrl is expected to be the caller's import.meta.url
-export function aliasFromTsconfig(configUrl: string): Alias[] {
+export function aliasFromTsconfig(configUrl: string): AliasOptions {
     // parseTsconfig because tsconfig can be jsonc
     const paths = parseTsconfig(fileURLToPath(new URL('tsconfig.json', configUrl))).compilerOptions?.paths ?? {};
     // vite takes the first alias that matches. tsc takes an exact key first, then the longest wildcard prefix
@@ -42,6 +43,23 @@ export function aliasFromTsconfig(configUrl: string): Alias[] {
 
 function wildcardPrefixLength(key: string): number {
     return key.includes('*') ? key.indexOf('*') : Number.MAX_SAFE_INTEGER;
+}
+
+const VITEST_CONFIG: InlineConfig = {
+    testTimeout: 10_000,
+    passWithNoTests: true,
+    exclude: [...configDefaults.exclude, '**/.claude/**'],
+    coverage: {
+        enabled: false,
+        provider: 'v8',
+        reporter: [['lcovonly', { file: 'lcov.info' }], ['html']],
+        include: ['src'],
+        exclude: ['**/node_modules/**', '**/dist/**', '**/*.test.ts', '**/*.spec.ts', '**/logs/**', '**/*.log']
+    }
+};
+
+export function createTestConfig(overrides: InlineConfig = {}): InlineConfig {
+    return deepMerge(VITEST_CONFIG, overrides);
 }
 
 export function createVitestConfig(configUrl: string, overrides: ViteUserConfig = {}): ViteUserConfig {

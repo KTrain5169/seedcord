@@ -1,13 +1,58 @@
+import { cloudflareTest } from '@cloudflare/vitest-plugin';
 import { createTsdownConfig } from '@seedcord/tsdown-config';
+import { aliasFromTsconfig, createTestConfig } from '@seedcord/vitest-config';
 import { defineConfig } from 'vite-plus';
 
+// the project entries are separate configs and do not inherit the top-level resolve
+const alias = aliasFromTsconfig(import.meta.url);
+
 export default defineConfig({
-    test: {
-      // Vitest v4 compatibility: preserve mock call history.
-      // Remove after tests no longer rely on calls from setup or earlier tests.
-      // https://viteplus.dev/guide/vitest-v5#remove-unneeded-compatibility-settings
-      // https://vitest.dev/guide/migration/#clearmocks-is-enabled-by-default
-      clearMocks: false
-    },
+    test: createTestConfig({
+        coverage: {
+            // the workers pool rejects the v8 provider the shared config sets
+            provider: 'istanbul'
+        },
+        projects: [
+            {
+                // real workerd, with cloudflare's node compat on like a deployed edge bot
+                plugins: [
+                    cloudflareTest({
+                        // cloudflare turns node compat on by default from this date
+                        miniflare: { compatibilityDate: '2026-08-04' }
+                    })
+                ],
+                resolve: { alias },
+                test: {
+                    name: 'workerd',
+                    testTimeout: 10_000,
+                    setupFiles: ['./tests/setup.ts'],
+                    include: ['tests/**/*.test.ts'],
+                    exclude: ['tests/node/**'],
+                    deps: {
+                        optimizer: {
+                            ssr: {
+                                enabled: true,
+                                // the pool's cjs interop resolves discord-api-types' runtime enums to
+                                // undefined, pre-bundling picks the esm arm. builders hits the same
+                                // interop at module init, and its pre-bundle inlines shapeshift already.
+                                include: ['discord-api-types/v10', '@discordjs/builders']
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                // no node:http on workerd
+                resolve: { alias },
+                test: {
+                    name: 'node',
+                    environment: 'node',
+                    testTimeout: 10_000,
+                    setupFiles: ['./tests/setup.ts'],
+                    include: ['tests/node/**/*.test.ts']
+                }
+            }
+        ]
+    }),
     pack: createTsdownConfig({ entry: ['src/index.ts', 'src/workerd.index.ts'] })
 });
