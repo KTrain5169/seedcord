@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 import { paint, SeedcordErrorCode } from '@seedcord/errors';
@@ -18,6 +17,7 @@ import { resolveDefaultExport } from '#utils/resolveDefaultExport';
 
 import { TscRunner } from './TscRunner';
 
+import type { LoadedBot } from '#commands/codegen/CodegenRunner';
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { DevStore } from '#ui/stores/DevStore';
 import type { DevRuntime } from './runtime/DevRuntime';
@@ -48,18 +48,9 @@ export class DevSession {
         });
         profileMark('vite');
 
-        // vite's missing-entry message changed across a minor and broke detection
-        if (!existsSync(this.config.instance)) {
-            throw new SeedcordError(SeedcordErrorCode.CliEntryNotFound, [this.config.instance]);
-        }
-
-        try {
-            const { module } = await this.runtime.loadEntry();
-            profileMark('entry');
-            return module;
-        } catch (error: unknown) {
-            throw new SeedcordError(SeedcordErrorCode.CliStartFailed, [this.config.instance, asError(error).message]);
-        }
+        const { module } = await this.runtime.loadEntry();
+        profileMark('entry');
+        return module;
     }
 
     private startTypecheck(): void {
@@ -132,5 +123,10 @@ export class DevSession {
 
     public refreshCommands(shouldRefresh: boolean): void {
         this.runtime.refreshCommands?.(shouldRefresh);
+    }
+
+    public loadedBot(): LoadedBot | undefined {
+        if (!this.instance) return undefined;
+        return { config: this.config, instance: this.instance, modules: this.runtime };
     }
 }

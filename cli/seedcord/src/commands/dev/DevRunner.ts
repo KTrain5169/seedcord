@@ -16,17 +16,19 @@ import { TunnelRouter } from './tunnel/TunnelRouter';
 
 import type { ResolvedSeedcordConfig, ResolvedTunnel } from '#core/config/schema';
 import type { DevStore } from '#ui/stores/DevStore';
+import type { DevRuntime } from './runtime/DevRuntime';
 import type { TunnelCoordinator } from './tunnel/TunnelCoordinator';
 import type { ILogger } from '@seedcord/types';
 
 const TUNNEL_TEARDOWN_MS = 3000;
 
 export interface DevRunnerDeps {
-    readonly projectLoader: ProjectLoader;
+    readonly projectLoader: Pick<ProjectLoader, 'open'>;
     readonly store: DevStore;
-    readonly codegen: CodegenRunner;
+    readonly codegen: Pick<CodegenRunner, 'writeFrom'>;
     readonly codegenLogger: ILogger;
     readonly tunnel: TunnelRouter;
+    readonly runtime: () => DevRuntime;
 }
 
 export class DevRunner {
@@ -36,7 +38,8 @@ export class DevRunner {
     private quitting?: Promise<void>;
     private isDisconnected = false;
     private isRunning = false;
-    private isRegenerating = false;
+    private isWritingTypes = false;
+    private hasQueuedWrite = false;
 
     constructor(private readonly deps: DevRunnerDeps) {}
 
@@ -51,7 +54,8 @@ export class DevRunner {
             store,
             codegen: CodegenRunner.create(quietSteps, codegenLogger),
             codegenLogger,
-            tunnel: new TunnelRouter(makeCoordinator, tunnelLogger)
+            tunnel: new TunnelRouter(makeCoordinator, tunnelLogger),
+            runtime: () => new ViteDevRuntime()
         });
     }
 
@@ -98,14 +102,14 @@ export class DevRunner {
         const config = await this.readConfig();
         profileMark('config');
         this.deps.store.setIdleAnimation(config.idleAnimation);
-        const runtime = new ViteDevRuntime();
-        this.currentSession = new DevSession(config, runtime, this.deps.store, (event) => {
+        this.currentSession = new DevSession(config, this.deps.runtime(), this.deps.store, (event) => {
             void this.deps.tunnel.route(config.tunnel, event);
         });
 
         try {
             await this.currentSession.start(() => {
                 this.deps.store.setBusy(false);
+                void this.writeTypes();
             });
         } finally {
             this.deps.store.setBusy(true);
@@ -159,23 +163,35 @@ export class DevRunner {
     }
 
     public refreshCommands(shouldRefresh: boolean): void {
-        if (shouldRefresh) void this.regenerateRegistry();
+        if (shouldRefresh) void this.writeTypes();
         this.currentSession?.refreshCommands(shouldRefresh);
     }
 
-    // regenerates so tsc picks up the new command option types
-    private async regenerateRegistry(): Promise<void> {
-        if (this.isRegenerating) return;
-        this.isRegenerating = true;
+    private async writeTypes(): Promise<void> {
+        const bot = this.currentSession?.loadedBot();
+        if (!bot) return;
+        if (this.isWritingTypes) {
+            // the running scan may have read a command before this refresh changed it
+            this.hasQueuedWrite = true;
+            return;
+        }
+        this.isWritingTypes = true;
         try {
-            const { outputPath } = await this.deps.codegen.run(false);
-            this.deps.codegenLogger.info(`Augmentations written to ${paint.path(outputPath)}`);
+            const { outputPath, changed } = await this.deps.codegen.writeFrom(bot);
+            if (changed) this.deps.codegenLogger.info(`Augmentations written to ${paint.path(outputPath)}`);
         } catch (error: unknown) {
             // a codegen throw must not take the dev session down
-            this.deps.codegenLogger.error('Command registry regeneration failed', error);
+            this.deps.codegenLogger.error('Could not update the command types', error);
         } finally {
-            this.isRegenerating = false;
+            this.isWritingTypes = false;
         }
+
+        if (!this.hasQueuedWrite) {
+            return;
+        }
+
+        this.hasQueuedWrite = false;
+        await this.writeTypes();
     }
 
     private async waitForSignal(): Promise<void> {
