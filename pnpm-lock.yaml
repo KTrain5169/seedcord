@@ -1517,6 +1517,28 @@ importers:
         specifier: catalog:deps
         version: 5.10.0
 
+  plugins/i18n:
+    dependencies:
+      typescript:
+        specifier: catalog:peer
+        version: 6.0.3
+    devDependencies:
+      '@seedcord/core':
+        specifier: ^0.10.0
+        version: 0.10.0(envapt@8.2.3)(typescript@6.0.3)
+      '@seedcord/eslint-config':
+        specifier: workspace:^
+        version: link:../../tooling/eslint-config
+      '@seedcord/tsconfig':
+        specifier: workspace:^
+        version: link:../../tooling/tsconfig
+      '@seedcord/tsdown-config':
+        specifier: workspace:^
+        version: link:../../tooling/tsdown-config
+      '@seedcord/vitest-config':
+        specifier: workspace:^
+        version: link:../../tooling/vitest-config
+
   plugins/kysely-postgres:
     dependencies:
       '@seedcord/errors':
@@ -1626,6 +1648,31 @@ importers:
       type-fest:
         specifier: catalog:deps
         version: 5.10.0
+
+  plugins/tasks:
+    dependencies:
+      croner:
+        specifier: ^10.0.1
+        version: 10.0.1
+      typescript:
+        specifier: catalog:peer
+        version: 6.0.3
+    devDependencies:
+      '@seedcord/core':
+        specifier: ^0.10.0
+        version: 0.10.0(envapt@8.2.3)(typescript@6.0.3)
+      '@seedcord/eslint-config':
+        specifier: workspace:^
+        version: link:../../tooling/eslint-config
+      '@seedcord/tsconfig':
+        specifier: workspace:^
+        version: link:../../tooling/tsconfig
+      '@seedcord/tsdown-config':
+        specifier: workspace:^
+        version: link:../../tooling/tsdown-config
+      '@seedcord/vitest-config':
+        specifier: workspace:^
+        version: link:../../tooling/vitest-config
 
   scripts:
     dependencies:
@@ -4658,6 +4705,50 @@ packages:
     resolution: {integrity: sha512-xzvBr1Q1c4lCe7i6sRnrofxeO1QTP/LKQ6A6qy0iB4x5yfiSfARMEQEghojzTNALDTcv8En04qYNIco9/K9eZQ==}
     engines: {node: '>=v14.0.0', npm: '>=7.0.0'}
 
+  '@seedcord/core@0.10.0':
+    resolution: {integrity: sha512-r525neffdqvtSPgUEi1Jjeqg8uO+t/zCAxKSjzBBX9V2rtCvZjfNkRfFFxkXDy9mUVvlHesgrTnnousRnWdxjQ==}
+    engines: {bun: '>=1.4.2', node: '>=24.11'}
+    peerDependencies:
+      envapt: ^8.2.2
+      typescript: ^5.9.3 || ^6.0.0 || ^7.0.0
+
+  '@seedcord/custom-id@0.2.7':
+    resolution: {integrity: sha512-K1r5YHrFPQjTiHYuytaw8s5wmIX1Tx0shwi5E3QxROrtYDDdnYqDqrTonj+PSov/3WncdwgDSrgQRdwU0Y2M4g==}
+    engines: {bun: '>=1.4.2', node: '>=24.11'}
+    peerDependencies:
+      typescript: ^5.9.3 || ^6.0.0 || ^7.0.0
+
+  '@seedcord/errors@0.13.0':
+    resolution: {integrity: sha512-FjEZUESbkHp2LSTZRUTd1xiF4Mj0Odaz6AGSsWpi44aYrQLZSl1rTnH9LGbLpVr7AjKaK8qU93dp17OMdEenCQ==}
+    engines: {bun: '>=1.4.2', node: '>=24.11'}
+    peerDependencies:
+      typescript: ^5.9.3 || ^6.0.0 || ^7.0.0
+
+  '@seedcord/event-emitter@0.1.8':
+    resolution: {integrity: sha512-+nA9CIpWmjKOwl7Oj37BJmKTNZ9hsgepdJkXxOSjn4spH+FrdlT6E3jxDmXjWpIKo6jT/IACbmGqG90UOEoelA==}
+    engines: {bun: '>=1.4.2', node: '>=24.11'}
+    peerDependencies:
+      typescript: ^5.9.3 || ^6.0.0 || ^7.0.0
+
+  '@seedcord/logger@0.4.4':
+    resolution: {integrity: sha512-8KHec/lQZg/vhMjaQD9E9r5zCOiz7s9+z/H0X6lGeZA4l9gFTCSXOT3l7L2RLNoyCwlsNCBevzFCemFz4+cU7g==}
+    engines: {bun: '>=1.4.2', node: '>=24.11'}
+    peerDependencies:
+      envapt: ^8.2.2
+      typescript: ^5.9.3 || ^6.0.0 || ^7.0.0
+
+  '@seedcord/types@0.14.4':
+    resolution: {integrity: sha512-/jDqtin64/fVvoTRbatvSXu89e95cNOqtC2XoRtgx+Y+yoVQYbBUSR8GRlhF+qkdbgJtTo8CPHlWzWTyoIlcog==}
+    engines: {bun: '>=1.4.2', node: '>=24.11'}
+    peerDependencies:
+      typescript: ^5.9.3 || ^6.0.0 || ^7.0.0
+
+  '@seedcord/utils@0.8.17':
+    resolution: {integrity: sha512-ZJkLUG/BGVk19d6kNjGo/fJndr0jIV2PShN14gh1Y7tFlS0nBGUwriwXdHNcZtEyD5jgnJw0ePzmv/d3YzZuyw==}
+    engines: {bun: '>=1.4.2', node: '>=24.11'}
+    peerDependencies:
+      typescript: ^5.9.3 || ^6.0.0 || ^7.0.0
+
   '@sentry/conventions@0.16.0':
     resolution: {integrity: sha512-fO9PLmHdVURcSPUpWCItWAtgKiMwGdJHbovoSEyLplX5sxs2ugvI4CBPTrkkgqhObnZOD0CnWBKDzSVQYBKEyQ==}
     engines: {node: '>=14'}
@@ -6257,6 +6348,10 @@ packages:
     peerDependenciesMeta:
       typescript:
         optional: true
+
+  croner@10.0.1:
+    resolution: {integrity: sha512-ixNtAJndqh173VQ4KodSdJEI6nuioBWI0V1ITNKhZZsO0pEMoDxz539T4FTTbSZ/xIOSuDnzxLVRqBVSvPNE2g==}
+    engines: {node: '>=18.0'}
 
   cross-env@10.1.0:
     resolution: {integrity: sha512-GsYosgnACZTADcmEyJctkJIoqAhHjttw7RsFrVoJNXbsWWqaq6Ym+7kZjq6mS45O0jij6vtiReppKQEtqWy6Dw==}
@@ -12432,6 +12527,59 @@ snapshots:
 
   '@sapphire/snowflake@3.5.5': {}
 
+  '@seedcord/core@0.10.0(envapt@8.2.3)(typescript@6.0.3)':
+    dependencies:
+      '@discordjs/builders': 1.14.1
+      '@discordjs/rest': 2.6.3
+      '@seedcord/custom-id': 0.2.7(typescript@6.0.3)
+      '@seedcord/errors': 0.13.0(typescript@6.0.3)
+      '@seedcord/event-emitter': 0.1.8(typescript@6.0.3)
+      '@seedcord/logger': 0.4.4(envapt@8.2.3)(typescript@6.0.3)
+      '@seedcord/types': 0.14.4(typescript@6.0.3)
+      '@seedcord/utils': 0.8.17(typescript@6.0.3)
+      discord-api-types: 0.38.56
+      envapt: 8.2.3
+      reflect-metadata: 0.2.2
+      typescript: 6.0.3
+
+  '@seedcord/custom-id@0.2.7(typescript@6.0.3)':
+    dependencies:
+      '@seedcord/errors': 0.13.0(typescript@6.0.3)
+      discord-api-types: 0.38.56
+      typescript: 6.0.3
+
+  '@seedcord/errors@0.13.0(typescript@6.0.3)':
+    dependencies:
+      chalk: 6.0.0
+      typescript: 6.0.3
+
+  '@seedcord/event-emitter@0.1.8(typescript@6.0.3)':
+    dependencies:
+      typescript: 6.0.3
+
+  '@seedcord/logger@0.4.4(envapt@8.2.3)(typescript@6.0.3)':
+    dependencies:
+      '@seedcord/errors': 0.13.0(typescript@6.0.3)
+      '@seedcord/types': 0.14.4(typescript@6.0.3)
+      '@seedcord/utils': 0.8.17(typescript@6.0.3)
+      chalk: 6.0.0
+      envapt: 8.2.3
+      typescript: 6.0.3
+      winston: 3.19.0
+
+  '@seedcord/types@0.14.4(typescript@6.0.3)':
+    dependencies:
+      discord-api-types: 0.38.56
+      typescript: 6.0.3
+
+  '@seedcord/utils@0.8.17(typescript@6.0.3)':
+    dependencies:
+      '@seedcord/errors': 0.13.0(typescript@6.0.3)
+      '@seedcord/types': 0.14.4(typescript@6.0.3)
+      discord-api-types: 0.38.56
+      strip-ansi: 7.2.0
+      typescript: 6.0.3
+
   '@sentry/conventions@0.16.0': {}
 
   '@sentry/core@10.68.0':
@@ -13897,6 +14045,8 @@ snapshots:
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 6.0.3
+
+  croner@10.0.1: {}
 
   cross-env@10.1.0:
     dependencies:
