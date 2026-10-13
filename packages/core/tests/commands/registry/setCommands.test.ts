@@ -1,14 +1,14 @@
 import { EventEmitter } from 'node:events';
 
-import { ContextMenuCommandBuilder, SlashCommandBuilder } from '@discordjs/builders';
+import { SlashCommandBuilder } from '@discordjs/builders';
 import { RESTEvents } from '@discordjs/rest';
 import { isSeedcordError, SeedcordErrorCode } from '@seedcord/errors';
 import { LoggerChannelRegistry } from '@seedcord/logger';
 import { ApplicationCommandType, Routes } from 'discord-api-types/v10';
 import { describe, it, expect, vi } from 'vitest';
 
-import { CommandRegistry } from '#node/commands/CommandRegistry';
 import { Commands } from '#src/commands/CommandInjector';
+import { CommandRegistry } from '#src/commands/CommandRegistry';
 import { Bus } from '#subscribers/Bus';
 
 import type { CoreBase } from '#interfaces/CoreBase';
@@ -222,21 +222,5 @@ describe('CommandRegistry.setCommands', () => {
         expect(put).not.toHaveBeenCalled();
         expect(result.global.size).toBe(0);
         expect(result.guilds.size).toBe(0);
-    });
-});
-
-describe('CommandRegistry.contextMenuLeaves', () => {
-    it('splits the registered context-menu names by kind and drops the slash commands', () => {
-        const registry = registryWith(vi.fn());
-        registry.globalCommands.push(
-            new ContextMenuCommandBuilder().setName('Report').setType(ApplicationCommandType.Message),
-            new ContextMenuCommandBuilder().setName('Profile').setType(ApplicationCommandType.User),
-            new SlashCommandBuilder().setName('ping').setDescription('Replies with Pong!')
-        );
-
-        const leaves = registry.contextMenuLeaves();
-
-        expect([...leaves.message]).toEqual(['Report']);
-        expect([...leaves.user]).toEqual(['Profile']);
     });
 });

@@ -1,4 +1,19 @@
+import type { LogRecord } from './Interfaces/LogSink';
 import type { HmrUpdateEvent } from './Types/Hmr';
+
+// vite's dev channel carries JSON between a bot in workerd and the CLI
+export interface WireError {
+    name: string;
+    message: string;
+    stack?: string | undefined;
+    code?: unknown;
+    cause?: WireError | undefined;
+}
+
+// each arg is either an Error or a JSON-safe value
+export interface WireLogRecord extends Omit<LogRecord, 'args'> {
+    args?: ({ error: WireError } | { value: unknown })[] | undefined;
+}
 
 /**
  * HMR events the framework (client) sends to the CLI (server).
@@ -9,6 +24,9 @@ export interface SeedcordFrameworkEvents {
     'seedcord:register-critical-files': { patterns: string[] };
     'seedcord:commands-update-prompt': { files: string[] };
     'seedcord:server-listening': { port: number };
+    'seedcord:started': { username: string | undefined };
+    'seedcord:start-failed': { error: WireError };
+    'seedcord:log': WireLogRecord;
 }
 
 /**
@@ -19,6 +37,7 @@ export interface SeedcordFrameworkEvents {
 export interface SeedcordCliEvents {
     'seedcord:hmr': HmrUpdateEvent;
     'seedcord:refresh-commands': { shouldRefresh: boolean };
+    'seedcord:start': Record<string, never>;
 }
 
 /**

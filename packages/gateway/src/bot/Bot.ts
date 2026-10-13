@@ -1,11 +1,5 @@
-import {
-    COMMAND_DEPLOY_TIMEOUT_MS,
-    CommandRegistry,
-    DRAIN_TASK_TIMEOUT_MS,
-    DRAIN_WINDOW_MS,
-    ShutdownPhase,
-    StartupPhase
-} from '@seedcord/core/node/internal';
+import { COMMAND_DEPLOY_TIMEOUT_MS, CommandRegistry } from '@seedcord/core/internal';
+import { DRAIN_TASK_TIMEOUT_MS, DRAIN_WINDOW_MS, ShutdownPhase, StartupPhase } from '@seedcord/core/node/internal';
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { SeedcordError, validateDiscordToken } from '@seedcord/errors/internal';
 import { Logger } from '@seedcord/logger';
@@ -163,11 +157,10 @@ export class Bot implements HmrAware {
         // bot-initialization reports why it failed
         if (!(await this.#readyToDeploy.promise)) return;
 
-        await registry.init();
-        assertGuildsIntent(this.#intents, registry.allCommands());
-        await registry.setCommands(signal);
-        this.#interactions?.warnUnhandledRoutes(registry.routeLeaves());
-        this.#interactions?.warnUnhandledContextMenuRoutes(registry.contextMenuLeaves());
+        await registry.deploy(signal, {
+            routes: this.#interactions,
+            check: (commands) => assertGuildsIntent(this.#intents, commands)
+        });
     }
 
     async #stop(): Promise<void> {

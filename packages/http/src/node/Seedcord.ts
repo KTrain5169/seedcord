@@ -1,28 +1,21 @@
 import { once } from 'node:events';
 import { createServer } from 'node:http';
 
-import { attachmentsOf, bindBotColor, busLoggerOf, getDevChannel, HmrManager } from '@seedcord/core/internal';
+import { bindBotColor, busLoggerOf, getDevChannel, HmrManager } from '@seedcord/core/internal';
 import { CoordinatedShutdown, CoordinatedStartup, ServerHost } from '@seedcord/core/node';
-import {
-    COMMAND_DEPLOY_TIMEOUT_MS,
-    CommandRegistry,
-    DRAIN_TASK_TIMEOUT_MS,
-    ShutdownPhase,
-    StartupPhase
-} from '@seedcord/core/node/internal';
+import { DRAIN_TASK_TIMEOUT_MS, ShutdownPhase, StartupPhase } from '@seedcord/core/node/internal';
 import { paint } from '@seedcord/errors';
 import { Logger } from '@seedcord/logger';
 import { installNodeDefaults } from '@seedcord/logger/node';
 import { HostAugmentTarget, HostVersion, SeedcordBrand } from '@seedcord/types/internal';
-import { Routes } from 'discord-api-types/v10';
 import { Envapter } from 'envapt';
 
-import { EmojiInjector } from '#src/emojis/EmojiInjector';
+import { HttpStartupTasks } from '#src/HttpStartupTasks';
 import { InteractionsService } from '#src/InteractionsService';
+import { usernameOf } from '#src/username';
 import { version as packageVersion } from '#src/version';
 
 import { NodeEndpoint } from './NodeEndpoint';
-import { publicKeyOf } from './publicKey';
 import { toWebRequest, writeWebResponse } from './webBridge';
 
 import type { HttpServerConfig } from '#interfaces/Config';
@@ -63,9 +56,6 @@ export class Seedcord extends ServerHost<'http'> implements SeedcordInstance {
 
     readonly #service: InteractionsService;
     readonly #endpoint: NodeEndpoint;
-    readonly #commandRegistry?: CommandRegistry;
-    readonly #emojiInjector = new EmojiInjector(this);
-    readonly #emojisLoaded = Promise.withResolvers<boolean>();
     readonly #hmrManager: HmrManager;
     readonly #logger = new Logger('Server', { channel: 'bot' });
 
@@ -90,8 +80,6 @@ export class Seedcord extends ServerHost<'http'> implements SeedcordInstance {
 
         this.#hmrManager = new HmrManager();
         this.#hmrManager.init();
-
-        if (this.config.bot.commands.path) this.#commandRegistry = new CommandRegistry(this);
 
         this.#registerStartupTasks();
         this.#registerShutdownTasks();
@@ -139,7 +127,8 @@ export class Seedcord extends ServerHost<'http'> implements SeedcordInstance {
     }
 
     #registerStartupTasks(): void {
-        if (Envapter.isDevelopment || Envapter.isTest) this.#registerHmrAwareModules();
+        const tasks = new HttpStartupTasks(this, this.#service);
+        if (Envapter.isDevelopment || Envapter.isTest) tasks.registerHmr(this.#hmrManager);
 
         this.startup.addTask(StartupPhase.Configuration, 'bus-initialization', async () => {
             busLoggerOf(this.bus).utils.initialization('Subscribers', 'start');
@@ -161,29 +150,8 @@ export class Seedcord extends ServerHost<'http'> implements SeedcordInstance {
             return Promise.resolve();
         });
 
-        // these Login tasks read the token that Configuration sets
-        this.startup.addTask(StartupPhase.Login, 'interactions-engine', async () => {
-            this.#service.prepareEngine(await publicKeyOf(this.rest));
-        });
-        this.startup.addTask(StartupPhase.Login, 'emoji-injection', (signal) => this.#injectEmojis(signal));
-
-        const commandRegistry = this.#commandRegistry;
-        if (commandRegistry) {
-            // one task because tasks in a phase run concurrently and the deploy reads the id
-            this.startup.addTask(
-                StartupPhase.Login,
-                'command-deploy',
-                async (signal) => {
-                    // emoji-injection reports why it failed
-                    if (!(await this.#emojisLoaded.promise)) return;
-                    await commandRegistry.init();
-                    await commandRegistry.setCommands(signal);
-                    interactions?.warnUnhandledRoutes(commandRegistry.routeLeaves());
-                    interactions?.warnUnhandledContextMenuRoutes(commandRegistry.contextMenuLeaves());
-                },
-                COMMAND_DEPLOY_TIMEOUT_MS
-            );
-        }
+        // the Login tasks read the token authenticate sets
+        tasks.addDiscordTasks();
 
         this.startup.addTask(StartupPhase.Ready, 'http-server', () => {
             const { port = DEFAULT_PORT } = this.config;
@@ -193,17 +161,6 @@ export class Seedcord extends ServerHost<'http'> implements SeedcordInstance {
         if (!Envapter.isTest) {
             this.startup.addTask(StartupPhase.Ready, 'identity', () => this.#fetchUsername());
         }
-    }
-
-    async #injectEmojis(signal: AbortSignal): Promise<void> {
-        signal.addEventListener('abort', () => this.#emojisLoaded.resolve(false), { once: true });
-        try {
-            await this.#emojiInjector.init();
-        } catch (error) {
-            this.#emojisLoaded.resolve(false);
-            throw error;
-        }
-        this.#emojisLoaded.resolve(true);
     }
 
     #registerShutdownTasks(): void {
@@ -217,18 +174,6 @@ export class Seedcord extends ServerHost<'http'> implements SeedcordInstance {
             () => this.#endpoint.drain(),
             DRAIN_TASK_TIMEOUT_MS
         );
-    }
-
-    #registerHmrAwareModules(): void {
-        this.startup.addTask(StartupPhase.Configuration, 'hmr-registration', async () => {
-            if (this.#service.interactions) this.#hmrManager.register(this.#service.interactions);
-            if (this.#commandRegistry) this.#hmrManager.register(this.#commandRegistry);
-            this.#hmrManager.register(this.#service.subscribers);
-            for (const { instance } of attachmentsOf(this)) {
-                this.#hmrManager.register(instance);
-            }
-            await Promise.resolve();
-        });
     }
 
     /** The bot's Discord application id. Throws if you read it before the Configuration phase. */
@@ -266,15 +211,7 @@ export class Seedcord extends ServerHost<'http'> implements SeedcordInstance {
     }
 
     async #fetchUsername(): Promise<void> {
-        try {
-            // justified: the @me payload carries username per the discord api contract
-            const me = (await this.rest.get(Routes.user('@me'))) as { username?: string };
-            this.#fetchedUsername = me.username;
-            if (me.username) this.#logger.info(`Running as ${paint.sky.bold(me.username)}`);
-        } catch (caught) {
-            // a bad token errors on the first real send anyway
-            this.#logger.warn('could not fetch the bot identity', caught);
-        }
+        this.#fetchedUsername = await usernameOf(this.rest, this.#logger);
     }
 
     #stopServer(): Promise<void> {

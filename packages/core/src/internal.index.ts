@@ -40,6 +40,7 @@ export { resolveEmojis } from '#src/miscellaneous/resolveEmojis';
 
 export { BAKED_IDS_KEY, type BakedIds } from '#src/bakedIds';
 export { installLinks, warnLinks } from '#src/commands/CommandInjector';
+export { COMMAND_DEPLOY_TIMEOUT_MS, CommandRegistry } from '#src/commands/CommandRegistry';
 export { resolveDeployTarget } from '#src/commands/deployTarget';
 export {
     commandRefOf,
@@ -61,6 +62,8 @@ export type { GateFitsWith } from '#gates/matching';
 export { getDevChannel, setDevChannel } from '#hmr/devChannel';
 export { HmrManager } from '#hmr/HmrManager';
 export { wrapHot } from '#hmr/wrapHot';
+export { toWireError } from '#hmr/wire';
+export { DevLogForwarder } from '#hmr/DevLogForwarder';
 
 export {
     GateNotice,
