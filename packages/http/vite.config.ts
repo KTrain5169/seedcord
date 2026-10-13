@@ -1,10 +1,10 @@
 import { cloudflareTest } from '@cloudflare/vitest-plugin';
 import { createTsdownConfig } from '@seedcord/tsdown-config';
-import { aliasFromTsconfig, createTestConfig } from '@seedcord/vitest-config';
+import { createTestConfig } from '@seedcord/vitest-config';
 import { defineConfig } from 'vite-plus';
 
 // the project entries are separate configs and do not inherit the top-level resolve
-const alias = aliasFromTsconfig(import.meta.url);
+// const alias = aliasFromTsconfig(import.meta.url);
 
 export default defineConfig({
     test: createTestConfig({
@@ -21,7 +21,7 @@ export default defineConfig({
                         miniflare: { compatibilityDate: '2026-08-04' }
                     })
                 ],
-                resolve: { alias },
+                // resolve: { alias },
                 test: {
                     name: 'workerd',
                     testTimeout: 10_000,
@@ -43,7 +43,7 @@ export default defineConfig({
             },
             {
                 // no node:http on workerd
-                resolve: { alias },
+                // resolve: { alias },
                 test: {
                     name: 'node',
                     environment: 'node',
