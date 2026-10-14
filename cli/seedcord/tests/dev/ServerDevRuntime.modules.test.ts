@@ -2,9 +2,10 @@ import { mkdir, mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { SeedcordErrorCode } from '@seedcord/errors';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
-import { ViteDevRuntime } from '#commands/dev/runtime/ViteDevRuntime';
+import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
 
 import { devConfigFor } from './devConfigFor';
 
@@ -24,14 +25,14 @@ interface Ban {
     marker: { version: string };
 }
 
-async function startedRuntime(): Promise<{ runtime: ViteDevRuntime; ban: string; entry: unknown }> {
+async function startedRuntime(): Promise<{ runtime: ServerDevRuntime; ban: string; entry: unknown }> {
     const temp = await mkdtempDisposable(join(tmpdir(), 'dev-modules-'));
     onTestFinished(() => temp.remove());
     const dir = temp.path;
     await writeProject(dir);
 
-    const runtime = new ViteDevRuntime();
-    onTestFinished(() => runtime.dispose());
+    const runtime = new ServerDevRuntime();
+    onTestFinished(() => runtime.stop());
     await runtime.start({ config: devConfigFor(dir, 'index.ts') });
     const { module } = await runtime.loadEntry();
 
@@ -58,6 +59,16 @@ describe('dev runtime importModule', () => {
                 expect(marker.version).toBe('after');
             },
             { timeout: 10_000, interval: 200 }
+        );
+    }, 60_000);
+
+    it('rejects an import once the bot stops', async () => {
+        const { runtime, ban } = await startedRuntime();
+
+        await runtime.stop();
+
+        expect(() => runtime.importModule(ban)).toThrow(
+            expect.objectContaining({ code: SeedcordErrorCode.CliDevRuntimeNotRunning })
         );
     }, 60_000);
 });

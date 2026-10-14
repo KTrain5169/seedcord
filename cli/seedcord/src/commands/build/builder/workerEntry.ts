@@ -1,4 +1,5 @@
 import { BAKED_IDS_KEY } from '@seedcord/core/internal';
+import { assertNever } from '@seedcord/utils';
 
 import { builtFilesSource } from './builtFiles';
 
@@ -20,13 +21,23 @@ import { Envapter, PortableSource } from 'envapt';
 Envapter.useSource(new PortableSource(env));
 `;
 
+const DEV_CWD_ID = 'virtual:seedcord/dev-cwd';
+
+// workerd returns /bundle from process.cwd(). paint.path prints paths relative to it
+function devCwdSource(cwd: string): string {
+    return `process.cwd = () => ${JSON.stringify(cwd)};\n`;
+}
+
+// a dev worker reads its ids from Discord at startup. a build bakes them in
+type EntryMode = { kind: 'build'; ids: BakedIds } | { kind: 'dev'; root: string; cwd: string };
+
 interface WorkerEntryOptions {
     files: ProjectFiles;
     folders: string[];
     instanceKey: string;
-    functionExports: string[];
     rootKey: string;
-    ids: BakedIds;
+    functionExports: () => Promise<string[]>;
+    mode: EntryMode;
 }
 
 // an object literal would turn a "__proto__" key into the prototype
@@ -35,38 +46,59 @@ function bakedIdsSource(ids: BakedIds): string {
     return `globalThis[Symbol.for(${JSON.stringify(BAKED_IDS_KEY)})] = JSON.parse(${json});\n`;
 }
 
-function sources({
-    files,
-    folders,
-    instanceKey,
-    functionExports,
-    rootKey,
-    ids
-}: WorkerEntryOptions): Map<string, string> {
-    const instance = JSON.stringify(instanceKey);
-    const lines = [
-        // the instance file may read env while it loads
-        `import '${BIND_ENV_ID}';`,
-        `import '${BUILT_FILES_ID}';`,
-        `import '${BAKED_IDS_ID}';`,
-        `export { default } from ${instance};`
-    ];
-    // cloudflare reads durable object and workflow classes from the worker's named exports
-    if (functionExports.length > 0) lines.push(`export { ${functionExports.join(', ')} } from ${instance};`);
+interface ModeSetup {
+    root: string;
+    sourcePaths: boolean;
+    module: [id: string, source: string];
+}
 
+function modeSetup(mode: EntryMode): ModeSetup {
+    switch (mode.kind) {
+        case 'dev': {
+            return { root: mode.root, sourcePaths: true, module: [DEV_CWD_ID, devCwdSource(mode.cwd)] };
+        }
+        case 'build': {
+            return { root: WORKER_ROOT, sourcePaths: false, module: [BAKED_IDS_ID, bakedIdsSource(mode.ids)] };
+        }
+        default: {
+            return assertNever(mode);
+        }
+    }
+}
+
+// the entry imports these in order, ahead of the instance file
+function setupSources({ files, folders, rootKey, mode }: WorkerEntryOptions): Map<string, string> {
+    const { root, sourcePaths, module } = modeSetup(mode);
+    const rootExpression = JSON.stringify(root);
     return new Map([
-        [WORKER_ENTRY_ID, [...lines, ''].join('\n')],
+        module,
+        // the instance file may read env while it loads
         [BIND_ENV_ID, BIND_ENV],
-        [BUILT_FILES_ID, builtFilesSource({ files, folders, rootExpression: JSON.stringify(WORKER_ROOT), rootKey })],
-        [BAKED_IDS_ID, bakedIdsSource(ids)]
+        [BUILT_FILES_ID, builtFilesSource({ files, folders, rootExpression, rootKey, sourcePaths })]
     ]);
 }
 
+async function entrySource(
+    { instanceKey, functionExports }: WorkerEntryOptions,
+    setup: Map<string, string>
+): Promise<string> {
+    const instance = JSON.stringify(instanceKey);
+    const lines = [...setup.keys()].map((id) => `import '${id}';`);
+    lines.push(`export { default } from ${instance};`);
+    // cloudflare reads durable object and workflow classes from the worker's named exports
+    const named = await functionExports();
+    if (named.length > 0) lines.push(`export { ${named.join(', ')} } from ${instance};`);
+    return [...lines, ''].join('\n');
+}
+
 export function workerEntry(options: WorkerEntryOptions): Plugin {
-    const modules = sources(options);
+    const setup = setupSources(options);
     return {
         name: WORKER_ENTRY_ID,
-        resolveId: (id) => (modules.has(id) ? `\0${id}` : undefined),
-        load: (id) => (id.startsWith('\0') ? modules.get(id.slice(1)) : undefined)
+        resolveId: (id) => (id === WORKER_ENTRY_ID || setup.has(id) ? `\0${id}` : undefined),
+        load: (id) => {
+            if (id === `\0${WORKER_ENTRY_ID}`) return entrySource(options, setup);
+            return id.startsWith('\0') ? setup.get(id.slice(1)) : undefined;
+        }
     };
 }

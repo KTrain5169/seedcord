@@ -1,6 +1,7 @@
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { ModuleLoader } from '#core/modules/ModuleLoader';
 import type { DevEventHandler } from './events';
+import type { SeedcordInstance } from '@seedcord/types/internal';
 
 export interface DevRuntimeContext {
     readonly config: ResolvedSeedcordConfig;
@@ -8,19 +9,16 @@ export interface DevRuntimeContext {
 }
 
 export interface DevRuntime extends ModuleLoader {
-    /** Called once before any other method. */
     start(context: DevRuntimeContext): Promise<void>;
 
     loadEntry(): Promise<DevRuntimeLoadResult>;
 
-    /** Called when the dev session ends. */
-    dispose(): Promise<void>;
+    startBot(instance: SeedcordInstance): Promise<string | undefined>;
 
-    /**
-     * Relays the user's response to a pending command-update prompt to the running instance.
-     * @param shouldRefresh - `true` re-registers the changed commands. `false` dismisses the prompt without re-registering.
-     */
-    refreshCommands?(shouldRefresh: boolean): void;
+    stop(): Promise<void>;
+
+    // false dismisses the command-update prompt without registering anything
+    refreshCommands(shouldRefresh: boolean): void;
 }
 
 export interface DevRuntimeLoadResult<TModule = unknown> {

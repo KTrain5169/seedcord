@@ -5,12 +5,14 @@ import { isSessionLive } from './devPhase';
 
 import type { DevEvent } from '#commands/dev/runtime/events';
 import type { TunnelStatus } from '#commands/dev/tunnel/TunnelCoordinator';
+import type { ResolvedTarget } from '#core/config/schema';
 import type { DevPhase } from './devPhase';
 
 export interface DevTransport {
     // the transport package, '@seedcord/gateway' or '@seedcord/http'
     readonly name: string;
     readonly version: string;
+    readonly target: ResolvedTarget['kind'];
 }
 
 export interface DevState {
@@ -132,10 +134,8 @@ export class DevStore extends TypedEventEmitter<{ change: [] }> {
                 this.patch({ port: event.port });
                 break;
             }
-            case 'module-loading':
-            case 'module-loaded':
-            case 'module-error':
-            case 'ready': {
+            case 'progress': {
+                this.patch({ status: event.status });
                 break;
             }
             default: {

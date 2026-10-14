@@ -20,6 +20,8 @@ const messages = {
         `Remove ${paint.sky(`bot.restOptions.${key}`)} from your edge config. A sweeper interval starts a timer at the worker's global scope, where workerd throws.`,
     [SeedcordErrorCode.ConfigPublicKeyUnavailable]: (reason: string) =>
         `Reading the public key from Discord failed (${reason}). The bot reads it there because ${paint.bold('DISCORD_PUBLIC_KEY')} is unset. Check ${paint.bold('DISCORD_BOT_TOKEN')}, or set ${paint.bold('DISCORD_PUBLIC_KEY')} to the key from your application's General Information page.`,
+    [SeedcordErrorCode.PortInUse]: (port: number, setting: string, configFile?: string) =>
+        `Another process already listens on port ${port}. Stop it, or set ${paint.bold(setting)} in ${configFile ? paint.path(configFile) : 'your Seedcord config'} to a free port.`,
     [SeedcordErrorCode.UnsupportedRuntimeVersion]: (runtime: string, required: string, running: string) =>
         `seedcord requires ${runtime} ${required} but this process runs ${running}. Upgrade ${runtime} before starting the bot.`,
 
@@ -254,6 +256,12 @@ const messages = {
         `Could not read the commands deployed ${where} (${reason}). Check ${paint.bold('DISCORD_BOT_TOKEN')}, and that the bot is in every guild a command in your code targets.`,
     [SeedcordErrorCode.CliEdgeCommandsNotDeployed]: (count: number, commands: string) =>
         `${count} command${count === 1 ? ' is' : 's are'} in your code with no deployed id on Discord, so the build cannot link ${count === 1 ? 'it' : 'them'}. Deploy with ${paint.bold('seedcord commands')}, then build again.\n${commands}`,
+    [SeedcordErrorCode.CliEdgeWranglerMissing]: (projectDir: string) =>
+        `${paint.bold('seedcord dev')} reads an edge bot's wrangler config through ${paint.bold('wrangler')}, which ${paint.path(projectDir)} does not have installed. Add it as a dev dependency.`,
+    [SeedcordErrorCode.CliEdgeWranglerConfigUnreadable]: (wranglerConfig: string, reason: string) =>
+        `Wrangler could not read ${paint.path(wranglerConfig)}: ${reason}`,
+    [SeedcordErrorCode.CliDevRuntimeNotRunning]: (method: string) =>
+        `${paint.bold('seedcord dev')} called ${paint.bold(method)} while the dev runtime was not running. This is a bug in seedcord.`,
     [SeedcordErrorCode.CliBuildFolderProblems]: (count: number) =>
         `${count} folders in the bot config need fixing before ${paint.bold('seedcord build')} can bundle the bot. Each one is listed below.`,
     [SeedcordErrorCode.CliCodegenDuplicateRoute]: (route: string, firstFile: string, secondFile: string) =>
@@ -273,7 +281,7 @@ const messages = {
     [SeedcordErrorCode.CliConfigEntryOnEdge]: (configFile: string, wranglerConfig: string) =>
         `${paint.path(wranglerConfig)} makes this an edge bot. An edge bot has no ${paint.bold('entry')} because Cloudflare calls the default export of ${paint.bold('instance')}. Remove ${paint.bold('entry')} from ${paint.path(configFile)}.`,
     [SeedcordErrorCode.CliEdgeVitePluginMissing]: (projectDir: string) =>
-        `${paint.bold('seedcord build')} bundles an edge bot through ${paint.bold('@cloudflare/vite-plugin')}, which ${paint.path(projectDir)} does not have installed. Add it and ${paint.bold('wrangler')} as dev dependencies.`,
+        `${paint.bold('seedcord dev')} and ${paint.bold('seedcord build')} run an edge bot through ${paint.bold('@cloudflare/vite-plugin')}, which ${paint.path(projectDir)} does not have installed. Add it and ${paint.bold('wrangler')} as dev dependencies.`,
     [SeedcordErrorCode.CliEdgeCompatDateTooOld]: (wranglerConfig: string, date: string, firstDate: string) =>
         `A seedcord edge bot needs Cloudflare's Node compat. ${paint.path(wranglerConfig)} sets ${paint.bold('compatibility_date')} to ${date}, but Cloudflare turns Node compat on by default only from ${firstDate}. Set the date to ${firstDate} or later, or add ${paint.bold('"nodejs_compat"')} to ${paint.bold('compatibility_flags')}.`,
     [SeedcordErrorCode.CliEdgeNodeCompatOff]: (wranglerConfig: string) =>

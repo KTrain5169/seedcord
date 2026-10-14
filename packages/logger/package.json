@@ -37,6 +37,12 @@
                 "types": "./dist/node.d.mts",
                 "default": "./dist/node.mjs"
             }
+        },
+        "./internal": {
+            "import": {
+                "types": "./dist/internal.index.d.mts",
+                "default": "./dist/internal.index.mjs"
+            }
         }
     },
     "files": [
@@ -73,7 +79,8 @@
         "@seedcord/tsconfig": "workspace:^",
         "@seedcord/tsdown-config": "workspace:^",
         "@seedcord/vitest-config": "workspace:^",
-        "envapt": "catalog:peer"
+        "envapt": "catalog:peer",
+        "tsx": "catalog:deps"
     },
     "publishConfig": {
         "access": "public",

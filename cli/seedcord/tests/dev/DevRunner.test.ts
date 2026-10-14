@@ -1,12 +1,14 @@
 import { join } from 'node:path';
 
-import { HostAugmentTarget, HostShutdown, HostStartup, HostVersion, SeedcordBrand } from '@seedcord/types/internal';
+import { HostShutdown, HostStartup } from '@seedcord/types/internal';
 import { afterEach, describe, expect, it, onTestFinished, vi, type Mock } from 'vitest';
 
 import { DevRunner } from '#commands/dev/DevRunner';
-import { ViteDevRuntime } from '#commands/dev/runtime/ViteDevRuntime';
+import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
 import { silentLogger } from '#tests/silentLogger';
 import { DevStore } from '#ui/stores/DevStore';
+
+import { fakeBot, fakeRuntime } from './fakes';
 
 import type { CodegenRunner } from '#commands/codegen/CodegenRunner';
 import type { DevRuntime } from '#commands/dev/runtime/DevRuntime';
@@ -14,30 +16,19 @@ import type { TunnelRouter } from '#commands/dev/tunnel/TunnelRouter';
 import type { ProjectLoader } from '#core/config/ProjectLoader';
 import type { ILogger } from '@seedcord/types';
 
-const readyBot = {
-    [SeedcordBrand]: true,
-    [HostVersion]: '1.2.3',
-    [HostAugmentTarget]: '@seedcord/gateway',
-    start: () => Promise.resolve(),
-    [HostStartup]: { abort: () => undefined },
-    [HostShutdown]: { run: () => Promise.resolve() }
-};
+const readyBot = fakeBot();
 
 const devConfig = {
     root: process.cwd(),
     configFile: join(process.cwd(), 'seedcord.config.ts'),
     instance: join(process.cwd(), 'package.json'),
+    target: { kind: 'server', entry: join(process.cwd(), 'package.json') },
     typecheck: { enabled: false },
     idleAnimation: true
 };
 
 function readyRuntime(): DevRuntime {
-    return {
-        start: () => Promise.resolve(),
-        loadEntry: () => Promise.resolve({ module: { default: readyBot } }),
-        importModule: () => Promise.reject(new Error('the fake runtime loads no files')),
-        dispose: () => Promise.resolve()
-    };
+    return fakeRuntime({ default: readyBot });
 }
 
 const WRITTEN = { outputPath: 'seedcord-gen.d.ts', changed: true };
@@ -260,6 +251,44 @@ describe('DevRunner restart', () => {
         await vi.waitFor(() => expect(started).toBe(2));
         expect(started - stopped).toBe(1);
     });
+
+    it('closes the runtime only after the type write that was running finishes', async () => {
+        const order: string[] = [];
+        const writing = Promise.withResolvers<undefined>();
+        const codegen = fakeCodegen(
+            vi.fn<CodegenRunner['writeFrom']>(async () => {
+                order.push('write started');
+                await writing.promise;
+                order.push('write finished');
+                return WRITTEN;
+            })
+        );
+        const runtime = (): DevRuntime => {
+            const ready = readyRuntime();
+            return {
+                ...ready,
+                stop: async () => {
+                    await ready.stop();
+                    order.push('runtime stopped');
+                }
+            };
+        };
+        const runner = makeRunner(codegen, fakeTunnel(), silentLogger, runtime);
+        const running = runner.run();
+        onTestFinished(async () => {
+            await runner.quit();
+            await running;
+        });
+        await vi.waitFor(() => expect(order).toEqual(['write started']));
+
+        const restarting = runner.restart();
+        await settled();
+        writing.resolve(undefined);
+        await restarting;
+
+        await vi.waitFor(() => expect(order).toContain('runtime stopped'));
+        expect(order.indexOf('write finished')).toBeLessThan(order.indexOf('runtime stopped'));
+    });
 });
 
 describe('DevRunner codegen', () => {
@@ -360,7 +389,7 @@ describe('DevRunner run', () => {
             codegen: fakeCodegen(),
             codegenLogger: silentLogger,
             tunnel: fakeTunnel(),
-            runtime: () => new ViteDevRuntime()
+            runtime: () => new ServerDevRuntime()
         });
 
         const running = runner.run();

@@ -1,9 +1,9 @@
-import { createServer, createServerModuleRunner, mergeConfig } from 'vite';
+import { createServer, createServerModuleRunner } from 'vite';
 
-import { BIND_ENV_ID, edgeStandIns } from './edgeStandIns';
+import { edgeStandIns } from './edgeStandIns';
 import { RunnerModuleLoader } from './RunnerModuleLoader';
 import { seedcordDependents } from './seedcordDependents';
-import { NODE_CONDITIONS, WORKERD_CONDITIONS, userCodeConfig } from './userCodeConfig';
+import { mergeViteConfig, NODE_CONDITIONS, WORKERD_CONDITIONS, userCodeConfig } from './userCodeConfig';
 
 import type { BuildTarget } from '#core/config/detectTarget';
 import type { ModuleLoader } from './ModuleLoader';
@@ -18,10 +18,6 @@ class ViteModuleLoader extends RunnerModuleLoader implements AsyncDisposable {
         super(runner);
     }
 
-    public async bindEnv(): Promise<void> {
-        await this.load(BIND_ENV_ID, 'envapt');
-    }
-
     public async [Symbol.asyncDispose](): Promise<void> {
         await this.runner.close();
         await this.server.close();
@@ -33,7 +29,7 @@ export async function openModuleLoader(
     target: BuildTarget
 ): Promise<ModuleLoader & AsyncDisposable> {
     const isEdge = target.kind === 'edge';
-    const config = mergeConfig(userCodeConfig(isEdge ? WORKERD_CONDITIONS : NODE_CONDITIONS), {
+    const config = mergeViteConfig(userCodeConfig(isEdge ? WORKERD_CONDITIONS : NODE_CONDITIONS), {
         root: projectDir,
         configFile: false,
         logLevel: 'error',
@@ -52,7 +48,7 @@ export async function openModuleLoader(
     onFailure.defer(() => runner.close());
 
     const loader = new ViteModuleLoader(server, runner);
-    if (isEdge) await loader.bindEnv();
+    if (isEdge) await loader.bindEdgeEnv();
 
     onFailure.move();
     return loader;

@@ -10,6 +10,7 @@
         "directory": "mocks/edge"
     },
     "scripts": {
+        "dev": "seedcord dev",
         "build": "seedcord build",
         "deploy": "seedcord build && wrangler deploy",
         "codegen": "seedcord codegen",
@@ -34,6 +35,6 @@
         "@seedcord/eslint-config": "workspace:^",
         "@seedcord/tsconfig": "workspace:^",
         "seedcord": "workspace:^",
-        "wrangler": "catalog:deps"
+        "wrangler": "catalog:peer"
     }
 }

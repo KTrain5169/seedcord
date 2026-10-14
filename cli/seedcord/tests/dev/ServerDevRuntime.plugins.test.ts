@@ -4,8 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { devServerConfig } from '#commands/dev/runtime/devServerConfig';
-import { ViteDevRuntime } from '#commands/dev/runtime/ViteDevRuntime';
+import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
 
 import { devConfigFor } from './devConfigFor';
 
@@ -76,17 +75,17 @@ async function writeProject(root: string, from: string): Promise<void> {
 }
 
 async function withRuntime(
-    run: (runtime: ViteDevRuntime) => Promise<void>,
+    run: (runtime: ServerDevRuntime) => Promise<void>,
     from = 'third-party-plugin'
 ): Promise<void> {
     await using project = await mkdtempDisposable(join(tmpdir(), 'seedcord-dev-plugin-'));
     await writeProject(project.path, from);
-    const runtime = new ViteDevRuntime();
+    const runtime = new ServerDevRuntime();
     try {
         await runtime.start({ config: devConfigFor(project.path, 'bot.ts') });
         await run(runtime);
     } finally {
-        await runtime.dispose();
+        await runtime.stop();
     }
 }
 
@@ -102,13 +101,4 @@ describe('dev runtime against a plugin published outside the @seedcord scope', (
             }, from);
         }
     );
-
-    // a restart in the same process builds its config from this object again
-    it('leaves the shared vite config as it found it', async () => {
-        const before = structuredClone(devServerConfig);
-
-        await withRuntime(async () => {});
-
-        expect(devServerConfig).toEqual(before);
-    }, 60_000);
 });

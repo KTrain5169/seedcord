@@ -2,9 +2,9 @@ import {
     attachmentsOf,
     BAKED_IDS_KEY,
     bindBotColor,
+    connectDevChannel,
     CoordinatedStartup,
-    DevLogForwarder,
-    getDevChannel,
+    forwardLogsToCli,
     HmrManager,
     installLinks,
     PluginLifecycle,
@@ -13,7 +13,7 @@ import {
 } from '@seedcord/core/internal';
 import { PluginHost } from '@seedcord/core/plugin';
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { SeedcordError } from '@seedcord/errors/internal';
+import { SeedcordError, setColorLevel } from '@seedcord/errors/internal';
 import { Logger } from '@seedcord/logger';
 import { HostAugmentTarget, HostVersion, SeedcordBrand } from '@seedcord/types/internal';
 
@@ -105,7 +105,6 @@ export class Seedcord extends PluginHost<'http', 'edge'> {
 
         this.config = config;
         this.startup = { addTask: this.#startup.addTask.bind(this.#startup) };
-        Logger.configure(config.logger ?? {});
         bindBotColor(() => this.config.botColor);
 
         this.#service = new InteractionsService(this, config, edgeRestOptions(config.bot.restOptions));
@@ -113,19 +112,21 @@ export class Seedcord extends PluginHost<'http', 'edge'> {
         this.rateLimiter = this.#service.rateLimiter;
         this.bus = this.#service.bus;
 
-        this.#hmr.init();
-        const cli = getDevChannel();
+        const cli = connectDevChannel();
         this.#readsBakedIds = !cli;
-        if (cli) this.#startWhenAsked(cli);
+        if (cli) {
+            forwardLogsToCli();
+            this.#startWhenAsked(cli);
+        }
+        this.#hmr.init(cli);
     }
 
     #startWhenAsked(cli: DevChannel<SeedcordFrameworkEvents, SeedcordCliEvents>): void {
-        const logs = new DevLogForwarder(cli);
         const tasks = new HttpStartupTasks(this, this.#service);
         tasks.registerHmr(this.#hmr);
         tasks.addDiscordTasks();
-        cli.on('seedcord:start', () => {
-            logs.open();
+        cli.on('seedcord:start', ({ colorLevel }) => {
+            setColorLevel(colorLevel);
             void this.#startForCli(cli);
         });
     }
@@ -167,6 +168,8 @@ export class Seedcord extends PluginHost<'http', 'edge'> {
 
     // once per isolate. Running the loaders again would register every subscriber twice
     async #prepare(): Promise<void> {
+        // seedcord dev's codegen copy constructs this bot inside the CLI and never starts it
+        Logger.configure(this.config.logger ?? {});
         const ids = this.#readsBakedIds ? bakedIds() : undefined;
         this.#service.authenticate();
         await this.#service.subscribers.init();

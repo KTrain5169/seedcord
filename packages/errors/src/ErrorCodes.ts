@@ -24,6 +24,8 @@ export enum SeedcordErrorCode {
     ConfigEdgeRestSweeper = 1010,
     /** `DISCORD_PUBLIC_KEY` is unset and reading the key from Discord failed. */
     ConfigPublicKeyUnavailable = 1011,
+    /** Another process already listens on the port seedcord tries to listen on. */
+    PortInUse = 1012,
 
     /** Attempted to add lifecycle tasks after startup already completed. */
     LifecycleAddAfterCompletion = 1101,
@@ -323,6 +325,12 @@ export enum SeedcordErrorCode {
     CliEdgeCommandsUnreadable = 3150,
     /** An edge build found commands in code that have no deployed id on Discord. */
     CliEdgeCommandsNotDeployed = 3151,
+    /** An edge bot's project does not have `wrangler` installed. */
+    CliEdgeWranglerMissing = 3153,
+    /** Wrangler could not read an edge bot's wrangler config. */
+    CliEdgeWranglerConfigUnreadable = 3154,
+    /** Something called the dev runtime before `start()` finished or after `stop()`. A bug in seedcord. */
+    CliDevRuntimeNotRunning = 3155,
 
     /** A create prompt was cancelled (Ctrl-C), and nothing has been written yet. */
     CreateCancelled = 3201,

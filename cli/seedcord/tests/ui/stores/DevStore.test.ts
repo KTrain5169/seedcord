@@ -25,7 +25,7 @@ describe('DevStore', () => {
         store.setBusy(false);
         store.setPhase('running');
         store.setError(new Error('boom'));
-        store.setTransport({ name: '@seedcord/gateway', version: '1.2.3' });
+        store.setTransport({ name: '@seedcord/gateway', version: '1.2.3', target: 'server' });
         store.setTunnel('live');
 
         const state = store.getState();
@@ -33,7 +33,7 @@ describe('DevStore', () => {
         expect(state.isBusy).toBe(false);
         expect(state.phase).toBe('running');
         expect(state.error).toBeInstanceOf(Error);
-        expect(state.transport).toEqual({ name: '@seedcord/gateway', version: '1.2.3' });
+        expect(state.transport).toEqual({ name: '@seedcord/gateway', version: '1.2.3', target: 'server' });
         expect(state.tunnel).toBe('live');
         expect(onChange).toHaveBeenCalledTimes(6);
     });
@@ -124,6 +124,13 @@ describe('DevStore', () => {
         expect(store.getState().port).toBe(4000);
     });
 
+    it('apply shows a progress step in the status line', () => {
+        const store = new DevStore();
+        store.apply({ type: 'progress', status: 'Starting workerd…' });
+
+        expect(store.getState().status).toBe('Starting workerd…');
+    });
+
     it('clearPrompt drops the pending prompt with one change', () => {
         const store = new DevStore();
         store.apply({ type: 'command-update-prompt', files: ['a.ts'] });
@@ -134,23 +141,6 @@ describe('DevStore', () => {
 
         expect(store.getState().commandUpdatePrompt).toBeNull();
         expect(onChange).toHaveBeenCalledTimes(1);
-    });
-
-    it.each<DevEvent>([
-        { type: 'module-loading', path: 'x' },
-        { type: 'module-loaded', path: 'x' },
-        { type: 'module-error', path: 'x', error: new Error('e') },
-        { type: 'ready' }
-    ])('apply ignores informational event %o without a change', (event) => {
-        const store = new DevStore();
-        const before = store.getState();
-        const onChange = vi.fn();
-        store.on('change', onChange);
-
-        store.apply(event);
-
-        expect(store.getState()).toBe(before);
-        expect(onChange).not.toHaveBeenCalled();
     });
 
     it('keeps counting while a restart is pending and starts over once the bot restarts', () => {
