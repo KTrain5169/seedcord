@@ -147,8 +147,10 @@ export class Seedcord extends PluginHost<'http', 'edge'> {
     }
 
     /**
-     * Answers one request to the interactions endpoint. Cloudflare passes `env` and `ctx`. Work past
-     * the 202 runs under `ctx.waitUntil`. Any request besides a POST gets a 405 before the bot starts.
+     * Answers one request to the interactions endpoint. Cloudflare passes `env` and `ctx`, but this
+     * method reads only `ctx`. Import your bindings as `env` from `cloudflare:workers`.
+     * `wrangler types` writes their types. Work past the 202 runs under `ctx.waitUntil`. Any request
+     * besides a POST gets a 405 before the bot starts.
      */
     public async fetch(request: Request, _env?: unknown, ctx?: EngineContext): Promise<Response> {
         const notPost = rejectNonPost(request);

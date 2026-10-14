@@ -1,4 +1,5 @@
 seedcord-gen.d.ts
+worker-configuration.d.ts
 dist
 .wrangler
 .seedcord
