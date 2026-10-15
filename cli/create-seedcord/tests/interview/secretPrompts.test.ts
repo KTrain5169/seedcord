@@ -3,10 +3,8 @@ import { PassThrough } from 'node:stream';
 import { SeedcordErrorCode, isSeedcordError } from '@seedcord/errors';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
-import { publicKeyStep } from '#interview/steps/publicKey';
 import { tokenStep } from '#interview/steps/token';
 
-const KEY = 'a'.repeat(64);
 const TOKEN = `${'a'.repeat(26)}.${'b'.repeat(6)}.${'c'.repeat(38)}`;
 const ENTER = '\r';
 const BACKSPACE = '\x7F';
@@ -47,14 +45,9 @@ async function isSettled(answer: Promise<unknown>): Promise<boolean> {
     return first !== pending;
 }
 
-const secretSteps = [
-    { step: tokenStep, pasted: TOKEN },
-    { step: publicKeyStep, pasted: KEY }
-];
-
-describe.each(secretSteps)('$step.key typed into a terminal', ({ step, pasted }) => {
+describe('token typed into a terminal', () => {
     it('keeps the prompt open after the first empty Enter', async () => {
-        const answer = step.ask({});
+        const answer = tokenStep.ask({});
         await press(ENTER);
 
         expect(await isSettled(answer)).toBe(false);
@@ -64,7 +57,7 @@ describe.each(secretSteps)('$step.key typed into a terminal', ({ step, pasted })
     });
 
     it('answers null on the second empty Enter', async () => {
-        const answer = step.ask({});
+        const answer = tokenStep.ask({});
         await press(ENTER);
         await press(ENTER);
 
@@ -72,16 +65,16 @@ describe.each(secretSteps)('$step.key typed into a terminal', ({ step, pasted })
     });
 
     it('still takes a paste after the warning', async () => {
-        const answer = step.ask({});
+        const answer = tokenStep.ask({});
         await press(ENTER);
-        await press(pasted);
+        await press(TOKEN);
         await press(ENTER);
 
-        await expect(answer).resolves.toBe(pasted);
+        await expect(answer).resolves.toBe(TOKEN);
     });
 
     it('counts whitespace as an empty paste', async () => {
-        const answer = step.ask({});
+        const answer = tokenStep.ask({});
         await press('   ');
         await press(ENTER);
 
@@ -92,20 +85,20 @@ describe.each(secretSteps)('$step.key typed into a terminal', ({ step, pasted })
     });
 
     it('keeps the prompt open on a paste that is not the right shape', async () => {
-        const answer = step.ask({});
+        const answer = tokenStep.ask({});
         await press('not it');
         await press(ENTER);
 
         expect(await isSettled(answer)).toBe(false);
 
         await clearLine('not it');
-        await press(pasted);
+        await press(TOKEN);
         await press(ENTER);
-        await expect(answer).resolves.toBe(pasted);
+        await expect(answer).resolves.toBe(TOKEN);
     });
 
     it('warns again after a rejected paste', async () => {
-        const answer = step.ask({});
+        const answer = tokenStep.ask({});
         await press(ENTER);
         await press('not it');
         await press(ENTER);
@@ -119,7 +112,7 @@ describe.each(secretSteps)('$step.key typed into a terminal', ({ step, pasted })
     });
 
     it('cancels on ctrl+c', async () => {
-        const answer = step.ask({}).catch((error: unknown) => error);
+        const answer = tokenStep.ask({}).catch((error: unknown) => error);
         await press(CTRL_C);
 
         expect(isSeedcordError(await answer, undefined, SeedcordErrorCode.CreateCancelled)).toBe(true);

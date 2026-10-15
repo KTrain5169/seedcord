@@ -81,10 +81,11 @@
         "@seedcord/logger": "workspace:^",
         "@seedcord/types": "workspace:^",
         "@seedcord/utils": "workspace:^",
+        "chalk": "catalog:deps",
         "cli-spinners": "^3.4.0",
         "commander": "^15.0.0",
         "discord-api-types": "catalog:deps",
-        "ink": "^7.1.1",
+        "ink": "^8.0.0",
         "ink-spinner": "^5.0.0",
         "minimatch": "^10.2.6",
         "react": "catalog:react",
@@ -102,6 +103,7 @@
         "@seedcord/tsdown-config": "workspace:^",
         "@seedcord/vitest-config": "workspace:^",
         "@types/react": "catalog:react",
+        "@xterm/headless": "^6.0.0",
         "discord.js": "catalog:peer",
         "envapt": "catalog:peer",
         "eslint-plugin-react-hooks": "^7.1.1",
@@ -109,15 +111,19 @@
         "tsx": "catalog:deps",
         "typescript": "catalog:peer",
         "vitest": "catalog:test",
-        "wrangler": "catalog:deps"
+        "wrangler": "catalog:peer"
     },
     "peerDependencies": {
         "@cloudflare/vite-plugin": "catalog:peer",
         "envapt": "catalog:peer",
-        "typescript": "catalog:consumerTypes"
+        "typescript": "catalog:consumerTypes",
+        "wrangler": "catalog:peer"
     },
     "peerDependenciesMeta": {
         "@cloudflare/vite-plugin": {
+            "optional": true
+        },
+        "wrangler": {
             "optional": true
         }
     },

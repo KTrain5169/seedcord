@@ -1,15 +1,19 @@
-import { relative, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { relative, resolve, sep } from 'node:path';
 
 import { wrapHot } from '@seedcord/core/internal';
 import { paint } from '@seedcord/errors';
 import { TypedEventEmitter } from '@seedcord/event-emitter';
 import { Logger } from '@seedcord/logger';
+import { resolveFromRoot } from '@seedcord/utils/node/internal';
 import { minimatch } from 'minimatch';
 
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { DevEvent } from './events';
+import type { WorkerConfigFiles } from './workerConfigFiles';
 import type { HmrEventType, HmrUpdateEvent } from '@seedcord/types';
 import type { DevChannel, SeedcordCliEvents, SeedcordFrameworkEvents } from '@seedcord/types/internal';
+import type { FSWatcher } from 'node:fs';
 import type {
     DevEnvironment,
     EnvironmentModuleNode,
@@ -33,25 +37,34 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
     private readonly logger: Logger;
     private readonly lastUpdate = new Map<string, number>();
     private server: ViteDevServer | null = null;
-    private readonly dynamicRestartPatterns = new Set<string>();
+    private readonly restartPatterns: Set<string>;
+    private workerConfigWatcher?: FSWatcher | undefined;
 
     private get hot(): NormalizedHotChannel | undefined {
-        return this.server?.environments.ssr.hot;
+        return this.server?.environments[this.botEnvironment]?.hot;
     }
 
     private get dev(): DevChannel<SeedcordCliEvents, SeedcordFrameworkEvents> | undefined {
         return this.hot ? wrapHot<SeedcordCliEvents, SeedcordFrameworkEvents>(this.hot) : undefined;
     }
 
-    constructor(private readonly config: ResolvedSeedcordConfig) {
+    constructor(
+        private readonly config: ResolvedSeedcordConfig,
+        private readonly botEnvironment: string,
+        private readonly workerConfig?: WorkerConfigFiles
+    ) {
         super();
         this.logger = new Logger('HMR', { channel: 'hmr' });
+        this.restartPatterns = new Set((config.hmr?.restart ?? []).map((pattern) => this.fromRoot(pattern)));
     }
 
     public get plugin(): Plugin {
         const onHotUpdate = this.hotUpdate.bind(this);
+        const { workerConfig } = this;
         return {
             name: 'seedcord:hmr',
+            // the cloudflare plugin restarts vite on its own when vite's watcher reports one of these
+            config: () => (workerConfig ? { server: { watch: { ignored: [workerConfig.includes] } } } : undefined),
             configureServer: this.configureServer.bind(this),
             hotUpdate(ctx) {
                 return onHotUpdate(this.environment, ctx);
@@ -63,8 +76,21 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
         this.dev?.send('seedcord:refresh-commands', { shouldRefresh });
     }
 
+    public close(): void {
+        this.workerConfigWatcher?.close();
+        this.removeAllListeners('event');
+    }
+
+    private reportChangeNeedingRestart(file: string): void {
+        if (this.isDebounced(file, 'update')) return;
+        this.reportRestartRequired(file);
+    }
+
     private configureServer(server: ViteDevServer): void {
         this.server = server;
+        this.workerConfigWatcher = this.workerConfig?.watch((file) => {
+            this.reportChangeNeedingRestart(file);
+        });
         // vite calls hotUpdate for files only
         server.watcher.on('addDir', (dir) => this.handleDirEvent(dir, 'createDir'));
         server.watcher.on('unlinkDir', (dir) => this.handleDirEvent(dir, 'deleteDir'));
@@ -82,7 +108,7 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
         });
 
         this.dev?.on('seedcord:register-critical-files', (data) => {
-            for (const pattern of data.patterns) this.dynamicRestartPatterns.add(pattern);
+            for (const pattern of data.patterns) this.restartPatterns.add(this.fromRoot(pattern));
             this.logger.debug(`Registered ${String(data.patterns.length)} critical file patterns`);
         });
     }
@@ -99,8 +125,7 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
 
     // hotUpdate covers a critical file inside the root
     private handleChange(file: string): void {
-        if (!this.isCriticalFile(file) || this.isDebounced(file, 'update')) return;
-        this.reportRestartRequired(file);
+        if (this.isCriticalFile(file)) this.reportChangeNeedingRestart(file);
     }
 
     private reportRestartRequired(file: string): void {
@@ -122,21 +147,20 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
 
     private hotUpdate(environment: DevEnvironment, ctx: HotUpdateOptions): EnvironmentModuleNode[] {
         const { type, file, modules } = ctx;
-        // the bot's modules exist in the ssr environment
-        if (environment.name !== 'ssr' || this.isDebounced(file, type)) return [];
+        if (environment.name !== this.botEnvironment || this.isDebounced(file, type)) return [];
 
-        if (this.isCriticalFile(file)) {
+        const affectedModules = affectedFiles(file, modules);
+        if (affectedModules.some((affected) => this.isCriticalFile(affected))) {
             this.reportRestartRequired(file);
             return [];
         }
 
         const { moduleGraph } = environment;
-        const affectedModules = affectedFiles(file, modules);
         for (const target of affectedModules) {
             for (const mod of moduleGraph.getModulesByFile(target) ?? []) moduleGraph.invalidateModule(mod);
         }
 
-        this.send({ file, type, affectedModules });
+        this.send({ file, type: deleteIfGone(type, file), affectedModules });
 
         // [] skips vite's own hmr
         return [];
@@ -145,10 +169,9 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
     private isCriticalFile(file: string): boolean {
         const { root, configFile, instance, target } = this.config;
         const relPath = relative(root, file);
-        const patterns = [...(this.config.hmr?.restart ?? []), ...this.dynamicRestartPatterns];
 
         return (
-            patterns.some((pattern) => minimatch(relPath, pattern)) ||
+            [...this.restartPatterns].some((pattern) => minimatch(relPath, pattern)) ||
             file === configFile ||
             file.endsWith('package.json') ||
             file.endsWith('tsconfig.json') ||
@@ -157,6 +180,17 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
             file === resolve(root, instance)
         );
     }
+
+    // minimatch reads a windows separator as an escape
+    private fromRoot(pattern: string): string {
+        const { root } = this.config;
+        return relative(root, resolveFromRoot(root, pattern)).split(sep).join('/');
+    }
+}
+
+// workerd has no access to the project's files
+function deleteIfGone(type: HotUpdateOptions['type'], file: string): HotUpdateOptions['type'] {
+    return type === 'update' && !existsSync(file) ? 'delete' : type;
 }
 
 // vite can hold several modules for one file, each with its own importers

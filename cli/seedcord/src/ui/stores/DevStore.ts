@@ -1,14 +1,18 @@
 import { TypedEventEmitter } from '@seedcord/event-emitter';
 import { assertNever } from '@seedcord/utils';
 
+import { isSessionLive } from './devPhase';
+
 import type { DevEvent } from '#commands/dev/runtime/events';
 import type { TunnelStatus } from '#commands/dev/tunnel/TunnelCoordinator';
+import type { ResolvedTarget } from '#core/config/schema';
 import type { DevPhase } from './devPhase';
 
 export interface DevTransport {
     // the transport package, '@seedcord/gateway' or '@seedcord/http'
     readonly name: string;
     readonly version: string;
+    readonly target: ResolvedTarget['kind'];
 }
 
 export interface DevState {
@@ -23,6 +27,7 @@ export interface DevState {
     readonly tunnel: TunnelStatus | null;
     readonly quitArmed: boolean;
     readonly idleAnimation: boolean;
+    readonly liveSinceMs: number | null;
 }
 
 const INITIAL: DevState = {
@@ -36,7 +41,8 @@ const INITIAL: DevState = {
     port: null,
     tunnel: null,
     quitArmed: false,
-    idleAnimation: true
+    idleAnimation: true,
+    liveSinceMs: null
 };
 
 export class DevStore extends TypedEventEmitter<{ change: [] }> {
@@ -128,10 +134,8 @@ export class DevStore extends TypedEventEmitter<{ change: [] }> {
                 this.patch({ port: event.port });
                 break;
             }
-            case 'module-loading':
-            case 'module-loaded':
-            case 'module-error':
-            case 'ready': {
+            case 'progress': {
+                this.patch({ status: event.status });
                 break;
             }
             default: {
@@ -141,7 +145,9 @@ export class DevStore extends TypedEventEmitter<{ change: [] }> {
     }
 
     private patch(next: Partial<DevState>): void {
-        this.state = { ...this.state, ...next };
+        const merged = { ...this.state, ...next };
+        const liveSinceMs = isSessionLive(merged.phase) ? (this.state.liveSinceMs ?? Date.now()) : null;
+        this.state = { ...merged, liveSinceMs };
         this.emit('change');
     }
 }

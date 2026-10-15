@@ -41,7 +41,7 @@
         "prettier-plugin-tailwindcss": "catalog:deps",
         "tailwindcss": "catalog:deps",
         "typescript": "catalog:peer",
-        "wrangler": "catalog:deps"
+        "wrangler": "catalog:peer"
     },
     "engines": {
         "node": ">=24.11"

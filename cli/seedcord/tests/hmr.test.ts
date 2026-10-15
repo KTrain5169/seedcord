@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { type Mock, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -57,6 +58,36 @@ function viteHotUpdate(
     callHotUpdate(plugin, ssr, type, file, ssrModules);
 }
 
+interface ConfiguredPlugin {
+    plugin: HmrPlugin;
+    watcher: EventEmitter;
+    listeners: Map<string, (data: unknown) => void>;
+    events: DevEvent[];
+}
+
+function configuredPlugin(config: ConstructorParameters<typeof HmrPlugin>[0]): ConfiguredPlugin {
+    const plugin = new HmrPlugin(config, 'ssr');
+    const listeners = new Map<string, (data: unknown) => void>();
+    // justified: spy on the private `hot` getter
+    const hotHost = plugin as unknown as { hot: { send: Mock; on: Mock } };
+    vi.spyOn(hotHost, 'hot', 'get').mockReturnValue({
+        send: vi.fn(),
+        on: vi.fn((event: string, cb: (data: unknown) => void) => listeners.set(event, cb))
+    });
+
+    const events: DevEvent[] = [];
+    plugin.on('event', (event: DevEvent) => events.push(event));
+
+    const watcher = watcherMock();
+    const server = {
+        watcher,
+        environments: { ssr: { hot: { send: vi.fn(), on: vi.fn() } } }
+    } as unknown as ViteDevServer;
+    (plugin.plugin.configureServer as (s: ViteDevServer) => void)(server);
+
+    return { plugin, watcher, listeners, events };
+}
+
 const loggerSpies = {
     info: vi.fn(),
     warn: vi.fn(),
@@ -80,6 +111,12 @@ vi.mock('@seedcord/event-emitter', () => ({
     TypedEventEmitter: EventEmitter
 }));
 
+// most paths below don't exist on disk
+vi.mock('node:fs', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('node:fs')>()),
+    existsSync: vi.fn(() => true)
+}));
+
 describe('HmrPlugin', () => {
     let hmrPlugin: HmrPlugin;
     const mockConfig = {
@@ -95,13 +132,15 @@ describe('HmrPlugin', () => {
         }
     };
 
+    const srcRoot = join(process.cwd(), 'src');
+
     beforeEach(() => {
         vi.clearAllMocks();
-        hmrPlugin = new HmrPlugin(mockConfig);
+        hmrPlugin = new HmrPlugin(mockConfig, 'ssr');
     });
 
     it('carries the config rollback flag onto the hmr payload', () => {
-        const plugin = new HmrPlugin({ ...mockConfig, hmr: { rollback: false } });
+        const plugin = new HmrPlugin({ ...mockConfig, hmr: { rollback: false } }, 'ssr');
         const hotSend = vi.fn();
         // justified: spy on the private `hot` getter
         const hotHost = plugin as unknown as { hot: { send: typeof hotSend; on: ReturnType<typeof vi.fn> } };
@@ -115,20 +154,7 @@ describe('HmrPlugin', () => {
 
     it('asks for a restart when the config file above the vite root changes', () => {
         const configFile = join(process.cwd(), 'seedcord.config.ts');
-        const plugin = new HmrPlugin({ ...mockConfig, root: join(process.cwd(), 'src'), configFile });
-        // justified: spy on the private `hot` getter
-        const hotHost = plugin as unknown as { hot: { send: Mock; on: Mock } };
-        vi.spyOn(hotHost, 'hot', 'get').mockReturnValue({ send: vi.fn(), on: vi.fn() });
-
-        const events: DevEvent[] = [];
-        plugin.on('event', (event: DevEvent) => events.push(event));
-
-        const watcher = watcherMock();
-        const server = {
-            watcher,
-            environments: { ssr: { hot: { send: vi.fn(), on: vi.fn() } } }
-        } as unknown as ViteDevServer;
-        (plugin.plugin.configureServer as (s: ViteDevServer) => void)(server);
+        const { watcher, events } = configuredPlugin({ ...mockConfig, root: srcRoot, configFile });
 
         watcher.emit('change', configFile);
 
@@ -136,27 +162,35 @@ describe('HmrPlugin', () => {
     });
 
     it('relays the bound port the framework reports', () => {
-        const plugin = new HmrPlugin(mockConfig);
-        const listeners = new Map<string, (data: unknown) => void>();
-        // justified: spy on the private `hot` getter
-        const hotHost = plugin as unknown as { hot: { send: Mock; on: Mock } };
-        vi.spyOn(hotHost, 'hot', 'get').mockReturnValue({
-            send: vi.fn(),
-            on: vi.fn((event: string, cb: (data: unknown) => void) => listeners.set(event, cb))
-        });
-
-        const events: DevEvent[] = [];
-        plugin.on('event', (event: DevEvent) => events.push(event));
-
-        const server = {
-            watcher: watcherMock(),
-            environments: { ssr: { hot: { send: vi.fn(), on: vi.fn() } } }
-        } as unknown as ViteDevServer;
-        (plugin.plugin.configureServer as (s: ViteDevServer) => void)(server);
+        const { listeners, events } = configuredPlugin(mockConfig);
 
         listeners.get('seedcord:server-listening')?.({ port: 4000 });
 
         expect(events).toContainEqual({ type: 'server-listening', port: 4000 });
+    });
+
+    it.each(['migrations/**', './migrations/**', join(srcRoot, 'migrations/**')])(
+        'asks for a restart on a save matching the plugin pattern %s',
+        (pattern) => {
+            const { plugin, listeners, events } = configuredPlugin({ ...mockConfig, root: srcRoot });
+
+            listeners.get('seedcord:register-critical-files')?.({ patterns: [pattern] });
+            viteHotUpdate(plugin, 'update', join(srcRoot, 'migrations/001-create-users.ts'));
+
+            expect(events).toContainEqual({ type: 'restart-required' });
+        }
+    );
+
+    it('asks for a restart on a save matching a ./ pattern in hmr.restart', () => {
+        const { plugin, events } = configuredPlugin({
+            ...mockConfig,
+            root: srcRoot,
+            hmr: { restart: ['./config/**'] }
+        });
+
+        viteHotUpdate(plugin, 'update', join(srcRoot, 'config/limits.ts'));
+
+        expect(events).toContainEqual({ type: 'restart-required' });
     });
 
     describe('configureServer (File Events)', () => {
@@ -243,6 +277,16 @@ describe('HmrPlugin', () => {
 
         it('sends one delete carrying the importers of the deleted file', () => {
             viteHotUpdate(hmrPlugin, 'delete', file, [moduleNode(file, [moduleNode(importerFile)])]);
+
+            expect(hotSendMock.mock.calls).toEqual([
+                [HMR_EVENT_NAME, { file, type: 'delete', affectedModules: [file, importerFile], rollback: true }]
+            ]);
+        });
+
+        it('sends a delete for an update to a file that is gone', () => {
+            vi.mocked(existsSync).mockReturnValueOnce(false);
+
+            viteHotUpdate(hmrPlugin, 'update', file, [moduleNode(file, [moduleNode(importerFile)])]);
 
             expect(hotSendMock.mock.calls).toEqual([
                 [HMR_EVENT_NAME, { file, type: 'delete', affectedModules: [file, importerFile], rollback: true }]

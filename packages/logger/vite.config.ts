@@ -4,5 +4,5 @@ import { defineConfig } from 'vite-plus';
 
 export default defineConfig({
     test: createTestConfig(),
-    pack: createTsdownConfig({ entry: ['src/index.ts', 'src/node.ts'] })
+    pack: createTsdownConfig({ entry: ['src/index.ts', 'src/node.ts', 'src/internal.index.ts'] })
 });

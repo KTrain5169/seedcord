@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 import { createViteServer } from 'vitest/node';
 
 import { aliasFromTsconfig } from '#src/index';

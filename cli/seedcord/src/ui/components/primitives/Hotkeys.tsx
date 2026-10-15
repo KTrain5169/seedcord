@@ -2,7 +2,7 @@ import { Box, Text } from 'ink';
 import React from 'react';
 
 import { ui } from '#ui/palette';
-import { isSessionLive } from '#ui/stores/devPhase';
+import { isStreaming } from '#ui/stores/devPhase';
 
 import type { DevPhase } from '#ui/stores/devPhase';
 import type { ReactElement } from 'react';
@@ -18,7 +18,7 @@ function Hotkey({ keyLabel, action, enabled = true, highlight = false }: HotkeyP
     const keyColor = !enabled ? ui.faint : highlight ? ui.warn : ui.accent;
     const actionColor = enabled ? ui.muted : ui.faint;
     return (
-        <Box marginRight={2}>
+        <Box flexShrink={0}>
             <Text color={keyColor} bold>
                 {keyLabel}
             </Text>
@@ -40,7 +40,7 @@ export function SessionKeys({ phase, interactive, following }: SessionKeysProps)
         <Box flexDirection="column">
             <Hotkey keyLabel="q" action="quit" />
             <Hotkey keyLabel="r" action="restart" enabled={interactive} highlight={RESTART_HINT_PHASES.has(phase)} />
-            <Hotkey keyLabel="d" action="disconnect" enabled={interactive && isSessionLive(phase)} />
+            <Hotkey keyLabel="d" action="disconnect" enabled={interactive && isStreaming(phase)} />
             <Hotkey keyLabel="c" action="clear" enabled={interactive} />
             <Hotkey keyLabel="↑↓" action="scroll" />
             <Hotkey keyLabel="t/b" action="top/bottom" highlight={!following} />
@@ -48,13 +48,17 @@ export function SessionKeys({ phase, interactive, following }: SessionKeysProps)
     );
 }
 
-export function FilterKeys(): ReactElement {
+export function FilterKeys({ direction = 'column' }: { readonly direction?: 'column' | 'row' }): ReactElement {
     return (
-        <Box flexDirection="column">
+        <Box flexDirection={direction} flexWrap="wrap" columnGap={2}>
             <Hotkey keyLabel="←→" action="select" />
             <Hotkey keyLabel="tab" action="group" />
             <Hotkey keyLabel="space" action="filter" />
             <Hotkey keyLabel="o" action="toggle" />
         </Box>
     );
+}
+
+export function FiltersKey({ shown }: { readonly shown: boolean }): ReactElement {
+    return <Hotkey keyLabel="f" action={shown ? 'back' : 'filters'} />;
 }

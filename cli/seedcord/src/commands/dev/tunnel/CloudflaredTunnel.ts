@@ -4,6 +4,7 @@ import { createServer } from 'node:net';
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 
+import { DEV_SERVER_HOST } from './listenHost';
 import { awaitReachable } from './probe';
 
 import type { ProbeDeps } from './probe';
@@ -56,7 +57,7 @@ export class CloudflaredTunnel {
         const child = this.deps.spawn(this.binary, [
             'tunnel',
             '--url',
-            `http://localhost:${String(targetPort)}`,
+            `http://${DEV_SERVER_HOST}:${String(targetPort)}`,
             '--metrics',
             `127.0.0.1:${String(metricsPort)}`
         ]);

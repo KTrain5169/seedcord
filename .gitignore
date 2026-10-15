@@ -10,6 +10,7 @@ npm-debug.*
 
 # typescript
 *.tsbuildinfo
+worker-configuration.d.ts
 
 # misc
 generated/
@@ -23,6 +24,7 @@ certs/
 dist/
 *.bun-build
 .wrangler/
+.seedcord/
 
 # Ignore IDE specific files
 **/.idea
@@ -42,6 +44,7 @@ dist/
 
 # scratch projects a test compiles, removed in afterAll unless the run dies
 **/.build-fixture
+**/.root-fixture
 
 # the docs-engine suite copies the docs-generator mocks here so the two never share a dist
 /tooling/docs-engine/tests/mock/

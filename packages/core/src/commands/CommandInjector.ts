@@ -1,10 +1,8 @@
-import { SlashCommandBuilder } from '@discordjs/builders';
 import { paint } from '@seedcord/errors';
 import { Logger } from '@seedcord/logger';
-import { routeLeavesOf } from '@seedcord/utils/internal';
 import { ApplicationCommandType } from 'discord-api-types/v10';
 
-import { contextMenuLeaves } from '#src/commands/contextMenuLeaves';
+import { linkCommands } from '#src/commands/linkCommands';
 import { accessorStore, clearStore, guardedAccessor } from '#src/miscellaneous/guarded';
 
 import type {
@@ -13,8 +11,9 @@ import type {
     UserContextMenuRegistry
 } from '#registries/ContextMenuRegistry';
 import type { SlashRegistry } from '#registries/SlashRegistry';
+import type { CommandRef, LinkedCommands } from '#src/commands/linkCommands';
 import type { CommandBuilder, DeployResult } from '#src/commands/types';
-import type { APIApplicationCommand, Snowflake } from 'discord-api-types/v10';
+import type { ILogger } from '@seedcord/types';
 
 const commandStorage = accessorStore<CommandInfo>();
 const userMenuStorage = accessorStore<ContextMenuInfo>();
@@ -38,8 +37,9 @@ export type InjectedCommandMap = {
 };
 
 /**
- * The bot's deployed slash commands, keyed by {@link SlashRegistry}. Filled by
- * {@link CommandInjector} after each deploy, and a read before that throws.
+ * The bot's deployed slash commands, keyed by {@link SlashRegistry}. A server bot fills these after
+ * each deploy. An edge bot fills them on its first request, from the ids `seedcord build` wrote into
+ * the worker. Reading one before then throws.
  *
  * @example
  * ```ts
@@ -69,8 +69,9 @@ export interface InjectedContextMenuMap {
 }
 
 /**
- * The bot's deployed context-menu commands. Filled by {@link CommandInjector} after each deploy, and a read
- * before that throws.
+ * The bot's deployed context-menu commands. A server bot fills these after each deploy. An edge bot
+ * fills them on its first request, from the ids `seedcord build` wrote into the worker. Reading one
+ * before then throws.
  *
  * @example
  * ```ts
@@ -84,23 +85,43 @@ export const ContextMenus = {
     message: guardedAccessor('ContextMenus.message', messageMenuStorage)
 } as InjectedContextMenuMap;
 
-const MULTI_GUILD = Symbol('seedcord:commands:multi-guild');
-
-// Discord scopes name uniqueness per type, and a context-menu name may be all lowercase like a slash name
-function commandKey(type: ApplicationCommandType, name: string): string {
-    return `${type}:${name}`;
+export function installLinks({ commands, contextMenus }: Pick<LinkedCommands, 'commands' | 'contextMenus'>): void {
+    const pairs = [
+        [commandStorage, commands],
+        [userMenuStorage, contextMenus.user],
+        [messageMenuStorage, contextMenus.message]
+    ] as const;
+    for (const [store, values] of pairs) {
+        clearStore(store);
+        Object.assign(store, values);
+    }
 }
 
-function slashBuildersOf(all: readonly CommandBuilder[]): SlashCommandBuilder[] {
-    const slash = all.filter((command): command is SlashCommandBuilder => command instanceof SlashCommandBuilder);
-    // a guild command in N guilds is the same builder pushed once per guild
-    return [...new Set(slash)];
+const KIND_LABELS: Record<ApplicationCommandType, string> = {
+    [ApplicationCommandType.ChatInput]: 'slash command',
+    [ApplicationCommandType.User]: 'user menu',
+    [ApplicationCommandType.Message]: 'message menu',
+    [ApplicationCommandType.PrimaryEntryPoint]: 'entry point command'
+};
+
+function multiGuildWarning({ name, type }: CommandRef): string {
+    const consequence =
+        type === ApplicationCommandType.ChatInput
+            ? 'falling back to plain text (not clickable)'
+            : 'leaving its id unset';
+    return `${paint.sky.bold(name)} is deployed to multiple guilds, ${consequence}.`;
 }
 
-interface DeployedIds {
-    readonly global: Map<string, Snowflake>;
-    readonly guild: Map<string, Snowflake | typeof MULTI_GUILD>;
-    readonly warned: Set<string>;
+export function warnLinks(
+    logger: ILogger,
+    { multiGuild, notInCode }: Pick<LinkedCommands, 'multiGuild' | 'notInCode'>
+): void {
+    for (const ref of multiGuild) logger.warn(multiGuildWarning(ref));
+    for (const { name, type } of notInCode) {
+        logger.warn(
+            `The ${KIND_LABELS[type]} ${paint.sky.bold(name)} is deployed on Discord with no command for it in your code.`
+        );
+    }
 }
 
 /** @internal */
@@ -108,109 +129,21 @@ export class CommandInjector {
     private readonly logger = new Logger('Commands', { channel: 'bot' });
 
     public inject(deploy: DeployResult, all: readonly CommandBuilder[]): void {
-        this.clear();
+        const linked = linkCommands(
+            deploy,
+            all.map((command) => command.toJSON())
+        );
+        installLinks(linked);
 
-        const ids: DeployedIds = {
-            global: this.indexByKey(deploy.global),
-            guild: this.indexGuilds(deploy.guilds),
-            warned: new Set<string>()
-        };
-        let clickable = 0;
+        warnLinks(this.logger, linked);
 
-        for (const command of slashBuildersOf(all)) {
-            const id = this.resolveId(
-                ApplicationCommandType.ChatInput,
-                command.name,
-                ids,
-                'falling back to plain text (not clickable)'
-            );
-            for (const leaf of routeLeavesOf(command.toJSON())) {
-                commandStorage[leaf.route] = {
-                    mention: id ? this.toMention(leaf.route, id) : this.toPlain(leaf.route),
-                    ...(id && { id }),
-                    route: leaf.route,
-                    description: leaf.description
-                };
-                if (id) clickable++;
-            }
-        }
-
-        const menus = contextMenuLeaves(all);
-        this.injectMenus(menus.user, ApplicationCommandType.User, userMenuStorage, ids);
-        this.injectMenus(menus.message, ApplicationCommandType.Message, messageMenuStorage, ids);
-
+        const routes = Object.values(linked.commands);
+        const clickable = routes.filter((command) => command.id !== undefined).length;
         this.logger.utils.summary('Linked commands', {
             clickable,
-            plain: Object.keys(commandStorage).length - clickable,
-            'context menus': menus.user.size + menus.message.size
+            plain: routes.length - clickable,
+            'context menus':
+                Object.keys(linked.contextMenus.user).length + Object.keys(linked.contextMenus.message).length
         });
-    }
-
-    private injectMenus(
-        names: ReadonlySet<string>,
-        kind: ContextMenuKind,
-        storage: Record<string, ContextMenuInfo>,
-        ids: DeployedIds
-    ): void {
-        for (const name of names) {
-            const id = this.resolveId(kind, name, ids, 'leaving its id unset');
-            storage[name] = { ...(id && { id }), name, kind };
-        }
-    }
-
-    private indexByKey(collection: Map<Snowflake, APIApplicationCommand>): Map<string, Snowflake> {
-        const map = new Map<string, Snowflake>();
-        for (const command of collection.values()) map.set(commandKey(command.type, command.name), command.id);
-        return map;
-    }
-
-    private indexGuilds(
-        guilds: Map<Snowflake, Map<Snowflake, APIApplicationCommand>>
-    ): Map<string, Snowflake | typeof MULTI_GUILD> {
-        const map = new Map<string, Snowflake | typeof MULTI_GUILD>();
-        for (const collection of guilds.values()) {
-            for (const command of collection.values()) {
-                const key = commandKey(command.type, command.name);
-                const existing = map.get(key);
-                // Discord assigns a separate id per guild, so two ids for one name means no single mention
-                if (existing === undefined) map.set(key, command.id);
-                else if (existing !== command.id) map.set(key, MULTI_GUILD);
-            }
-        }
-        return map;
-    }
-
-    private resolveId(
-        type: ApplicationCommandType,
-        name: string,
-        ids: DeployedIds,
-        consequence: string
-    ): Snowflake | undefined {
-        const key = commandKey(type, name);
-        const global = ids.global.get(key);
-        if (global) return global;
-
-        const guild = ids.guild.get(key);
-        if (guild === undefined) return undefined;
-        if (guild === MULTI_GUILD) {
-            if (!ids.warned.has(key)) {
-                this.logger.warn(`${paint.sky.bold(name)} is deployed to multiple guilds, ${consequence}.`);
-                ids.warned.add(key);
-            }
-            return undefined;
-        }
-        return guild;
-    }
-
-    private toMention(route: string, id: Snowflake): string {
-        return `</${route.replaceAll('/', ' ')}:${id}>`;
-    }
-
-    private toPlain(route: string): string {
-        return `/${route.replaceAll('/', ' ')}`;
-    }
-
-    private clear(): void {
-        for (const store of [commandStorage, userMenuStorage, messageMenuStorage]) clearStore(store);
     }
 }

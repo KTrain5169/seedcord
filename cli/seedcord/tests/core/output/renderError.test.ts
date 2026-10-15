@@ -10,35 +10,41 @@ function rendered(error: unknown, options: { verbose?: boolean; width?: number }
     return stripVTControlCharacters(renderError(error, { verbose: false, width: undefined, ...options }));
 }
 
-const relativeFolder = (folder: string): SeedcordError =>
-    new SeedcordError(SeedcordErrorCode.CliBuildRelativeFolder, [folder]);
+const outsideRoot = (folder: string): SeedcordError =>
+    new SeedcordError(SeedcordErrorCode.CoreDirectoryOutsideRoot, [folder, '/bot/src']);
+
+const tag = (code: SeedcordErrorCode): string => `[${String(code)}]`;
 
 describe('renderError', () => {
     it('prints a seedcord error as its code and message, with every line indented', () => {
         const error = new SeedcordError(SeedcordErrorCode.CliBuildFailed, ['src/a.ts(1,1): error TS1']);
 
-        expect(rendered(error)).toBe('  [3112] Type check failed:\n  src/a.ts(1,1): error TS1\n');
+        expect(rendered(error)).toBe(
+            `  ${tag(SeedcordErrorCode.CliBuildFailed)} Type check failed:\n  src/a.ts(1,1): error TS1\n`
+        );
     });
 
     it('lists each problem in an aggregate as a bullet with its own code', () => {
         const error = new SeedcordAggregateError(
             SeedcordErrorCode.CliBuildFolderProblems,
-            [relativeFolder('./handlers'), relativeFolder('./commands')],
+            [outsideRoot('/bot/handlers'), outsideRoot('/bot/commands')],
             [2]
         );
 
         const [headline, ...bullets] = rendered(error).trimEnd().split('\n');
 
-        expect(headline).toMatch(/^ {2}\[3133\] 2 folders/);
-        expect(bullets).toHaveLength(2);
-        expect(bullets[0]).toMatch(/^ {2}• \[3132\] \.\/handlers in the bot config/);
-        expect(bullets[1]).toMatch(/^ {2}• \[3132\] \.\/commands in the bot config/);
+        const outside = tag(SeedcordErrorCode.CoreDirectoryOutsideRoot);
+        expect(headline).toContain(`  ${tag(SeedcordErrorCode.CliBuildFolderProblems)} `);
+        expect(bullets).toEqual([
+            expect.stringContaining(`  • ${outside} /bot/handlers `),
+            expect.stringContaining(`  • ${outside} /bot/commands `)
+        ]);
     });
 
     it('wraps on words to the width and indents wrapped lines under the bullet text', () => {
         const error = new SeedcordAggregateError(
             SeedcordErrorCode.CliBuildFolderProblems,
-            [relativeFolder('./handlers'), relativeFolder('./commands')],
+            [outsideRoot('/bot/handlers'), outsideRoot('/bot/commands')],
             [2]
         );
 
@@ -81,11 +87,11 @@ describe('renderError', () => {
 
     it('adds the cause of each problem in an aggregate under --verbose', () => {
         const constructorThrew = (name: string, reason: string): SeedcordError =>
-            new SeedcordError(SeedcordErrorCode.CliCodegenCommandConstructorThrew, [name, 'src/x.ts', reason], {
+            new SeedcordError(SeedcordErrorCode.CliCommandConstructorThrew, [name, 'src/x.ts', reason], {
                 cause: new Error(reason)
             });
         const error = new SeedcordAggregateError(
-            SeedcordErrorCode.CliCodegenCommandProblems,
+            SeedcordErrorCode.CliCommandProblems,
             [constructorThrew('Ban', 'database not ready'), constructorThrew('Roll', 'bad option')],
             [2]
         );

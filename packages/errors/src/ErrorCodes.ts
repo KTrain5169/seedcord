@@ -22,6 +22,10 @@ export enum SeedcordErrorCode {
     ConfigTokenUnreadable = 1009,
     /** An edge config sets a REST sweeper interval. */
     ConfigEdgeRestSweeper = 1010,
+    /** `DISCORD_PUBLIC_KEY` is unset and reading the key from Discord failed. */
+    ConfigPublicKeyUnavailable = 1011,
+    /** Another process already listens on the port seedcord tries to listen on. */
+    PortInUse = 1012,
 
     /** Attempted to add lifecycle tasks after startup already completed. */
     LifecycleAddAfterCompletion = 1101,
@@ -84,6 +88,10 @@ export enum SeedcordErrorCode {
     CorePluginScopeMismatch = 1221,
     /** A node http bot received a request through `fetch` before `start()` was called. */
     CoreFetchBeforeStart = 1222,
+    /** An edge worker received a POST without the ids `seedcord build` writes into it. */
+    CoreEdgeUnbuilt = 1223,
+    /** A relative folder was read in a process that never received the bot's `root`. */
+    CoreDirectoryRootUnknown = 1224,
 
     /** A command decorator attempted to re-register an existing command scope. */
     DecoratorCommandAlreadyRegistered = 1301,
@@ -204,24 +212,20 @@ export enum SeedcordErrorCode {
     PluginKyselyInvalidStepCount = 2203,
     /** Migration direction was not recognized. */
     PluginKyselyUnknownDirection = 2204,
-    /** Provided migrations path could not be resolved. */
-    PluginKyselyUnresolvedMigrationsPath = 2205,
-    /** No migration files were found for execution. */
-    PluginKyselyNoMigrationFiles = 2206,
-    /** A migration module failed to export the expected functions. */
-    PluginKyselyInvalidMigrationModule = 2207,
+    /** A file in the migrations folder is missing its `up` function. */
+    PluginKyselyInvalidMigrationModule = 2205,
     /** An arbitrary (non-Error) failure was reported by a migration. */
-    PluginKyselyNonErrorFailure = 2208,
+    PluginKyselyNonErrorFailure = 2206,
     /** Postgres pool failed to close cleanly during shutdown. */
-    PluginKyselyDisconnectFailed = 2209,
+    PluginKyselyDisconnectFailed = 2207,
     /** Kysely `services` was accessed before the plugin finished initializing. */
-    PluginKyselyServicesNotReady = 2210,
+    PluginKyselyServicesNotReady = 2208,
     /** Postgres pool failed to establish a connection. */
-    PluginKyselyConnectionFailed = 2211,
+    PluginKyselyConnectionFailed = 2209,
     /** Bootstrapper failed to ensure the target Postgres database exists. */
-    PluginKyselyBootstrapFailed = 2212,
-    /** Two listed migration files share a name once their extensions are stripped. */
-    PluginKyselyDuplicateMigrationName = 2213,
+    PluginKyselyBootstrapFailed = 2210,
+    /** Two files in the migrations folder share a name once their folder and extension are stripped. */
+    PluginKyselyDuplicateMigrationName = 2211,
 
     /** Config file default export was not an object. */
     CliConfigInvalidExport = 3101,
@@ -247,8 +251,8 @@ export enum SeedcordErrorCode {
     CliBuildFailed = 3112,
     /** Two commands resolve to the same slash route during codegen. */
     CliCodegenDuplicateRoute = 3114,
-    /** The commands directory could not be read during codegen. */
-    CliCodegenCommandsDirUnreadable = 3115,
+    /** The commands directory could not be read. */
+    CliCommandsDirUnreadable = 3115,
     /** Two context-menu commands of the same kind share a name during codegen. */
     CliCodegenDuplicateContextMenu = 3116,
     /** Could not resolve the application from the bot token during `commands --clean`. */
@@ -271,8 +275,8 @@ export enum SeedcordErrorCode {
     CliTunnelUnreachable = 3125,
     /** A config field is present with the wrong shape. */
     CliConfigInvalidField = 3126,
-    /** A class carrying `@RegisterCommand` threw while codegen constructed it. */
-    CliCodegenCommandConstructorThrew = 3127,
+    /** A class carrying `@RegisterCommand` threw while seedcord constructed it. */
+    CliCommandConstructorThrew = 3127,
     /** Vite threw while bundling the bot. */
     CliBundleFailed = 3128,
     /** `build.outDir` is `root` or a folder that contains it. */
@@ -281,42 +285,52 @@ export enum SeedcordErrorCode {
     CliTypescriptMissing = 3130,
     /** `build.tsconfig` is unset. The config file's folder does not contain a `tsconfig.json`. */
     CliBuildNoTsconfig = 3131,
-    /** A folder in the bot config is a relative path. */
-    CliBuildRelativeFolder = 3132,
     /** Two or more folders in the bot config failed the `seedcord build` checks. */
-    CliBuildFolderProblems = 3133,
+    CliBuildFolderProblems = 3132,
     /** `build.outDir` already contains other files. */
-    CliBuildOutDirNotEmpty = 3134,
+    CliBuildOutDirNotEmpty = 3133,
     /** Two or more fields in the seedcord config are missing or invalid. */
-    CliConfigProblems = 3135,
-    /** Two or more command constructors threw during codegen. */
-    CliCodegenCommandProblems = 3136,
+    CliConfigProblems = 3134,
+    /** Two or more command constructors threw while seedcord read the commands. */
+    CliCommandProblems = 3135,
     /** `seedcord codegen --check` found the committed augmentations stale. */
-    CliCodegenOutOfDate = 3137,
+    CliCodegenOutOfDate = 3136,
     /** A file or folder in the project has a `#` in its path. */
-    CliPathHasHash = 3138,
+    CliPathHasHash = 3137,
     /** An edge bot's tsconfig lacks the `workerd` condition. */
-    CliEdgeWithoutWorkerdCondition = 3139,
+    CliEdgeWithoutWorkerdCondition = 3138,
     /** A bot with no wrangler config sets the `workerd` condition in its tsconfig. */
-    CliWorkerdConditionWithoutWrangler = 3140,
+    CliWorkerdConditionWithoutWrangler = 3139,
     /** TypeScript could not read the project's tsconfig. */
-    CliTsconfigUnreadable = 3141,
+    CliTsconfigUnreadable = 3140,
     /** Two or more files or folders in the project have a `#` in their path. */
-    CliHashPathProblems = 3142,
+    CliHashPathProblems = 3141,
     /** The CLI could not start the TypeScript compiler process. */
-    CliTypescriptNotStarted = 3143,
+    CliTypescriptNotStarted = 3142,
     /** An edge bot's seedcord config sets `entry`. */
-    CliConfigEntryOnEdge = 3144,
+    CliConfigEntryOnEdge = 3143,
     /** An edge bot's project does not have `@cloudflare/vite-plugin` installed. */
-    CliEdgeVitePluginMissing = 3145,
+    CliEdgeVitePluginMissing = 3144,
     /** An edge bot's `compatibility_date` predates Cloudflare's Node compat default with no flag to turn it on. */
-    CliEdgeCompatDateTooOld = 3146,
+    CliEdgeCompatDateTooOld = 3145,
     /** An edge bot sets `no_nodejs_compat`. */
-    CliEdgeNodeCompatOff = 3147,
+    CliEdgeNodeCompatOff = 3146,
     /** The build could not start the edge worker in workerd. */
-    CliEdgeBootFailed = 3148,
+    CliEdgeBootFailed = 3147,
     /** An edge bot's `root` holds its seedcord config. */
-    CliEdgeRootHoldsConfig = 3149,
+    CliEdgeRootHoldsConfig = 3148,
+    /** An edge build could not read the application from Discord with `DISCORD_BOT_TOKEN`. */
+    CliEdgeApplicationUnreadable = 3149,
+    /** An edge build could not read the commands deployed globally or to a guild its commands target. */
+    CliEdgeCommandsUnreadable = 3150,
+    /** An edge build found commands in code that have no deployed id on Discord. */
+    CliEdgeCommandsNotDeployed = 3151,
+    /** An edge bot's project does not have `wrangler` installed. */
+    CliEdgeWranglerMissing = 3153,
+    /** Wrangler could not read an edge bot's wrangler config. */
+    CliEdgeWranglerConfigUnreadable = 3154,
+    /** Something called the dev runtime before `start()` finished or after `stop()`. A bug in seedcord. */
+    CliDevRuntimeNotRunning = 3155,
 
     /** A create prompt was cancelled (Ctrl-C), and nothing has been written yet. */
     CreateCancelled = 3201,

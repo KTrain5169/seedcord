@@ -10,9 +10,12 @@
     },
     "type": "module",
     "scripts": {
+        "dev": "seedcord dev",
         "build": "seedcord build",
         "deploy": "seedcord build && wrangler deploy",
         "codegen": "seedcord codegen",
+        "types": "wrangler types",
+        "postinstall": "wrangler types",
         "clean": "rm -rf dist .wrangler",
         "lint": "eslint '**/*.{ts,tsx}' --cache --no-error-on-unmatched-pattern",
         "lint:fix": "eslint '**/*.{ts,tsx}' --fix --cache --no-error-on-unmatched-pattern",
@@ -31,9 +34,6 @@
         "@seedcord/eslint-config": "workspace:^",
         "@seedcord/tsconfig": "workspace:^",
         "seedcord": "workspace:^",
-        "wrangler": "catalog:deps"
-    },
-    "peerDependencies": {
-        "typescript": "catalog:peer"
+        "wrangler": "catalog:peer"
     }
 }

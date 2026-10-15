@@ -1,5 +1,15 @@
 import type { HmrUpdateEvent } from './Types/Hmr';
 
+// how a bot in workerd sends a thrown error to the CLI
+export interface WireError {
+    name: string;
+    message: string;
+    stack?: string | undefined;
+    code?: unknown;
+    cause?: WireError | undefined;
+    errors?: WireError[] | undefined; // an AggregateError's members
+}
+
 /**
  * HMR events the framework (client) sends to the CLI (server).
  *
@@ -9,6 +19,8 @@ export interface SeedcordFrameworkEvents {
     'seedcord:register-critical-files': { patterns: string[] };
     'seedcord:commands-update-prompt': { files: string[] };
     'seedcord:server-listening': { port: number };
+    'seedcord:started': { username: string | undefined };
+    'seedcord:start-failed': { error: WireError };
 }
 
 /**
@@ -19,6 +31,8 @@ export interface SeedcordFrameworkEvents {
 export interface SeedcordCliEvents {
     'seedcord:hmr': HmrUpdateEvent;
     'seedcord:refresh-commands': { shouldRefresh: boolean };
+    // eslint-disable-next-line no-magic-numbers -- chalk's ColorSupportLevel for the CLI's terminal, copied to keep chalk out of types
+    'seedcord:start': { colorLevel: 0 | 1 | 2 | 3 };
 }
 
 /**

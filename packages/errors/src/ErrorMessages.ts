@@ -18,6 +18,10 @@ const messages = {
         `Add GatewayIntentBits.Guilds to clientOptions.intents. Without it discord.js doesn't cache any guild, so interaction.guild is null inside these commands: ${commands}.`,
     [SeedcordErrorCode.ConfigEdgeRestSweeper]: (key: string) =>
         `Remove ${paint.sky(`bot.restOptions.${key}`)} from your edge config. A sweeper interval starts a timer at the worker's global scope, where workerd throws.`,
+    [SeedcordErrorCode.ConfigPublicKeyUnavailable]: (reason: string) =>
+        `Reading the public key from Discord failed (${reason}). The bot reads it there because ${paint.bold('DISCORD_PUBLIC_KEY')} is unset. Check ${paint.bold('DISCORD_BOT_TOKEN')}, or set ${paint.bold('DISCORD_PUBLIC_KEY')} to the key from your application's General Information page.`,
+    [SeedcordErrorCode.PortInUse]: (port: number, setting: string, configFile?: string) =>
+        `Another process already listens on port ${port}. Stop it, or set ${paint.bold(setting)} in ${configFile ? paint.path(configFile) : 'your Seedcord config'} to a free port.`,
     [SeedcordErrorCode.UnsupportedRuntimeVersion]: (runtime: string, required: string, running: string) =>
         `seedcord requires ${runtime} ${required} but this process runs ${running}. Upgrade ${runtime} before starting the bot.`,
 
@@ -49,6 +53,8 @@ const messages = {
     [SeedcordErrorCode.CoreFileUnreadable]: (file: string) => `${paint.path(file)} could not be read as text.`,
     [SeedcordErrorCode.CoreDirectoryOutsideRoot]: (dir: string, root: string) =>
         `${paint.path(dir)} is outside ${paint.bold('root')} (${paint.path(root)}). ${paint.bold('seedcord build')} bundles only the files under ${paint.bold('root')}. Move the folder under it, or set ${paint.bold('root')} in seedcord.config.ts to a folder that holds both.`,
+    [SeedcordErrorCode.CoreDirectoryRootUnknown]: (dir: string) =>
+        `${paint.path(dir)} is relative to ${paint.bold('root')}, and this process has no ${paint.bold('root')} to resolve it against. ${paint.bold('seedcord dev')} and a built bot set ${paint.bold('root')} from seedcord.config.ts. Start the bot one of those ways, or pass an absolute path like ${paint.sky(`resolve(import.meta.dirname, '${dir}')`)}.`,
     [SeedcordErrorCode.CorePluginGroupTaken]: (head: string, key: string) =>
         `${paint.sky(head)} is already taken on this bot, so ${paint.sky(key)} cannot nest under it. Pick another group name.`,
     [SeedcordErrorCode.CorePluginKeyMalformed]: (key: string, reason: string) =>
@@ -63,6 +69,8 @@ const messages = {
         `Plugin key "${key}" is a channel the framework logs on. Pick another key.`,
     [SeedcordErrorCode.CoreApplicationUnavailable]: () =>
         "The bot's application id resolves during startup. You read it before that. Read it inside a handler, inside a plugin's ready(), or after start() resolves. An edge bot resolves it on its first request.",
+    [SeedcordErrorCode.CoreEdgeUnbuilt]: () =>
+        `This worker has no public key or command ids. ${paint.bold('seedcord build')} reads them from Discord and writes them into the worker it builds. Deploy that build.`,
     [SeedcordErrorCode.CoreFetchBeforeStart]: () =>
         `${paint.bold('fetch()')} ran before ${paint.bold('start()')}. Call ${paint.bold('await seedcord.start()')} before your server passes requests to ${paint.bold('fetch()')}.`,
     [SeedcordErrorCode.CoreAccessorUnresolved]: (accessor: string, key: string) =>
@@ -200,11 +208,8 @@ const messages = {
     [SeedcordErrorCode.PluginKyselyInvalidStepCount]: () => 'Migration step count must be a non-negative integer.',
     [SeedcordErrorCode.PluginKyselyUnknownDirection]: (direction: unknown) =>
         `Unknown migration direction: ${String(direction)}.`,
-    [SeedcordErrorCode.PluginKyselyUnresolvedMigrationsPath]: (label: string) =>
-        `Unable to resolve migrations at path: ${label}.`,
-    [SeedcordErrorCode.PluginKyselyNoMigrationFiles]: () => 'No migration files provided.',
     [SeedcordErrorCode.PluginKyselyInvalidMigrationModule]: (filePath: string) =>
-        `Migration file ${paint.path(filePath)} must export async functions up and down.`,
+        `${paint.path(filePath)} needs an up function because it is in the migrations folder. Export up, and down if you need it, by name or on a default export object. Move a helper file out of the folder.`,
     [SeedcordErrorCode.PluginKyselyNonErrorFailure]: (message: string) => `Migration failure: ${message}.`,
     [SeedcordErrorCode.PluginKyselyDisconnectFailed]: () =>
         'Failed to close the Postgres pool cleanly during shutdown.',
@@ -215,7 +220,7 @@ const messages = {
     [SeedcordErrorCode.PluginKyselyBootstrapFailed]: (databaseName: string) =>
         `Failed to ensure database ${databaseName} exists.`,
     [SeedcordErrorCode.PluginKyselyDuplicateMigrationName]: (name: string, first: string, second: string) =>
-        `${paint.path(first)} and ${paint.path(second)} are both the migration ${paint.sky(name)}. Kysely identifies a migration by its file name without the extension. Rename one file, or list only one of them.`,
+        `${paint.path(first)} and ${paint.path(second)} are both the migration ${paint.sky(name)}. A migration's name is its file name without the folder or extension. Rename one of the files.`,
 
     [SeedcordErrorCode.CliConfigInvalidExport]: () => 'Config file must default export an object.',
     [SeedcordErrorCode.CliConfigMissingInstance]: () =>
@@ -245,18 +250,28 @@ const messages = {
         `${paint.bold('build.outDir')} is ${paint.path(outDir)}, which contains ${paint.bold('root')} (${paint.path(root)}). ${paint.bold('seedcord build')} empties ${paint.bold('outDir')} before it writes. Point it at a folder of its own, like ${paint.sky('./dist')}.`,
     [SeedcordErrorCode.CliBuildOutDirNotEmpty]: (outDir: string) =>
         `${paint.bold('build.outDir')} is ${paint.path(outDir)}, which already contains other files. ${paint.bold('seedcord build')} empties ${paint.bold('outDir')} before it writes. Point it at an empty folder, or delete what is in it.`,
+    [SeedcordErrorCode.CliEdgeApplicationUnreadable]: (reason: string) =>
+        `Reading the application from Discord with ${paint.bold('DISCORD_BOT_TOKEN')} failed (${reason}). An edge build reads the public key and command ids from it. Check that the token is still valid.`,
+    [SeedcordErrorCode.CliEdgeCommandsUnreadable]: (where: string, reason: string) =>
+        `Could not read the commands deployed ${where} (${reason}). Check ${paint.bold('DISCORD_BOT_TOKEN')}, and that the bot is in every guild a command in your code targets.`,
+    [SeedcordErrorCode.CliEdgeCommandsNotDeployed]: (count: number, commands: string) =>
+        `${count} command${count === 1 ? ' is' : 's are'} in your code with no deployed id on Discord, so the build cannot link ${count === 1 ? 'it' : 'them'}. Deploy with ${paint.bold('seedcord commands')}, then build again.\n${commands}`,
+    [SeedcordErrorCode.CliEdgeWranglerMissing]: (projectDir: string) =>
+        `${paint.bold('seedcord dev')} reads an edge bot's wrangler config through ${paint.bold('wrangler')}, which ${paint.path(projectDir)} does not have installed. Add it as a dev dependency.`,
+    [SeedcordErrorCode.CliEdgeWranglerConfigUnreadable]: (wranglerConfig: string, reason: string) =>
+        `Wrangler could not read ${paint.path(wranglerConfig)}: ${reason}`,
+    [SeedcordErrorCode.CliDevRuntimeNotRunning]: (method: string) =>
+        `${paint.bold('seedcord dev')} called ${paint.bold(method)} while the dev runtime was not running. This is a bug in seedcord.`,
     [SeedcordErrorCode.CliBuildFolderProblems]: (count: number) =>
         `${count} folders in the bot config need fixing before ${paint.bold('seedcord build')} can bundle the bot. Each one is listed below.`,
-    [SeedcordErrorCode.CliBuildRelativeFolder]: (folder: string) =>
-        `${paint.path(folder)} in the bot config is a relative path. A built bot resolves it against the folder it starts in. Build the path from the bot file's folder, like ${paint.sky("resolve(import.meta.dirname, './handlers')")}.`,
     [SeedcordErrorCode.CliCodegenDuplicateRoute]: (route: string, firstFile: string, secondFile: string) =>
         `Two commands resolve to the same slash route \`${route}\`. Defined in ${paint.path(firstFile)} and ${paint.path(secondFile)}. Rename one.`,
-    [SeedcordErrorCode.CliCodegenCommandsDirUnreadable]: (dir: string, reason: string) =>
-        `Could not read the commands directory ${paint.path(dir)} during codegen. ${reason}`,
-    [SeedcordErrorCode.CliCodegenCommandConstructorThrew]: (name: string, file: string, reason: string) =>
-        `${name} threw while codegen constructed it. Fix its constructor in ${paint.path(file)}. ${reason}`,
-    [SeedcordErrorCode.CliCodegenCommandProblems]: (count: number) =>
-        `${count} command files need fixing before codegen can finish. Each one is listed below.`,
+    [SeedcordErrorCode.CliCommandsDirUnreadable]: (dir: string, reason: string) =>
+        `Could not read the commands directory ${paint.path(dir)}. ${reason}`,
+    [SeedcordErrorCode.CliCommandConstructorThrew]: (name: string, file: string, reason: string) =>
+        `${name} threw while seedcord constructed it. Fix its constructor in ${paint.path(file)}. ${reason}`,
+    [SeedcordErrorCode.CliCommandProblems]: (count: number) =>
+        `${count} command files need fixing before seedcord can read the commands. Each one is listed below.`,
     [SeedcordErrorCode.CliCodegenOutOfDate]: (outputPath: string) =>
         `${paint.path(outputPath)} is out of date. Run ${paint.bold('seedcord codegen')} and commit it.`,
     [SeedcordErrorCode.CliEdgeWithoutWorkerdCondition]: (wranglerConfig: string, tsconfig: string) =>
@@ -266,7 +281,7 @@ const messages = {
     [SeedcordErrorCode.CliConfigEntryOnEdge]: (configFile: string, wranglerConfig: string) =>
         `${paint.path(wranglerConfig)} makes this an edge bot. An edge bot has no ${paint.bold('entry')} because Cloudflare calls the default export of ${paint.bold('instance')}. Remove ${paint.bold('entry')} from ${paint.path(configFile)}.`,
     [SeedcordErrorCode.CliEdgeVitePluginMissing]: (projectDir: string) =>
-        `${paint.bold('seedcord build')} bundles an edge bot through ${paint.bold('@cloudflare/vite-plugin')}, which ${paint.path(projectDir)} does not have installed. Add it and ${paint.bold('wrangler')} as dev dependencies.`,
+        `${paint.bold('seedcord dev')} and ${paint.bold('seedcord build')} run an edge bot through ${paint.bold('@cloudflare/vite-plugin')}, which ${paint.path(projectDir)} does not have installed. Add it and ${paint.bold('wrangler')} as dev dependencies.`,
     [SeedcordErrorCode.CliEdgeCompatDateTooOld]: (wranglerConfig: string, date: string, firstDate: string) =>
         `A seedcord edge bot needs Cloudflare's Node compat. ${paint.path(wranglerConfig)} sets ${paint.bold('compatibility_date')} to ${date}, but Cloudflare turns Node compat on by default only from ${firstDate}. Set the date to ${firstDate} or later, or add ${paint.bold('"nodejs_compat"')} to ${paint.bold('compatibility_flags')}.`,
     [SeedcordErrorCode.CliEdgeNodeCompatOff]: (wranglerConfig: string) =>

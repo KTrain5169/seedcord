@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtempDisposable, readFile, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtempDisposable, readFile, stat, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -11,11 +11,12 @@ import { assert, describe, expect, it, onTestFinished } from 'vite-plus/test';
 import { AugmentationBuilder } from '#commands/codegen/AugmentationBuilder';
 import { CodegenRunner } from '#commands/codegen/CodegenRunner';
 import { quietSteps } from '#core/output/quietSteps';
+import { Project } from '#core/project/Project';
 
-import type { ProjectLoader } from '#core/config/ProjectLoader';
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { ModuleLoader } from '#core/modules/ModuleLoader';
 import type { ILogger } from '@seedcord/types';
+import type { SeedcordInstance } from '@seedcord/types/internal';
 
 const OUTPUT = 'seedcord-gen.d.ts';
 
@@ -60,15 +61,9 @@ function runnerWith(
     importModule: (entryPath: string) => Promise<unknown>,
     logger: ILogger
 ): CodegenRunner {
-    // justified: codegen reaches the loader through open() and the returned importModule
-    const projectLoader = {
-        open: () =>
-            Promise.resolve({
-                config,
-                modules: { importModule } as ModuleLoader,
-                [Symbol.asyncDispose]: () => Promise.resolve()
-            })
-    } as unknown as ProjectLoader;
+    // justified: codegen reads only importModule off the loader
+    const modules = { importModule, [Symbol.asyncDispose]: () => Promise.resolve() } as ModuleLoader & AsyncDisposable;
+    const projectLoader = { open: () => Promise.resolve(new Project(config, modules)) };
 
     return new CodegenRunner({ steps: quietSteps, projectLoader, generator: new AugmentationBuilder(logger), logger });
 }
@@ -162,7 +157,68 @@ describe('CodegenRunner plugin capabilities', () => {
     });
 });
 
+describe('CodegenRunner writeFrom', () => {
+    it('scans with the loader it is given and never opens the project', async () => {
+        const root = await tempDir('codegen-');
+        const cmdDir = await tempDir('cmds-');
+        await writeFile(join(cmdDir, 'ban.ts'), 'export {};', 'utf8');
+        const projectLoader = { open: () => Promise.reject(new Error('dev already loaded the bot')) };
+        const logger = silentLogger();
+        const runner = new CodegenRunner({
+            steps: quietSteps,
+            projectLoader,
+            generator: new AugmentationBuilder(logger),
+            logger
+        });
+
+        // justified: the scan treats every import as an export map
+        const modules = { importModule: () => Promise.resolve({ BanCommand }) } as ModuleLoader;
+        await runner.writeFrom({
+            config: configAt(root, resolve(root, 'bot.ts')),
+            // justified: codegen reads only the brand keys and config.bot off the instance
+            instance: brandedInstance(cmdDir) as SeedcordInstance,
+            modules
+        });
+
+        const written = await readFile(resolve(root, OUTPUT), 'utf8');
+        expect(written).toContain("ban: { options: {}; cache: 'cached' }");
+    });
+});
+
 describe('CodegenRunner', () => {
+    it('keeps the project open until the command scan finishes', async () => {
+        const root = await tempDir('codegen-');
+        const cmdDir = await tempDir('cmds-');
+        await writeFile(join(cmdDir, 'ban.ts'), 'export {};', 'utf8');
+        const instancePath = resolve(root, 'bot.ts');
+        let closed = false;
+        // justified: codegen and Project call only these two members
+        const modules = {
+            importModule: (entryPath: string) => {
+                if (closed) return Promise.reject(new Error('Vite module runner has been closed.'));
+                return Promise.resolve(
+                    entryPath === instancePath ? { default: brandedInstance(cmdDir) } : { BanCommand }
+                );
+            },
+            [Symbol.asyncDispose]: () => {
+                closed = true;
+                return Promise.resolve();
+            }
+        } as ModuleLoader & AsyncDisposable;
+        const logger = silentLogger();
+        const runner = new CodegenRunner({
+            steps: quietSteps,
+            projectLoader: { open: () => Promise.resolve(new Project(configAt(root, instancePath), modules)) },
+            generator: new AugmentationBuilder(logger),
+            logger
+        });
+
+        await runner.run(false);
+
+        const written = await readFile(resolve(root, OUTPUT), 'utf8');
+        expect(written).toContain("ban: { options: {}; cache: 'cached' }");
+    });
+
     it('writes the rendered registry to the project root', async () => {
         const root = await tempDir('codegen-');
         await makeRunner(root, silentLogger()).run(false);
@@ -186,7 +242,8 @@ describe('CodegenRunner', () => {
         await makeRunner(root, silentLogger()).run(false);
 
         await expect(makeRunner(root, silentLogger()).run(true)).resolves.toEqual({
-            outputPath: resolve(root, OUTPUT)
+            outputPath: resolve(root, OUTPUT),
+            changed: false
         });
     });
 
@@ -230,7 +287,7 @@ describe('CodegenRunner', () => {
         expect(written).toContain("ban: { options: {}; cache: 'cached' }");
     });
 
-    it('throws CliCodegenCommandsDirUnreadable when the top-level commands dir is unreadable', async () => {
+    it('throws CliCommandsDirUnreadable when the top-level commands dir is unreadable', async () => {
         const root = await tempDir('codegen-');
         const missing = join(root, 'does-not-exist');
 
@@ -241,7 +298,7 @@ describe('CodegenRunner', () => {
             caught = error;
         }
 
-        expect(caught).toMatchObject({ code: SeedcordErrorCode.CliCodegenCommandsDirUnreadable });
+        expect(caught).toMatchObject({ code: SeedcordErrorCode.CliCommandsDirUnreadable });
         expect((caught as Error).message).toContain(missing);
     });
 
@@ -271,7 +328,7 @@ describe('CodegenRunner', () => {
         expect(warnings.some((warning) => warning.includes('locked'))).toBe(true);
     });
 
-    it('resolves the commands path relative to cwd', async () => {
+    it('resolves the commands path against root', async () => {
         const root = await tempDir('codegen-');
         const relativePath = 'no/such/rel';
 
@@ -282,8 +339,8 @@ describe('CodegenRunner', () => {
             caught = error;
         }
 
-        expect(caught).toMatchObject({ code: SeedcordErrorCode.CliCodegenCommandsDirUnreadable });
-        expect((caught as Error).message).toContain(resolve(process.cwd(), relativePath));
+        expect(caught).toMatchObject({ code: SeedcordErrorCode.CliCommandsDirUnreadable });
+        expect((caught as Error).message).toContain(resolve(root, relativePath));
     });
 
     it('throws CliInstanceInvalid when the instance is not a Seedcord instance', async () => {
@@ -320,6 +377,28 @@ describe('CodegenRunner', () => {
 
         const afterCheck = await stat(resolve(root, OUTPUT));
         expect(afterCheck.mtimeMs).toBe(written.mtimeMs);
+    });
+
+    it('reports whether a regular run changed the registry file', async () => {
+        const root = await tempDir('codegen-');
+
+        const first = await makeRunner(root, silentLogger()).run(false);
+        const second = await makeRunner(root, silentLogger()).run(false);
+
+        expect([first.changed, second.changed]).toStrictEqual([true, false]);
+    });
+
+    it('leaves an unchanged registry file untouched on a regular run', async () => {
+        const root = await tempDir('codegen-');
+        await makeRunner(root, silentLogger()).run(false);
+        const outputPath = resolve(root, OUTPUT);
+        const longAgo = new Date('2020-01-01');
+        await utimes(outputPath, longAgo, longAgo);
+
+        await makeRunner(root, silentLogger()).run(false);
+
+        const { mtimeMs } = await stat(outputPath);
+        expect(mtimeMs).toBe(longAgo.getTime());
     });
 
     it('emits context-menu commands into the user and message registries alongside slash routes', async () => {
@@ -375,7 +454,7 @@ describe('CodegenRunner', () => {
             caught = error;
         }
 
-        expect(caught).toMatchObject({ code: SeedcordErrorCode.CliCodegenCommandConstructorThrew });
+        expect(caught).toMatchObject({ code: SeedcordErrorCode.CliCommandConstructorThrew });
         expect(caught).toHaveProperty('cause.message', 'the database was not ready');
         expect((caught as Error).message).toContain('BrokenCommand');
         expect((caught as Error).message).toContain('the database was not ready');
@@ -408,14 +487,14 @@ describe('CodegenRunner', () => {
             .run(false)
             .catch((error: unknown) => error);
 
-        assert(isSeedcordError(caught, 'SeedcordAggregateError', SeedcordErrorCode.CliCodegenCommandProblems));
+        assert(isSeedcordError(caught, 'SeedcordAggregateError', SeedcordErrorCode.CliCommandProblems));
         expect(caught.errors).toMatchObject([
             {
-                code: SeedcordErrorCode.CliCodegenCommandConstructorThrew,
+                code: SeedcordErrorCode.CliCommandConstructorThrew,
                 cause: { message: 'Invalid string length' }
             },
             {
-                code: SeedcordErrorCode.CliCodegenCommandConstructorThrew,
+                code: SeedcordErrorCode.CliCommandConstructorThrew,
                 cause: { message: 'Expected a string for option "sides"' }
             }
         ]);
@@ -452,10 +531,10 @@ describe('CodegenRunner', () => {
             .run(false)
             .catch((error: unknown) => error);
 
-        assert(isSeedcordError(caught, 'SeedcordAggregateError', SeedcordErrorCode.CliCodegenCommandProblems));
+        assert(isSeedcordError(caught, 'SeedcordAggregateError', SeedcordErrorCode.CliCommandProblems));
         expect(caught.errors).toMatchObject([
-            { code: SeedcordErrorCode.CliCodegenCommandConstructorThrew },
-            { code: SeedcordErrorCode.CliCodegenCommandConstructorThrew },
+            { code: SeedcordErrorCode.CliCommandConstructorThrew },
+            { code: SeedcordErrorCode.CliCommandConstructorThrew },
             importFailure
         ]);
     });

@@ -85,13 +85,14 @@ catalogs:
     eslint-plugin-unicorn: ^76.0.0
     typescript-eslint: ^8.65.0
   peer:
-    '@cloudflare/vite-plugin': ^1.63.1
+    '@cloudflare/vite-plugin': ^1.63.2
     discord.js: ^14.27.0
     envapt: ^8.2.2
     kysely: ^0.29.4
     mongoose: ^9.9.1
     pg: ^8.22.0
     typescript: ^6.0.3
+    wrangler: ^4.150.0
   consumerTypes:
     typescript: ^5.9.3 || ^6.0.0 || ^7.0.0
   # typescript-eslint supports typescript below 6.1
@@ -110,13 +111,12 @@ catalogs:
   react:
     '@types/react': ^19.3.0
     '@types/react-dom': ^19.3.0
-    react: ^19.2.8
-    react-dom: ^19.2.8
+    react: ^19.3.1
+    react-dom: ^19.3.1
 
 minimumReleaseAgeExclude:
-  - '@cloudflare/vite-plugin@1.63.1'
-  - miniflare@5.20261006.1-alpha
-  - wrangler@4.149.0
+  - react-dom@19.3.1
+  - react@19.3.1
 
 peerDependencyRules:
   allowAny:

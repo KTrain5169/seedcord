@@ -1,6 +1,7 @@
 import path from 'node:path';
 
 import { Commands } from '@seedcord/core';
+import { HostStartup } from '@seedcord/types/internal';
 import { ApplicationCommandType, Routes } from 'discord-api-types/v10';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
@@ -12,6 +13,7 @@ import { bindSignedEnv, serverConfig } from '#tests/helpers/nodeHost';
 import type { HttpServerConfig } from '#src/interfaces/Config';
 
 const COMMANDS_DIR = path.resolve(__dirname, './fixtures');
+const EMOJI_COMMANDS_DIR = path.resolve(__dirname, './emoji-fixtures');
 const HANDLERS_DIR = path.resolve(__dirname, '../discovery/fixtures/handlers');
 
 // justified: the generated Commands map is empty in tests, so entries read through a plain record
@@ -36,6 +38,13 @@ function stubRest(host: Seedcord): { get: ReturnType<typeof vi.fn>; put: ReturnT
     const put = vi.fn().mockResolvedValue([{ id: 'cmd-1', name: 'ping', type: ApplicationCommandType.ChatInput }]);
     Object.assign(host.rest, { get, put });
     return { get, put };
+}
+
+// @discordjs/rest rejects an aborted request with an AbortError before it reaches discord
+function rejectWhenAborted(signal: AbortSignal): Promise<never> {
+    return new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new DOMException('This operation was aborted', 'AbortError')));
+    });
 }
 
 describe('command deploy during http startup', () => {
@@ -91,6 +100,62 @@ describe('command deploy during http startup', () => {
         await host.start();
 
         expect(get).not.toHaveBeenCalledWith(Routes.currentApplication());
+    });
+
+    it('cancels a deploy that is still waiting when startup is aborted', async () => {
+        await using host = new Seedcord(config(COMMANDS_DIR));
+        stubRest(host);
+        const { promise: putSignal, resolve: sawPut } = Promise.withResolvers<AbortSignal>();
+        const put = vi.fn((_route: string, { signal }: { signal: AbortSignal }) => {
+            sawPut(signal);
+            return rejectWhenAborted(signal);
+        });
+        Object.assign(host.rest, { put });
+
+        const starting = host.start().catch(() => undefined);
+        const signal = await putSignal;
+        host[HostStartup].abort();
+        await starting;
+
+        expect(signal.aborted).toBe(true);
+    });
+
+    it('starts when discord holds the deploy for 30s', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+        try {
+            await using host = new Seedcord(config(COMMANDS_DIR));
+            stubRest(host);
+            const { promise: putCalled, resolve: sawPut } = Promise.withResolvers<undefined>();
+            const put = vi.fn(async () => {
+                sawPut(undefined);
+                await new Promise((resolve) => setTimeout(resolve, 30_000));
+                return [{ id: 'cmd-1', name: 'ping', type: ApplicationCommandType.ChatInput }];
+            });
+            Object.assign(host.rest, { put });
+
+            const starting = host.start();
+            await putCalled;
+            await vi.advanceTimersByTimeAsync(30_000);
+
+            await expect(starting).resolves.toBe(host);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('builds the commands after the emojis load', async () => {
+        // a cached module keeps the import well inside the 100ms emoji fetch
+        await import('./emoji-fixtures/Wave');
+        const base = config(EMOJI_COMMANDS_DIR);
+        await using host = new Seedcord({ ...base, bot: { ...base.bot, emojis: { Wave: 'wave' } } });
+        const get = vi.fn(async (route: string) => {
+            if (route !== Routes.applicationEmojis(APP_ID)) return {};
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            return { items: [{ name: 'wave', id: '111' }] };
+        });
+        Object.assign(host.rest, { get, put: vi.fn().mockResolvedValue([]) });
+
+        await expect(host.start()).resolves.toBe(host);
     });
 
     it('touches no command route when no commands path is configured', async () => {

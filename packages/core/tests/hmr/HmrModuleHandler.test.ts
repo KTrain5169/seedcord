@@ -1,12 +1,18 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { setBotRoot } from '@seedcord/utils/node/internal';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vite-plus/test';
 
 import { HmrModuleHandler } from '#hmr/HmrModuleHandler';
 
 import type { Logger } from '@seedcord/logger';
+
+vi.mock('node:fs', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('node:fs')>();
+    return { ...actual, existsSync: vi.fn(actual.existsSync) };
+});
 
 type TestHandler = new () => unknown;
 
@@ -54,6 +60,7 @@ describe('HmrModuleHandler', () => {
     });
 
     afterEach(() => {
+        setBotRoot(undefined);
         rmSync(dir, { recursive: true, force: true });
     });
 
@@ -118,6 +125,23 @@ describe('HmrModuleHandler', () => {
 
         expect(registerHandler).toHaveBeenCalledTimes(1);
         expect(registerHandler.mock.calls[0]?.[1]).toBe(file);
+    });
+
+    it('reloads a handler file when the handlers dir is relative to root', async () => {
+        setBotRoot(dir);
+        const relative = new HmrModuleHandler<TestHandler>({
+            handlersDir: './commands',
+            isHandler,
+            registerHandler,
+            unregisterHandler,
+            logger: fakeLogger().logger
+        });
+        const file = join(handlersDir, 'Ping.mjs');
+        writeFileSync(file, 'export class Ping {}\n');
+
+        await relative.handle({ file, type: 'update' });
+
+        expect(registerHandler).toHaveBeenCalledTimes(1);
     });
 
     it('reports the reload with how long it took', async () => {
@@ -231,14 +255,18 @@ describe('HmrModuleHandler', () => {
         expect(unregisterHandler).toHaveBeenCalledWith(FixtureHandler, undefined);
     });
 
-    it('treats an update for a missing tracked file as a delete', async () => {
-        const file = join(handlersDir, 'Gone.mjs');
-        handler.trackHandler(file, FixtureHandler);
+    it('reloads an updated file even when existsSync reports it missing', async () => {
+        const file = join(handlersDir, 'Ping.mjs');
+        writeFileSync(file, 'export class Ping {}\n');
+        vi.mocked(existsSync).mockReturnValue(false);
 
-        await handler.handle({ file, type: 'update' });
+        try {
+            await handler.handle({ file, type: 'update' });
+        } finally {
+            vi.mocked(existsSync).mockReset();
+        }
 
-        expect(unregisterHandler).toHaveBeenCalledWith(FixtureHandler, undefined);
-        expect(registerHandler).not.toHaveBeenCalled();
+        expect(registerHandler).toHaveBeenCalledTimes(1);
     });
 
     it('restores the last-good handler when a reload fails', async () => {

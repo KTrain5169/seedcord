@@ -24,7 +24,8 @@ export default defineConfig({
             'pnpm-lock.yaml',
             '**/seedcord-gen.d.ts',
             '**/.seedcord/**',
-            '**/.wrangler/**'
+            '**/.wrangler/**',
+            '**/worker-configuration.d.ts'
         ],
         tabWidth: 4,
         semi: true,

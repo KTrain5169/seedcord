@@ -13,6 +13,8 @@ export const createImportSettings = (rootDir: string) => ({
     'import-x/parsers': {
         '@typescript-eslint/parser': ['.ts', '.tsx']
     },
+    // workerd provides it. no file exists on disk
+    'import-x/core-modules': ['cloudflare:workers'],
     'import-x/internal-regex': '^(src/|@/)',
     'import-x/external-module-folders': ['node_modules', 'dist']
 });

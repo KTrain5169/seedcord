@@ -1,49 +1,46 @@
 import { dirname, join } from 'node:path';
 
+import { REST } from '@discordjs/rest';
+import { warnLinks } from '@seedcord/core/internal';
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { SeedcordError } from '@seedcord/errors/internal';
-import { asError } from '@seedcord/utils/internal';
+import { SeedcordError, validateDiscordToken } from '@seedcord/errors/internal';
 import { isInside } from '@seedcord/utils/node/internal';
+import { Envapter } from 'envapt';
 import { createBuilder } from 'vite';
 
+import { cliLogger } from '#core/cliLogger';
+import { importCloudflare, loadCloudflare, WORKER_ENVIRONMENT } from '#core/modules/cloudflarePlugin';
+import { CommandScanner } from '#core/modules/CommandScanner';
+import { functionExportsOf } from '#core/modules/workerExports';
 import { viteKey } from '#core/project/ProjectFiles';
 
 import { assertNodeCompat } from './assertNodeCompat';
 import { bootWorker } from './bootWorker';
 import { bundleFailed, bundleStats, ENTRY_FILE_NAME } from './output';
 import { pinModulePaths } from './pinModulePaths';
+import { readDiscord } from './readDiscord';
 import { TargetBuild } from './TargetBuild';
 import { WORKER_ENTRY_ID, workerEntry } from './workerEntry';
 
 import type { EdgeTarget } from '#core/config/detectTarget';
-import type { ModuleLoader } from '#core/modules/ModuleLoader';
+import type { CloudflarePlugin, ImportCloudflare } from '#core/modules/cloudflarePlugin';
 import type { Project } from '#core/project/Project';
 import type { BundleStats } from './output';
+import type { CommandsInCode } from './readDiscord';
 import type { NextCommand } from './TargetBuild';
-import type * as CloudflareVitePlugin from '@cloudflare/vite-plugin';
+import type { BakedIds } from '@seedcord/core/internal';
+import type { BotConfig, CommandsConfig } from '@seedcord/types';
 import type { EnvironmentOptions, Plugin, Rolldown } from 'vite';
 
-type ImportCloudflare = () => Promise<typeof CloudflareVitePlugin>;
-type CloudflarePlugin = typeof CloudflareVitePlugin.cloudflare;
-
-const WORKER_ENVIRONMENT = 'worker';
-const CLOUDFLARE_PLUGIN = '@cloudflare/vite-plugin';
-
-// node ends this message with the path of the file that did the import
-// for a missing dependency of the plugin, that path has the plugin's name in it too
-function isPluginMissing(error: unknown): boolean {
-    const notFound = Error.isError(error) && 'code' in error && error.code === 'ERR_MODULE_NOT_FOUND';
-    return notFound && error.message.startsWith(`Cannot find package '${CLOUDFLARE_PLUGIN}'`);
+interface EdgeBuildDeps {
+    importCloudflare: ImportCloudflare;
+    openDiscord: () => Pick<REST, 'get'>;
 }
 
-// workerd loads a worker only when each named export is a function or a handler object
-async function functionExportsOf(modules: ModuleLoader, instance: string): Promise<string[]> {
-    const module = await modules.importModule<Record<string, unknown>>(instance);
-    return Object.entries(module).reduce<string[]>((names, [name, value]) => {
-        if (name !== 'default' && typeof value === 'function') names.push(name);
-        return names;
-    }, []);
-}
+const DEFAULT_DEPS: EdgeBuildDeps = {
+    importCloudflare,
+    openDiscord: () => new REST({ version: '10' }).setToken(validateDiscordToken(Envapter.get('DISCORD_BOT_TOKEN')))
+};
 
 function captureChunks(onChunks: (chunks: Rolldown.OutputChunk[]) => void): Plugin {
     return {
@@ -78,19 +75,22 @@ function workerEnvironment(outDir: string): Record<string, EnvironmentOptions> {
 }
 
 export class EdgeBuild extends TargetBuild {
+    public readonly kind = 'edge';
     // the plugin writes .wrangler/deploy/config.json under vite's root
     // wrangler deploy reads it from beside the wrangler config
     private readonly viteRoot: string;
+    private readonly deps: EdgeBuildDeps;
+    private readonly logger = cliLogger('Build');
     private cloudflare?: Promise<CloudflarePlugin>;
 
-    // import() finds the optional peer through seedcord's own folder in node_modules
     constructor(
         project: Project,
         private readonly target: EdgeTarget,
-        private readonly importCloudflare: ImportCloudflare = () => import('@cloudflare/vite-plugin')
+        deps: Partial<EdgeBuildDeps> = {}
     ) {
         super(project);
         this.viteRoot = dirname(target.wranglerConfig);
+        this.deps = { ...DEFAULT_DEPS, ...deps };
     }
 
     public check(): void {
@@ -100,14 +100,22 @@ export class EdgeBuild extends TargetBuild {
         }
     }
 
-    public async bundle(): Promise<BundleStats> {
+    public async readDiscord(bot: BotConfig): Promise<BakedIds> {
+        const read = await readDiscord({
+            rest: this.deps.openDiscord(),
+            commands: await this.commandsInCode(bot.commands),
+            emojis: bot.emojis
+        });
+
+        warnLinks(this.logger, read);
+        return read.ids;
+    }
+
+    public async bundle(ids: BakedIds): Promise<BundleStats> {
         const { config, files, modules } = this.project;
         const { viteRoot, target } = this;
         const { outDir } = config.build;
-        const [folders, functionExports] = await Promise.all([
-            files.foldersIncludingEmpty(),
-            functionExportsOf(modules, config.instance)
-        ]);
+        const folders = await files.foldersIncludingEmpty();
 
         let chunks: Rolldown.OutputChunk[] = [];
         const builder = await createBuilder({
@@ -120,8 +128,9 @@ export class EdgeBuild extends TargetBuild {
                     files,
                     folders,
                     instanceKey: viteKey(viteRoot, config.instance),
-                    functionExports,
-                    rootKey: viteKey(viteRoot, config.root)
+                    functionExports: () => functionExportsOf(modules, config.instance),
+                    rootKey: viteKey(viteRoot, config.root),
+                    mode: { kind: 'build', ids }
                 }),
                 pinModulePaths(files),
                 captureChunks((captured) => {
@@ -150,8 +159,15 @@ export class EdgeBuild extends TargetBuild {
         return [['deploy', 'wrangler deploy']];
     }
 
+    private async commandsInCode(commands: CommandsConfig): Promise<CommandsInCode | undefined> {
+        if (commands.path === null) return undefined;
+        const scanner = new CommandScanner(this.project.modules, this.logger, this.project.config.root);
+        const found = await scanner.scan(commands.path);
+        return { found, configuredGuilds: commands.guilds ?? [] };
+    }
+
     private async workerPlugins(): Promise<Plugin[]> {
-        this.cloudflare ??= this.loadCloudflare();
+        this.cloudflare ??= loadCloudflare(this.viteRoot, this.deps.importCloudflare);
         const cloudflare = await this.cloudflare;
         return cloudflare({
             configPath: this.target.wranglerConfig,
@@ -160,19 +176,5 @@ export class EdgeBuild extends TargetBuild {
             inspectorPort: false,
             persistState: false
         });
-    }
-
-    private async loadCloudflare(): Promise<CloudflarePlugin> {
-        try {
-            const { cloudflare } = await this.importCloudflare();
-            return cloudflare;
-        } catch (error: unknown) {
-            if (isPluginMissing(error)) {
-                throw new SeedcordError(SeedcordErrorCode.CliEdgeVitePluginMissing, [this.viteRoot], { cause: error });
-            }
-            throw new SeedcordError(SeedcordErrorCode.CliImportFailed, [CLOUDFLARE_PLUGIN, asError(error).message], {
-                cause: error
-            });
-        }
     }
 }

@@ -1,9 +1,9 @@
-import { existsSync } from 'node:fs';
-import { resolve, sep } from 'node:path';
+import { sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { paint } from '@seedcord/errors';
 import { formatFilePath } from '@seedcord/utils';
+import { resolveFolder } from '@seedcord/utils/node/internal';
 
 import type { Logger } from '@seedcord/logger';
 import type { HmrUpdateEvent } from '@seedcord/types';
@@ -57,7 +57,6 @@ export class HmrModuleHandler<THandler, TMiddleware = void, TArtifacts = unknown
     /** Unloads or reloads the modules affected by an {@link HmrUpdateEvent}, scoped to the handler and middleware directories. */
     public async handle(event: HmrUpdateEvent): Promise<void> {
         const { file, affectedModules, type } = event;
-        const { logger } = this.options;
 
         if (type === 'delete' || type === 'deleteDir') {
             this.report('Unloaded', this.unload(file), [file]);
@@ -66,14 +65,6 @@ export class HmrModuleHandler<THandler, TMiddleware = void, TArtifacts = unknown
 
         // a directory is never importable. its files arrive as their own create events
         if (type === 'createDir') return;
-
-        if (type === 'update' && !existsSync(file)) {
-            if (this.isTracked(file)) {
-                logger.debug(`Received update for non-existent file: ${formatFilePath(file)}, treating as delete`);
-                this.report('Unloaded', this.unload(file), [file]);
-            }
-            return;
-        }
 
         const rollbackEnabled = event.rollback ?? true;
         const filesToReload = affectedModules && affectedModules.length > 0 ? affectedModules : [file];
@@ -99,8 +90,8 @@ export class HmrModuleHandler<THandler, TMiddleware = void, TArtifacts = unknown
         const { handlersDir, middlewaresDir } = this.options;
 
         // the trailing separator keeps commands-extra out of commands
-        if (file.startsWith(resolve(process.cwd(), handlersDir) + sep)) return true;
-        return middlewaresDir ? file.startsWith(resolve(process.cwd(), middlewaresDir) + sep) : false;
+        if (file.startsWith(resolveFolder(handlersDir) + sep)) return true;
+        return middlewaresDir ? file.startsWith(resolveFolder(middlewaresDir) + sep) : false;
     }
 
     // one line per save, since one edit can reload every module that imports the file
@@ -154,10 +145,6 @@ export class HmrModuleHandler<THandler, TMiddleware = void, TArtifacts = unknown
         set.add(middleware);
     }
 
-    private isTracked(file: string): boolean {
-        return this.store.fileToHandlers.has(file) || this.store.fileToMiddlewares.has(file);
-    }
-
     private unload(file: string): string[] {
         const names: string[] = [];
         const handlers = this.store.fileToHandlers.get(file);
@@ -186,18 +173,13 @@ export class HmrModuleHandler<THandler, TMiddleware = void, TArtifacts = unknown
     private async reloadFile(file: string): Promise<string[] | null> {
         const { logger, isHandler, isMiddleware, registerHandler, registerMiddleware } = this.options;
 
-        if (!existsSync(file)) {
-            logger.debug(`File does not exist, skipping reload: ${formatFilePath(file)}`);
-            return null;
-        }
-
         try {
             let fileUrl = pathToFileURL(file).href;
             // vitest has no real vite server managing the module graph
             if (process.env.VITEST === 'true') fileUrl += `?update=${Date.now()}`;
 
             // justified: a dynamic import resolves to an untyped export map
-            const imported = (await import(fileUrl)) as Record<string, unknown>;
+            const imported = (await import(/* @vite-ignore */ fileUrl)) as Record<string, unknown>;
 
             const names: string[] = [];
             for (const val of Object.values(imported)) {

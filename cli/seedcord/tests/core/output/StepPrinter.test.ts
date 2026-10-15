@@ -96,6 +96,19 @@ describe('StepPrinter', () => {
         expect(stdout.text()).toMatch(/│ .*connecting to the database/);
     });
 
+    it('prints a log from inside a step as its level mark and the message', async () => {
+        const registry = LoggerChannelRegistry.instance;
+        registry.reset();
+        registry.configure({ level: 'trace', sinks: [new ConsoleSink()] });
+
+        await printer().step('config', () => {
+            new Logger('Bot').warn('cache is stale');
+            return Promise.resolve();
+        });
+
+        expect(stdout.text().split('\n')[1]).toBe('      │ ▲ cache is stale');
+    });
+
     it('shows logger output below info under a step only with --verbose', async () => {
         const registry = LoggerChannelRegistry.instance;
         registry.reset();

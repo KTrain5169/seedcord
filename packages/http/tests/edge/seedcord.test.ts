@@ -1,12 +1,15 @@
-import { InteractionKind, StartupPhase, Subscribe, Subscriber } from '@seedcord/core';
+import { Commands, ContextMenus, InteractionKind, StartupPhase, Subscribe, Subscriber } from '@seedcord/core';
 import { storeInteractionRoute } from '@seedcord/core/internal';
 import { Plugin } from '@seedcord/core/plugin';
 import { SeedcordErrorCode } from '@seedcord/errors';
+import { Logger, LoggerChannelRegistry } from '@seedcord/logger';
 import { Envapter, PortableSource } from 'envapt';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 import { SlashHandler } from '#handlers/interaction/SlashHandler';
 import { Seedcord } from '#src/edge/Seedcord';
+import { Emojis } from '#src/emojis/EmojiInjector';
+import { clearBakedIds, registerBakedIds } from '#tests/helpers/bakedIds';
 import { BUILT_ROOT, clearBuiltFiles, registerBuiltFiles } from '#tests/helpers/builtFiles';
 import { createSigner, signedRequest } from '#tests/helpers/ed25519';
 import { APP_ID, VALID_TOKEN } from '#tests/helpers/fixtures';
@@ -14,7 +17,13 @@ import { capturingCtx, slashPayload } from '#tests/helpers/interactions';
 
 import type { HttpEdgeConfig } from '#interfaces/Config';
 import type { Signer } from '#tests/helpers/ed25519';
-import type { CoreBase } from '@seedcord/core';
+import type { CommandInfo, ContextMenuInfo, CoreBase, ResolvedEmoji } from '@seedcord/core';
+import type { BakedIds } from '@seedcord/core/internal';
+
+// justified: the generated registries are empty in tests
+const commands = Commands as Record<string, CommandInfo>;
+const userMenus = ContextMenus.user as Record<string, ContextMenuInfo>;
+const emojis = Emojis as Record<string, ResolvedEmoji>;
 
 const ping = '{"type":1}';
 // a type resolve() does not recognize. the engine still publishes anyInteraction for it
@@ -47,9 +56,10 @@ function config(folders: Folders = {}): HttpEdgeConfig {
     };
 }
 
-async function signedEnv(): Promise<Signer> {
+async function signedEnv(ids: Partial<BakedIds> = {}): Promise<Signer> {
     const signer = await createSigner();
-    Envapter.useSource(new PortableSource({ DISCORD_PUBLIC_KEY: signer.publicKeyHex, DISCORD_BOT_TOKEN: VALID_TOKEN }));
+    Envapter.useSource(new PortableSource({ DISCORD_BOT_TOKEN: VALID_TOKEN }));
+    registerBakedIds({ ...ids, publicKey: signer.publicKeyHex });
     return signer;
 }
 
@@ -58,6 +68,22 @@ describe('the edge Seedcord', () => {
         // @ts-expect-error singleton reset between tests
         Seedcord.reset();
         clearBuiltFiles();
+        clearBakedIds();
+        LoggerChannelRegistry.instance.reset();
+    });
+
+    it('fills Commands, ContextMenus, and Emojis from the ids seedcord build wrote', async () => {
+        const signer = await signedEnv({
+            commands: { ping: { mention: '</ping:7>', id: '7', route: 'ping', description: 'Replies with pong' } },
+            contextMenus: { user: { Profile: { id: '8', name: 'Profile', kind: 2 } }, message: {} },
+            emojis: { Wave: { name: 'wave', id: '55', animated: false } }
+        });
+
+        await new Seedcord(config()).fetch(await signedRequest(signer, ping));
+
+        expect(commands.ping?.mention).toBe('</ping:7>');
+        expect(userMenus.Profile?.id).toBe('8');
+        expect(String(emojis.Wave)).toBe('<:wave:55>');
     });
 
     it('runs a slash handler from the built files', async () => {
@@ -101,6 +127,24 @@ describe('the edge Seedcord', () => {
         expect(response.status).toBe(405);
         expect(response.headers.get('allow')).toBe('POST');
         expect(calls).toEqual([]);
+    });
+
+    it("applies config.logger when it starts, and leaves the process's logger alone before that", async () => {
+        const signer = await signedEnv();
+        const written: string[] = [];
+        // what seedcord dev's codegen copy shares with the CLI
+        LoggerChannelRegistry.instance.configure({
+            level: 'info',
+            sinks: [{ kind: 'file', onLog: (record) => written.push(record.message) }]
+        });
+        const seedcord = new Seedcord({ ...config(), logger: { level: 'warn' } });
+
+        new Logger('Cli').info('after construction');
+        await seedcord.fetch(await signedRequest(signer, ping));
+        new Logger('Cli').info('after start');
+
+        expect(written).toContain('after construction');
+        expect(written).not.toContain('after start');
     });
 
     it('answers a signed PING with a PONG', async () => {
@@ -303,6 +347,7 @@ describe('the edge Seedcord', () => {
 
     it('reads no env until the first request', async () => {
         Envapter.useSource(new PortableSource({}));
+        registerBakedIds({ publicKey: 'ab'.repeat(32) });
 
         const seedcord = new Seedcord(config());
 

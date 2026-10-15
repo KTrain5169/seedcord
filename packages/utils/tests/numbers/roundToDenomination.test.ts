@@ -45,4 +45,36 @@ describe('roundToDenomination', () => {
     it('stops shortening past the last suffix it was given', () => {
         expect(roundToDenomination(12_345_678, { suffixes: ['k'] })).toBe('12345.7k');
     });
+
+    it('preserves a rounded decimal that ends in .9', () => {
+        expect(roundToDenomination(1900)).toBe('1.9K');
+    });
+
+    it('formats higher precision without trailing zeroes', () => {
+        expect(roundToDenomination(1005, { precision: 2 })).toBe('1.01K');
+        expect(roundToDenomination(1000, { precision: 2 })).toBe('1K');
+        expect(roundToDenomination(12_345_678, { precision: 2 })).toBe('12.35M');
+    });
+
+    it('does not emit undefined when rounding reaches 1000 at the last suffix', () => {
+        expect(roundToDenomination(999_999, { suffixes: ['K'] })).toBe('1000K');
+    });
+
+    it('does not emit undefined past the built-in suffix list', () => {
+        expect(roundToDenomination(1e18)).toBe('1000Q');
+    });
+
+    it('preserves large values past the last suffix at high precision', () => {
+        expect(roundToDenomination(1e9, { suffixes: ['K'], precision: 15 })).toBe('1000000K');
+    });
+
+    it('keeps fractional digits at high precision for ordinary magnitudes', () => {
+        expect(roundToDenomination(12_345, { precision: 15 })).toBe('12.345K');
+    });
+
+    it('throws RangeError for invalid precision', () => {
+        expect(() => roundToDenomination(1234, { precision: -1 })).toThrow(RangeError);
+        expect(() => roundToDenomination(1234, { precision: 101 })).toThrow(RangeError);
+        expect(() => roundToDenomination(1234, { precision: Number.NaN })).toThrow(RangeError);
+    });
 });
