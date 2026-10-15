@@ -1,13 +1,17 @@
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
+import { ApplicationCommandType } from 'discord-api-types/v10';
+import stringWidth from 'string-width';
 
 import { plural } from '#core/format';
-import { confirm, log, note, outro, spinner } from '#core/prompts';
 
 import { confirmCount } from './confirm';
 
+import type { StepPrinter } from '#core/output/StepPrinter';
+import type { Prompter } from '#core/prompts/Prompter';
 import type { Flagged } from './classify';
 import type { DeleteResult, ScanResult, SkippedGuild } from './CleanRunner';
+import type { CleanStep, CleanStepLabel } from './cleanSteps';
 import type { CleanPresenter, EmptyOutcome } from './executeClean';
 import type { ILogger } from '@seedcord/types';
 
@@ -28,6 +32,10 @@ function groupByGuild(flagged: Flagged[]): GuildGroup[] {
 
 function skippedSummary(skipped: SkippedGuild[]): string {
     return `Could not read ${plural(skipped.length, 'guild')} (${skipped.map((s) => s.guildName).join(', ')}).`;
+}
+
+function failedDelete({ command, reason }: DeleteResult['failed'][number]): string {
+    return `Could not delete ${command.name} in ${command.guildName} (${reason}).`;
 }
 
 function emptyLines(scan: ScanResult, outcome: EmptyOutcome): { info: string[]; outro: string } {
@@ -58,69 +66,82 @@ function emptyLines(scan: ScanResult, outcome: EmptyOutcome): { info: string[]; 
     return variants[outcome];
 }
 
-/** Renders the clean flow as clack framed output for an interactive terminal. */
+const UNTOUCHED = 'Global commands untouched.';
+
+type CleanOutput = Pick<StepPrinter<CleanStepLabel>, 'step' | 'line' | 'warn'>;
+
+// a user or message command shows in Discord's context menu under its bare name
+function commandLabel(command: Flagged): string {
+    return command.type === ApplicationCommandType.ChatInput ? `/${command.name}` : command.name;
+}
+
+// a CJK character takes two columns where padEnd counts one
+function padToWidth(text: string, width: number): string {
+    return text + ' '.repeat(width - stringWidth(text));
+}
+
 export class InteractivePresenter implements CleanPresenter {
-    public async status<Value>(message: string, task: () => Promise<Value>, done?: string): Promise<Value> {
-        const status = spinner();
-        status.start(message);
-        try {
-            return await task();
-        } finally {
-            status.stop(done ?? message);
-        }
+    constructor(
+        private readonly output: CleanOutput,
+        private readonly prompter: Prompter
+    ) {}
+
+    public step<Result>(step: CleanStep<Result>, task: () => Promise<Result>): Promise<Result> {
+        return this.output.step(step.label, task, step.doneNote);
     }
 
     public preview(scan: ScanResult): void {
-        const body = groupByGuild(scan.flagged)
-            .map((group) => `${paint.bold(group.guildName)}\n${group.commands.map((c) => `  ${c.name}`).join('\n')}`)
-            .join('\n\n');
-        note(body, `Will delete ${plural(scan.flagged.length, 'guild command')} (nothing deleted yet)`);
-        if (scan.skipped.length > 0) log.warn(skippedSummary(scan.skipped));
+        const groups = groupByGuild(scan.flagged);
+        const width = Math.max(...groups.map((group) => stringWidth(group.guildName)));
+
+        this.output.line();
+        for (const group of groups) {
+            const commands = group.commands.map((command) => paint.sky(commandLabel(command))).join(' ');
+            this.output.line(`  ${padToWidth(group.guildName, width)}  ${commands}`);
+        }
+        this.output.line();
+        if (scan.skipped.length > 0) this.output.warn(skippedSummary(scan.skipped));
     }
 
     public largeBotGuard(guildCount: number): Promise<boolean> {
-        return confirm({
-            message: `The bot is in ${guildCount} guilds. Scan all of them? This makes ${guildCount} requests.`,
-            initialValue: false
+        return this.prompter.confirm({
+            message: `The bot is in ${guildCount} guilds. Scan all of them? This makes ${guildCount} requests.`
         });
     }
 
     public confirmDelete(count: number, skippedCount: number): Promise<boolean> {
         const skips = skippedCount > 0 ? ` ${plural(skippedCount, 'guild')} could not be read.` : '';
-        return confirm({
-            message: `Delete ${plural(count, 'guild command')}? This cannot be undone.${skips}`,
-            initialValue: false
+        return this.prompter.confirm({
+            message: `Delete ${plural(count, 'guild command')}? This cannot be undone.${skips}`
         });
     }
 
-    public result(deletion: DeleteResult, skipped: SkippedGuild[]): void {
-        for (const failure of deletion.failed) {
-            log.warn(`Could not delete ${failure.command.name} in ${failure.command.guildName} (${failure.reason}).`);
-        }
-        if (skipped.length > 0) log.warn(skippedSummary(skipped));
-        outro(`Deleted ${plural(deletion.deleted, 'guild command')}. Global commands untouched.`);
+    public result(deletion: DeleteResult): void {
+        for (const failure of deletion.failed) this.output.warn(failedDelete(failure));
+        this.output.line();
+        this.output.line(paint.mute(UNTOUCHED));
     }
 
     public nothingToClean(scan: ScanResult, outcome: EmptyOutcome): void {
         const lines = emptyLines(scan, outcome);
-        for (const line of lines.info) log.info(line);
-        outro(lines.outro);
+        this.output.line();
+        for (const line of lines.info) this.output.line(paint.mute(line));
+        this.output.line(lines.outro);
     }
 
     public dryRunHint(): void {
-        outro('Dry run, nothing was deleted.');
+        this.output.line(paint.mute('Dry run, nothing was deleted.'));
     }
 }
 
-/** Renders the clean flow as plain logger lines for the flag, CI, and non-TTY path. */
 export class FlagPresenter implements CleanPresenter {
     constructor(
         private readonly logger: ILogger,
         private readonly yes: boolean
     ) {}
 
-    public status<Value>(message: string, task: () => Promise<Value>): Promise<Value> {
-        this.logger.info(message);
+    public step<Result>(step: CleanStep<Result>, task: () => Promise<Result>): Promise<Result> {
+        this.logger.info(step.startMessage);
         return task();
     }
 
@@ -138,7 +159,6 @@ export class FlagPresenter implements CleanPresenter {
         return Promise.reject(new SeedcordError(SeedcordErrorCode.CliCleanLargeBotUnconfirmed, [guildCount]));
     }
 
-    // clack confirm needs a tty, so this prompts for a typed count instead
     public confirmDelete(count: number, skippedCount: number): Promise<boolean> {
         if (this.yes) return Promise.resolve(true);
         // readline cannot prompt without a terminal
@@ -151,15 +171,9 @@ export class FlagPresenter implements CleanPresenter {
     }
 
     public result(deletion: DeleteResult, skipped: SkippedGuild[]): void {
-        for (const failure of deletion.failed) {
-            this.logger.warn(
-                `Could not delete ${failure.command.name} in ${failure.command.guildName} (${failure.reason}).`
-            );
-        }
+        for (const failure of deletion.failed) this.logger.warn(failedDelete(failure));
         if (skipped.length > 0) this.logger.warn(skippedSummary(skipped));
-        this.logger.info(
-            paint.mint(`Deleted ${plural(deletion.deleted, 'guild command')}. Global commands untouched.`)
-        );
+        this.logger.info(paint.mint(`Deleted ${plural(deletion.deleted, 'guild command')}. ${UNTOUCHED}`));
     }
 
     public nothingToClean(scan: ScanResult, outcome: EmptyOutcome): void {

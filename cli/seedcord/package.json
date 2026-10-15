@@ -51,6 +51,7 @@
     "scripts": {
         "dev": "tsx src/cli.ts",
         "preview": "tsx playground/preview.tsx",
+        "preview:prompts": "tsx playground/prompts.ts",
         "build": "tsdown",
         "clean": "rm -rf dist",
         "lint": "eslint '**/*.{ts,tsx}' 'bin/**/*.mjs' --cache --no-error-on-unmatched-pattern",
@@ -77,9 +78,9 @@
         }
     },
     "dependencies": {
-        "@clack/prompts": "catalog:deps",
         "@commander-js/extra-typings": "^15.0.0",
         "@discordjs/rest": "catalog:deps",
+        "@leeoniya/ufuzzy": "catalog:deps",
         "@seedcord/core": "workspace:^",
         "@seedcord/errors": "workspace:^",
         "@seedcord/event-emitter": "workspace:^",
@@ -95,6 +96,7 @@
         "minimatch": "^10.2.6",
         "react": "catalog:react",
         "reflect-metadata": "catalog:deps",
+        "string-width": "^8.3.0",
         "vite": "catalog:deps",
         "wrap-ansi": "^10.0.0"
     },

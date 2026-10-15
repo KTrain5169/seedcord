@@ -172,15 +172,15 @@ catalogs:
       specifier: ^5.9.3 || ^6.0.0 || ^7.0.0
       version: 7.0.2
   deps:
-    '@clack/prompts':
-      specifier: ^1.7.0
-      version: 1.7.0
     '@discordjs/builders':
       specifier: ^1.14.1
       version: 1.14.1
     '@discordjs/rest':
       specifier: ^2.6.3
       version: 2.6.3
+    '@leeoniya/ufuzzy':
+      specifier: ^1.0.19
+      version: 1.0.19
     '@tailwindcss/postcss':
       specifier: ^4.3.3
       version: 4.3.3
@@ -843,7 +843,7 @@ importers:
   cli/create-seedcord:
     devDependencies:
       '@clack/prompts':
-        specifier: catalog:deps
+        specifier: ^1.7.0
         version: 1.7.0
       '@seedcord/errors':
         specifier: workspace:^
@@ -881,15 +881,15 @@ importers:
 
   cli/seedcord:
     dependencies:
-      '@clack/prompts':
-        specifier: catalog:deps
-        version: 1.7.0
       '@commander-js/extra-typings':
         specifier: ^15.0.0
         version: 15.0.0(commander@15.0.0)
       '@discordjs/rest':
         specifier: catalog:deps
         version: 2.6.3
+      '@leeoniya/ufuzzy':
+        specifier: catalog:deps
+        version: 1.0.19
       '@seedcord/core':
         specifier: workspace:^
         version: link:../../packages/core
@@ -935,6 +935,9 @@ importers:
       reflect-metadata:
         specifier: catalog:deps
         version: 0.2.2
+      string-width:
+        specifier: ^8.3.0
+        version: 8.3.0
       vite:
         specifier: catalog:deps
         version: 8.3.4(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0)
@@ -1691,7 +1694,7 @@ importers:
   tooling/docs-engine:
     dependencies:
       '@leeoniya/ufuzzy':
-        specifier: ^1.0.19
+        specifier: catalog:deps
         version: 1.0.19
       '@microsoft/api-extractor-model':
         specifier: 7.33.14

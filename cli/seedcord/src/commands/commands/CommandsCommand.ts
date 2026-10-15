@@ -1,16 +1,17 @@
-import { isSeedcordError, SeedcordErrorCode } from '@seedcord/errors';
+import { isSeedcordError } from '@seedcord/errors';
 import { validateDiscordToken, WORDMARK } from '@seedcord/errors/internal';
 import { Envapter } from 'envapt';
 
 import { BaseCommand } from '#core/BaseCommand';
 import { cliLogger } from '#core/cliLogger';
 import { isInteractive } from '#core/interactive';
+import { Prompter } from '#core/prompts/Prompter';
 
 import { CleanRunner } from './CleanRunner';
+import { CleanWizard, WIZARD_STEPS } from './CleanWizard';
 import { runCleanFromFlags } from './flagClean';
-import { runCleanWizard } from './wizard';
 
-import type { Command } from '@commander-js/extra-typings';
+import type { Command, CommandUnknownOpts } from '@commander-js/extra-typings';
 
 export interface CleanInvocation {
     clean: boolean;
@@ -44,32 +45,32 @@ export class CommandsCommand extends BaseCommand {
             .option('--apply', 'Delete the reported commands instead of running a dry run')
             .option('--purge', 'Select every command in the named guilds, not only global overlaps')
             .option('--yes', 'Skip prompts and the typed-count confirm (for scripts and CI)')
-            .action(async (options) =>
-                this.run({
-                    clean: options.clean ?? false,
-                    guild: options.guild ?? [],
-                    allGuilds: options.allGuilds ?? false,
-                    apply: options.apply ?? false,
-                    purge: options.purge ?? false,
-                    yes: options.yes ?? false
-                })
+            .action(async (options, command) =>
+                this.run(
+                    {
+                        clean: options.clean ?? false,
+                        guild: options.guild ?? [],
+                        allGuilds: options.allGuilds ?? false,
+                        apply: options.apply ?? false,
+                        purge: options.purge ?? false,
+                        yes: options.yes ?? false
+                    },
+                    command
+                )
             );
     }
 
-    private async run(options: CleanInvocation): Promise<void> {
+    private async run(options: CleanInvocation, command: CommandUnknownOpts): Promise<void> {
         try {
-            await this.dispatch(options);
+            await this.dispatch(options, command);
         } catch (error: unknown) {
-            // a cancelled prompt exits quietly here because it's an intentional abort
-            if (isSeedcordError(error, 'SeedcordError', SeedcordErrorCode.CliCancelled)) return;
-
             this.logger.error(`${WORDMARK} commands failed`, error);
             if (isSeedcordError(error)) process.exitCode = 1;
             else process.exit(1);
         }
     }
 
-    private async dispatch(options: CleanInvocation): Promise<void> {
+    private async dispatch(options: CleanInvocation, command: CommandUnknownOpts): Promise<void> {
         const flags = hasCleanFlags(options);
         const interactive = isInteractive(options, flags);
 
@@ -81,7 +82,9 @@ export class CommandsCommand extends BaseCommand {
         const token = validateDiscordToken(Envapter.get('DISCORD_BOT_TOKEN'));
 
         if (interactive) {
-            await runCleanWizard(this.cleanRunner, token);
+            await this.runSteps(command, WIZARD_STEPS, (printer) =>
+                new CleanWizard(this.cleanRunner, token, printer, new Prompter()).run()
+            );
             return;
         }
 
