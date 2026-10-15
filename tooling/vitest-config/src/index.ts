@@ -1,12 +1,11 @@
 import { fileURLToPath } from 'node:url';
 
 import { parseTsconfig } from 'get-tsconfig';
+import { configDefaults, defineConfig, mergeConfig } from 'vite-plus';
 import { deepMerge } from 'vite-plus/test/plugins/utils-helpers';
-import { configDefaults, defineConfig, mergeConfig } from 'vitest/config';
 
+import type { ViteUserConfig, AliasOptions  } from 'vite-plus';
 import type { InlineConfig } from 'vite-plus/test/node';
-import type { ViteUserConfig } from 'vitest/config';
-import type { AliasOptions } from 'vite-plus';
 
 const base = defineConfig({
     test: {
