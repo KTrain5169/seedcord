@@ -29,11 +29,22 @@ describe('Prompter.select', () => {
         await expect(answer).resolves.toBe('all');
     });
 
-    it('hands its rows back to whatever prints next', async () => {
+    it('clears its rows for whatever prints next', async () => {
         using terminal = new PromptTerminal();
         const answer = terminal.prompter.select(WHICH_GUILDS);
 
         await terminal.press(KEY.enter);
+        await answer;
+        terminal.print('next');
+
+        expect(await terminal.screen()).toBe('next');
+    });
+
+    it('clears its rows when enter follows another key within one frame', async () => {
+        using terminal = new PromptTerminal();
+        const answer = terminal.prompter.select(WHICH_GUILDS);
+
+        await terminal.press(KEY.down, KEY.enter);
         await answer;
         terminal.print('next');
 

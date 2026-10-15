@@ -1,6 +1,8 @@
 {
     "$schema": "https://turbo.build/schema.json",
     "ui": "tui",
+    // 2 ran a core change's tests faster than 4
+    "concurrency": "2",
     "tasks": {
         "build": {
             "dependsOn": ["^build"],

@@ -14,40 +14,13 @@ import { MessageFlags, PermissionFlagsBits } from 'discord-api-types/v10';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SlashHandler } from '#handlers/interaction/SlashHandler';
+import { restClients } from '#tests/helpers/restClients';
 
 import { capturingCtx, readyEngine, routedHandler, signedRequest, slashPayload, type BotClasses } from './harness';
 
 import type { InteractionGateContext } from '#src/gates/Gate';
 import type { Gate, GateContextBase } from '@seedcord/core';
 import type { RenderContext, ReplyResponse } from '@seedcord/types';
-
-const rest = vi.hoisted(() => {
-    interface FakeRestInstance {
-        post: ReturnType<typeof vi.fn>;
-        patch: ReturnType<typeof vi.fn>;
-    }
-    const instances: FakeRestInstance[] = [];
-    class FakeRest {
-        public post = vi.fn().mockResolvedValue({ resource: { message: { id: 'm-1' } } });
-        public patch = vi.fn().mockResolvedValue({ id: 'm-1' });
-
-        public constructor() {
-            instances.push(this);
-        }
-
-        public setToken(): this {
-            return this;
-        }
-    }
-    return { instances, FakeRest };
-});
-
-// the factory must not import project modules, because vitest loads factory imports in a mock-bypass
-// context that would cache the engine graph unmocked
-vi.mock('@discordjs/rest', async (importOriginal) => ({
-    ...(await importOriginal<object>()),
-    REST: rest.FakeRest
-}));
 
 class TestNotice extends Notice {
     public constructor(message = 'refused') {
@@ -75,7 +48,7 @@ function gated(gates: Gate<GateContextBase>[]): { classes: BotClasses; executed:
 }
 
 beforeEach(() => {
-    rest.instances.length = 0;
+    restClients().length = 0;
 });
 
 describe('handler gates', () => {
@@ -84,7 +57,8 @@ describe('handler gates', () => {
             throw new TestNotice();
         });
         const { classes, executed } = gated([refuse]);
-        const { signer, handle } = await readyEngine(classes);
+        using engine = await readyEngine(classes);
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const response = await handle(await signedRequest(signer, slashPayload('guarded')), ctx);
@@ -92,7 +66,7 @@ describe('handler gates', () => {
         expect(response.status).toBe(202);
         expect(executed()).toBe(false);
         expect(ctx.waitUntil).not.toHaveBeenCalled();
-        const first = rest.instances[0];
+        const first = restClients()[0];
         expect(first?.post).toHaveBeenCalledTimes(1);
         const [route, options] = first?.post.mock.calls[0] as [
             string,
@@ -111,13 +85,14 @@ describe('handler gates', () => {
             throw new Silence('blacklisted');
         });
         const { classes, executed } = gated([drop]);
-        const { signer, handle } = await readyEngine(classes);
+        using engine = await readyEngine(classes);
+        const { signer, handle } = engine;
 
         const response = await handle(await signedRequest(signer, slashPayload('guarded')));
 
         expect(response.status).toBe(202);
         expect(executed()).toBe(false);
-        expect(rest.instances[0]?.post ?? vi.fn()).not.toHaveBeenCalled();
+        expect(restClients()[0]?.post ?? vi.fn()).not.toHaveBeenCalled();
     });
 
     it('runs execute when every gate passes', async () => {
@@ -125,7 +100,8 @@ describe('handler gates', () => {
             /* passes */
         });
         const { classes, executed } = gated([open]);
-        const { signer, handle } = await readyEngine(classes);
+        using engine = await readyEngine(classes);
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         await handle(await signedRequest(signer, slashPayload('guarded')), ctx);
@@ -140,7 +116,8 @@ describe('handler gates', () => {
             seen = gateCtx;
         });
         const { classes } = gated([capture]);
-        const { signer, handle } = await readyEngine(classes);
+        using engine = await readyEngine(classes);
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const payload = {
@@ -172,7 +149,8 @@ describe('handler gates', () => {
             seen = gateCtx;
         });
         const { classes } = gated([capture]);
-        const { signer, handle } = await readyEngine(classes);
+        using engine = await readyEngine(classes);
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const payload = { ...slashPayload('guarded'), user: { id: 'u-dm', username: 'dm' } };
@@ -193,7 +171,8 @@ describe('handler gates', () => {
             seen = gateCtx;
         });
         const { classes } = gated([capture]);
-        const { signer, handle } = await readyEngine(classes);
+        using engine = await readyEngine(classes);
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const payload = {
@@ -218,7 +197,8 @@ describe('handler gates', () => {
             seen = gateCtx;
         });
         const { classes } = gated([capture]);
-        const { signer, handle } = await readyEngine(classes);
+        using engine = await readyEngine(classes);
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const payload = { ...slashPayload('guarded'), user: { id: 'u-dm', username: 'dm' } };
@@ -232,7 +212,8 @@ describe('handler gates', () => {
 
     it('renders a core catalog RequirePermissions refusal as an ephemeral type 4', async () => {
         const { classes, executed } = gated([RequirePermissions([PermissionFlagsBits.BanMembers])]);
-        const { signer, handle } = await readyEngine(classes);
+        using engine = await readyEngine(classes);
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const payload = {
@@ -248,7 +229,7 @@ describe('handler gates', () => {
 
         expect(response.status).toBe(202);
         expect(executed()).toBe(false);
-        const first = rest.instances[0];
+        const first = restClients()[0];
         expect(first?.post).toHaveBeenCalledTimes(1);
         // justified: the mock call tuple is untyped, narrowed to the asserted callback shape
         const [, options] = first?.post.mock.calls[0] as [string, { body: { type: number; data: { flags: number } } }];
@@ -258,7 +239,8 @@ describe('handler gates', () => {
 
     it('runs execute when a core catalog RequirePermissions gate passes', async () => {
         const { classes, executed } = gated([RequirePermissions([PermissionFlagsBits.BanMembers])]);
-        const { signer, handle } = await readyEngine(classes);
+        using engine = await readyEngine(classes);
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const payload = {
@@ -278,7 +260,8 @@ describe('handler gates', () => {
 
     it('renders a core catalog RequireBotPermissions refusal naming the bot as the subject', async () => {
         const { classes, executed } = gated([RequireBotPermissions([PermissionFlagsBits.BanMembers])]);
-        const { signer, handle } = await readyEngine(classes);
+        using engine = await readyEngine(classes);
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const payload = {
@@ -291,7 +274,7 @@ describe('handler gates', () => {
 
         expect(response.status).toBe(202);
         expect(executed()).toBe(false);
-        const first = rest.instances[0];
+        const first = restClients()[0];
         expect(first?.post).toHaveBeenCalledTimes(1);
         // justified: the mock call tuple is untyped, narrowed to the asserted callback shape
         const [, options] = first?.post.mock.calls[0] as [
@@ -304,7 +287,8 @@ describe('handler gates', () => {
 
     it('runs execute when a core catalog RequireBotPermissions gate passes', async () => {
         const { classes, executed } = gated([RequireBotPermissions([PermissionFlagsBits.BanMembers])]);
-        const { signer, handle } = await readyEngine(classes);
+        using engine = await readyEngine(classes);
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const payload = {

@@ -7,36 +7,11 @@ import { Envapter, PortableSource } from 'envapt';
 import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import { SlashHandler } from '#handlers/interaction/SlashHandler';
+import { restClients } from '#tests/helpers/restClients';
 
 import { capturingCtx, readyEngine, routedHandler, signedRequest, slashPayload, type BotClasses } from './harness';
 
 import type { Gate, GateContextBase } from '@seedcord/core';
-
-const rest = vi.hoisted(() => {
-    interface FakeRestInstance {
-        post: ReturnType<typeof vi.fn>;
-        patch: ReturnType<typeof vi.fn>;
-    }
-    const instances: FakeRestInstance[] = [];
-    class FakeRest {
-        public post = vi.fn().mockResolvedValue({ resource: { message: { id: 'm-1' } } });
-        public patch = vi.fn().mockResolvedValue({ id: 'm-1' });
-
-        public constructor() {
-            instances.push(this);
-        }
-
-        public setToken(): this {
-            return this;
-        }
-    }
-    return { instances, FakeRest };
-});
-
-vi.mock('@discordjs/rest', async (importOriginal) => ({
-    ...(await importOriginal<object>()),
-    REST: rest.FakeRest
-}));
 
 function guarded(gates: Gate<GateContextBase>[]): BotClasses {
     class Guarded extends SlashHandler<never> {
@@ -68,7 +43,7 @@ function slowWarnCount(warn: WarnSpy, gateName: string): number {
 }
 
 beforeEach(() => {
-    rest.instances.length = 0;
+    restClients().length = 0;
 });
 
 afterEach(() => {
@@ -81,7 +56,8 @@ describe('slow-gate dev warning', () => {
         const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
         const advance = fakeClock();
         const slow = defineGate('slowgate', () => advance(800));
-        const { handle, signer } = await engineFor(guarded([slow]), false);
+        using engine = await engineFor(guarded([slow]), false);
+        const { handle, signer } = engine;
         const request = await signedRequest(signer, slashPayload('guarded'));
         const ctx = capturingCtx();
 
@@ -96,7 +72,8 @@ describe('slow-gate dev warning', () => {
         const advance = fakeClock();
         const first = defineGate('firstgate', () => advance(400));
         const second = defineGate('secondgate', () => advance(400));
-        const { handle, signer } = await engineFor(guarded([first, second]), false);
+        using engine = await engineFor(guarded([first, second]), false);
+        const { handle, signer } = engine;
         const request = await signedRequest(signer, slashPayload('guarded'));
         const ctx = capturingCtx();
 
@@ -111,7 +88,8 @@ describe('slow-gate dev warning', () => {
         const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
         const advance = fakeClock();
         const fast = defineGate('fastgate', () => advance(10));
-        const { handle, signer } = await engineFor(guarded([fast]), false);
+        using engine = await engineFor(guarded([fast]), false);
+        const { handle, signer } = engine;
         const request = await signedRequest(signer, slashPayload('guarded'));
         const ctx = capturingCtx();
 
@@ -125,7 +103,8 @@ describe('slow-gate dev warning', () => {
         const warn = vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
         const advance = fakeClock();
         const slow = defineGate('slowgate', () => advance(800));
-        const { handle, signer } = await engineFor(guarded([slow]), true);
+        using engine = await engineFor(guarded([slow]), true);
+        const { handle, signer } = engine;
         const request = await signedRequest(signer, slashPayload('guarded'));
         const ctx = capturingCtx();
 

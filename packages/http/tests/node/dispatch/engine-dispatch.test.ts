@@ -3,38 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ButtonHandler } from '#handlers/interaction/components/ButtonHandler';
 import { SlashHandler } from '#handlers/interaction/SlashHandler';
+import { restClients } from '#tests/helpers/restClients';
 
 import { capturingCtx, noClasses, readyEngine, routedHandler, signedRequest, slashPayload } from './harness';
 
-const rest = vi.hoisted(() => {
-    interface FakeRestInstance {
-        post: ReturnType<typeof vi.fn>;
-        patch: ReturnType<typeof vi.fn>;
-    }
-    const instances: FakeRestInstance[] = [];
-    class FakeRest {
-        public post = vi.fn().mockResolvedValue({ resource: { message: { id: 'm-1' } } });
-        public patch = vi.fn().mockResolvedValue({ id: 'm-1' });
-
-        public constructor() {
-            instances.push(this);
-        }
-
-        public setToken(): this {
-            return this;
-        }
-    }
-    return { instances, FakeRest };
-});
-
-// vitest loads a mock factory's imports in a bypass context. a project module imported here caches unmocked.
-vi.mock('@discordjs/rest', async (importOriginal) => ({
-    ...(await importOriginal<object>()),
-    REST: rest.FakeRest
-}));
-
 beforeEach(() => {
-    rest.instances.length = 0;
+    restClients().length = 0;
 });
 
 describe('engine dispatch', () => {
@@ -44,7 +18,8 @@ describe('engine dispatch', () => {
                 await this.reply('done');
             }
         }
-        const { signer, handle } = await readyEngine(routedHandler(InteractionKind.Slash, 'ban', Ban));
+        using engine = await readyEngine(routedHandler(InteractionKind.Slash, 'ban', Ban));
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const response = await handle(await signedRequest(signer, slashPayload('ban')), ctx);
@@ -52,7 +27,7 @@ describe('engine dispatch', () => {
 
         expect(response.status).toBe(202);
         await expect(response.text()).resolves.toBe('');
-        const first = rest.instances[0];
+        const first = restClients()[0];
         expect(first?.post).toHaveBeenCalledTimes(1);
         const [route, options] = first?.post.mock.calls[0] as [string, { body: { type: number } }];
         expect(route).toBe('/interactions/int-1/tok/callback');
@@ -69,7 +44,8 @@ describe('engine dispatch', () => {
                 executeFinished = true;
             }
         }
-        const { signer, handle } = await readyEngine(routedHandler(InteractionKind.Slash, 'slow', Slow));
+        using engine = await readyEngine(routedHandler(InteractionKind.Slash, 'slow', Slow));
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const response = await handle(await signedRequest(signer, slashPayload('slow')), ctx);
@@ -81,7 +57,7 @@ describe('engine dispatch', () => {
         releaseExecute(null);
         await ctx.settled();
         expect(executeFinished).toBe(true);
-        expect(rest.instances[0]?.post).toHaveBeenCalledTimes(1);
+        expect(restClients()[0]?.post).toHaveBeenCalledTimes(1);
     });
 
     it('completes the handler without a ctx, tracking the work in flight', async () => {
@@ -90,13 +66,14 @@ describe('engine dispatch', () => {
                 await this.reply('pong');
             }
         }
-        const { signer, handle } = await readyEngine(routedHandler(InteractionKind.Slash, 'ping', Ping));
+        using engine = await readyEngine(routedHandler(InteractionKind.Slash, 'ping', Ping));
+        const { signer, handle } = engine;
 
         const response = await handle(await signedRequest(signer, slashPayload('ping')));
 
         expect(response.status).toBe(202);
         await vi.waitFor(() => {
-            expect(rest.instances[0]?.post).toHaveBeenCalledTimes(1);
+            expect(restClients()[0]?.post).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -108,7 +85,8 @@ describe('engine dispatch', () => {
                 await this.reply('ok');
             }
         }
-        const { signer, handle } = await readyEngine(routedHandler(InteractionKind.Slash, 'track', Track));
+        using engine = await readyEngine(routedHandler(InteractionKind.Slash, 'track', Track));
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         await handle(await signedRequest(signer, slashPayload('track')), ctx);
@@ -124,7 +102,8 @@ describe('engine dispatch', () => {
             }
         }
         const approveId = new CustomId('approve').snowflake('userId');
-        const { signer, handle } = await readyEngine(routedHandler(InteractionKind.Button, 'approve', Approve));
+        using engine = await readyEngine(routedHandler(InteractionKind.Button, 'approve', Approve));
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const payload = {
@@ -139,20 +118,21 @@ describe('engine dispatch', () => {
         await ctx.settled();
 
         expect(response.status).toBe(202);
-        const [route, options] = rest.instances[0]?.post.mock.calls[0] as [string, { body: { type: number } }];
+        const [route, options] = restClients()[0]?.post.mock.calls[0] as [string, { body: { type: number } }];
         expect(route).toBe('/interactions/int-1/tok/callback');
         expect(options.body.type).toBe(7);
     });
 
     it('dispatches an unmatched slash to the unhandled default, whose reply posts the card', async () => {
-        const { signer, handle } = await readyEngine(noClasses());
+        using engine = await readyEngine(noClasses());
+        const { signer, handle } = engine;
         const ctx = capturingCtx();
 
         const response = await handle(await signedRequest(signer, slashPayload('ghost')), ctx);
         await ctx.settled();
 
         expect(response.status).toBe(202);
-        const [route, options] = rest.instances[0]?.post.mock.calls[0] as [
+        const [route, options] = restClients()[0]?.post.mock.calls[0] as [
             string,
             { body: { type: number; data: { components: { content?: string }[] } } }
         ];
@@ -162,7 +142,8 @@ describe('engine dispatch', () => {
     });
 
     it('answers an unmatched autocomplete through the unhandled default with empty choices', async () => {
-        const { signer, handle } = await readyEngine(noClasses());
+        using engine = await readyEngine(noClasses());
+        const { signer, handle } = engine;
         const payload = {
             type: 4,
             id: 'int-1',
@@ -175,7 +156,7 @@ describe('engine dispatch', () => {
         await handle(await signedRequest(signer, payload), ctx);
         await ctx.settled();
 
-        const [, options] = rest.instances[0]?.post.mock.calls[0] as [
+        const [, options] = restClients()[0]?.post.mock.calls[0] as [
             string,
             { body: { type: number; data: { choices: unknown[] } } }
         ];
