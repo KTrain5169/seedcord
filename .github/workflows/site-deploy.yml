@@ -11,6 +11,11 @@ on:
         description: The public URL the build renders links against
         required: true
         type: string
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      TURBO_TOKEN:
+        required: true
 
 permissions:
   contents: read
@@ -27,13 +32,13 @@ jobs:
           fetch-depth: 0
 
       - name: Turbo cache
-        uses: ./.github/actions/turbo-cache
+        uses: $/.github/actions/turbo-cache
         with:
           turbo_token: ${{ secrets.TURBO_TOKEN }}
           turbo_team: ${{ vars.TURBO_TEAM }}
 
       - name: Setup workspace
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
 
       - name: Build
         run: pnpm turbo build --filter="@seedcord/$APP..."

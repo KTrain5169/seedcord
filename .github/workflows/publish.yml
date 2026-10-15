@@ -1,7 +1,7 @@
 name: publish
 
 on:
-  workflow_run:
+  workflow_run: # zizmor: ignore[dangerous-triggers] need to fix with github app
     workflows: ['checks']
     types: [completed]
     branches: [main, next]
@@ -27,7 +27,7 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - id: gate
-        uses: ./.github/actions/check-eligibility
+        uses: $/.github/actions/check-eligibility
         with:
           branch: ${{ github.event.workflow_run.head_branch || github.ref_name }}
 
@@ -47,13 +47,14 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
+          persist-credentials: false
       - name: Turbo cache
-        uses: ./.github/actions/turbo-cache
+        uses: $/.github/actions/turbo-cache
         with:
           turbo_token: ${{ secrets.TURBO_TOKEN }}
           turbo_team: ${{ vars.TURBO_TEAM }}
       - name: Setup workspace
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
         with:
           registry-url: https://registry.npmjs.org
       - name: Build prettier config dependency
@@ -74,15 +75,23 @@ jobs:
   github-release:
     needs: npm-publish
     if: ${{ needs.npm-publish.outputs.published == 'true' && (github.event.workflow_run.head_branch || github.ref_name) == 'main' }}
-    uses: ./.github/workflows/github-release.yml
+    cache-mode: read
+    uses: $/.github/workflows/github-release.yml
     with:
       published: ${{ needs.npm-publish.outputs.publishedPackages }}
-    secrets: inherit
+    secrets:
+      RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
   docs-publish:
     needs: npm-publish
     if: ${{ needs.npm-publish.outputs.published == 'true' }}
-    uses: ./.github/workflows/docs-publish.yml
+    cache-mode: read
+    uses: $/.github/workflows/docs-publish.yml
     with:
       published: ${{ needs.npm-publish.outputs.publishedPackages }}
-    secrets: inherit
+    secrets:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}

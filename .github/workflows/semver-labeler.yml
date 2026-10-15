@@ -1,7 +1,7 @@
 name: Semver labeler
 
 on:
-  pull_request_target:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] need to fix with github app
     types:
       - opened
       - synchronize
@@ -21,7 +21,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup workspace
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
       - name: Apply semver label
         run: pnpm exec tsx scripts/src/semver-label.ts
         env:
