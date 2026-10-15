@@ -11,6 +11,11 @@ on:
         description: The public URL the build renders links against
         required: true
         type: string
+    secrets:
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+      TURBO_TOKEN:
+        required: true
 
 permissions:
   contents: read

@@ -12,7 +12,7 @@ on:
         required: false
 
 permissions:
-  actions: write
+  actions: write # zizmor: ignore[excessive-permissions] Both jobs require actions: write
   contents: read
 
 jobs:

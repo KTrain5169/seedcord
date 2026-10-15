@@ -24,4 +24,6 @@ jobs:
     with:
       app: guide
       site_url: https://seedcord.org/guide
-    secrets: inherit
+    secrets:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}

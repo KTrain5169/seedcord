@@ -6,6 +6,9 @@ on:
       published:
         required: true
         type: string
+    secrets:
+      RELEASE_TOKEN:
+        required: true
   workflow_dispatch:
     inputs:
       published:

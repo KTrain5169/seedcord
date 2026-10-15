@@ -1,23 +1,52 @@
 name: publish
 
 on:
-  workflow_run:
-    workflows: ['checks']
-    types: [completed]
+  push:
     branches: [main, next]
   workflow_dispatch: {}
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  # workflow_run sets ref_name to the default branch. head_branch holds the branch checks ran on.
-  group: release-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
+  checks-gate:
+    name: Wait for checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      conclusion: ${{ steps.gate.outputs.conclusion }}
+    steps:
+      - name: Get checks conclusion
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "conclusion=success" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          for i in $(seq 1 60); do
+            status=$(gh api "repos/${{ github.repository }}/actions/workflows/checks.yml/runs?branch=$REF_NAME&head_sha=${{ github.sha }}" --jq '.workflow_runs[0].status // "not_found"' 2>/dev/null || true)
+            if [ "$status" = "completed" ]; then
+              conclusion=$(gh api "repos/${{ github.repository }}/actions/workflows/checks.yml/runs?branch=$REF_NAME&head_sha=${{ github.sha }}" --jq '.workflow_runs[0].conclusion // "unknown"' 2>/dev/null || true)
+              echo "conclusion=$conclusion" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::warning::Timed out waiting for checks to complete"
+          echo "conclusion=timeout" >> "$GITHUB_OUTPUT"
+          exit 1
+
   eligibility:
-    if: ${{ github.repository == 'seedcord/seedcord' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)) }}
+    needs: checks-gate
+    if: ${{ github.repository == 'seedcord/seedcord' && (github.event_name == 'workflow_dispatch' || needs.checks-gate.outputs.conclusion == 'success') }}
     runs-on: ubuntu-latest
     outputs:
       publish: ${{ steps.gate.outputs.publish }}
@@ -25,11 +54,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
       - id: gate
-        uses: ./.github/actions/check-eligibility
+        uses: $/.github/actions/check-eligibility
         with:
-          branch: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+          branch: ${{ github.ref_name }}
 
   npm-publish:
     needs: eligibility
@@ -45,15 +74,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
+          persist-credentials: false
       - name: Turbo cache
-        uses: ./.github/actions/turbo-cache
+        uses: $/.github/actions/turbo-cache
         with:
           turbo_token: ${{ secrets.TURBO_TOKEN }}
           turbo_team: ${{ vars.TURBO_TEAM }}
       - name: Setup workspace
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
         with:
           registry-url: https://registry.npmjs.org
       - name: Build prettier config dependency
@@ -73,16 +103,22 @@ jobs:
 
   github-release:
     needs: npm-publish
-    if: ${{ needs.npm-publish.outputs.published == 'true' && (github.event.workflow_run.head_branch || github.ref_name) == 'main' }}
-    uses: ./.github/workflows/github-release.yml
+    if: ${{ needs.npm-publish.outputs.published == 'true' && github.ref_name == 'main' }}
+    uses: $/.github/workflows/github-release.yml
     with:
       published: ${{ needs.npm-publish.outputs.publishedPackages }}
-    secrets: inherit
+    secrets:
+      RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
   docs-publish:
     needs: npm-publish
     if: ${{ needs.npm-publish.outputs.published == 'true' }}
-    uses: ./.github/workflows/docs-publish.yml
+    uses: $/.github/workflows/docs-publish.yml
     with:
       published: ${{ needs.npm-publish.outputs.publishedPackages }}
-    secrets: inherit
+    secrets:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCOUNT_KEY_ID: ${{ secrets.R2_ACCOUNT_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
