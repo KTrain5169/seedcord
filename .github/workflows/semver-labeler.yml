@@ -1,7 +1,7 @@
 name: Semver labeler
 
 on:
-  pull_request:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] need to fix with github app
     types:
       - opened
       - synchronize

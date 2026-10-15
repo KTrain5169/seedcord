@@ -1,52 +1,23 @@
 name: publish
 
 on:
-  push:
+  workflow_run: # zizmor: ignore[dangerous-triggers] need to fix with github app
+    workflows: ['checks']
+    types: [completed]
     branches: [main, next]
   workflow_dispatch: {}
 
 permissions:
   contents: read
-  actions: read
 
 concurrency:
-  group: release-${{ github.ref_name }}
+  # workflow_run sets ref_name to the default branch. head_branch holds the branch checks ran on.
+  group: release-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  checks-gate:
-    name: Wait for checks
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    outputs:
-      conclusion: ${{ steps.gate.outputs.conclusion }}
-    steps:
-      - name: Get checks conclusion
-        id: gate
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REF_NAME: ${{ github.ref_name }}
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "conclusion=success" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          for i in $(seq 1 60); do
-            status=$(gh api "repos/${{ github.repository }}/actions/workflows/checks.yml/runs?branch=$REF_NAME&head_sha=${{ github.sha }}" --jq '.workflow_runs[0].status // "not_found"' 2>/dev/null || true)
-            if [ "$status" = "completed" ]; then
-              conclusion=$(gh api "repos/${{ github.repository }}/actions/workflows/checks.yml/runs?branch=$REF_NAME&head_sha=${{ github.sha }}" --jq '.workflow_runs[0].conclusion // "unknown"' 2>/dev/null || true)
-              echo "conclusion=$conclusion" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-            sleep 30
-          done
-          echo "::warning::Timed out waiting for checks to complete"
-          echo "conclusion=timeout" >> "$GITHUB_OUTPUT"
-          exit 1
-
   eligibility:
-    needs: checks-gate
-    if: ${{ github.repository == 'seedcord/seedcord' && (github.event_name == 'workflow_dispatch' || needs.checks-gate.outputs.conclusion == 'success') }}
+    if: ${{ github.repository == 'seedcord/seedcord' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)) }}
     runs-on: ubuntu-latest
     outputs:
       publish: ${{ steps.gate.outputs.publish }}
@@ -54,11 +25,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - id: gate
         uses: $/.github/actions/check-eligibility
         with:
-          branch: ${{ github.ref_name }}
+          branch: ${{ github.event.workflow_run.head_branch || github.ref_name }}
 
   npm-publish:
     needs: eligibility
@@ -74,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Turbo cache
@@ -103,7 +74,7 @@ jobs:
 
   github-release:
     needs: npm-publish
-    if: ${{ needs.npm-publish.outputs.published == 'true' && github.ref_name == 'main' }}
+    if: ${{ needs.npm-publish.outputs.published == 'true' && (github.event.workflow_run.head_branch || github.ref_name) == 'main' }}
     uses: $/.github/workflows/github-release.yml
     with:
       published: ${{ needs.npm-publish.outputs.publishedPackages }}
