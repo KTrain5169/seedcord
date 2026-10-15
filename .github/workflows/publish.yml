@@ -75,6 +75,7 @@ jobs:
   github-release:
     needs: npm-publish
     if: ${{ needs.npm-publish.outputs.published == 'true' && (github.event.workflow_run.head_branch || github.ref_name) == 'main' }}
+    cache-mode: read
     uses: $/.github/workflows/github-release.yml
     with:
       published: ${{ needs.npm-publish.outputs.publishedPackages }}
@@ -84,6 +85,7 @@ jobs:
   docs-publish:
     needs: npm-publish
     if: ${{ needs.npm-publish.outputs.published == 'true' }}
+    cache-mode: read
     uses: $/.github/workflows/docs-publish.yml
     with:
       published: ${{ needs.npm-publish.outputs.publishedPackages }}
