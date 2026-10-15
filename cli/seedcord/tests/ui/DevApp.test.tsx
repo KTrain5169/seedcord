@@ -9,11 +9,12 @@ import { LogStore } from '#ui/stores/LogStore';
 import { COMPACT_ROWS } from '#ui/tier';
 
 import { renderAt } from './renderAt';
+import { renderOnScreen } from './renderOnScreen';
 import { settled, stableFrame } from './settled';
 
 import type { LogFilters } from '#ui/devPrefs';
 import type { LogRecord } from '@seedcord/types';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactElement } from 'react';
 
 const FULL = { rows: 40, columns: 120 };
 const COMPACT = { rows: COMPACT_ROWS, columns: 120 };
@@ -125,6 +126,21 @@ describe('DevApp tiers', () => {
 
         expect(lastFrame()).not.toContain('f filters');
         unmount();
+    });
+
+    it('redraws the whole screen when the terminal gets wider', async () => {
+        const app = (): ReactElement => (
+            <DevApp store={runningStore()} onReady={() => undefined} initialFilters={NO_FILTERS} />
+        );
+        const widened = renderOnScreen(app(), { rows: 40, columns: 90 });
+        await stableFrame(widened.screen);
+        widened.resize(FULL);
+
+        const fresh = renderOnScreen(app(), FULL);
+        expect(await stableFrame(widened.screen)).toBe(await stableFrame(fresh.screen));
+
+        widened.unmount();
+        fresh.unmount();
     });
 
     it('ignores the filter keys while the chips are collapsed', async () => {
