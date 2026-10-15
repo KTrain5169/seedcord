@@ -118,7 +118,7 @@ jobs:
       published: ${{ needs.npm-publish.outputs.publishedPackages }}
     secrets:
       R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-      R2_ACCOUNT_KEY_ID: ${{ secrets.R2_ACCOUNT_KEY_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}

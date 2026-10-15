@@ -22,11 +22,11 @@ on:
     secrets:
       R2_ACCOUNT_ID:
         required: true
-      R2_ACCOUNT_KEY_ID:
+      R2_ACCESS_KEY_ID:
         required: true
       R2_SECRET_ACCESS_KEY:
         required: true
-      CLOUDFLARE_ACCOUNT_ID:
+      CLOUDFLARE_API_TOKEN:
         required: true
       TURBO_TOKEN:
         required: true
