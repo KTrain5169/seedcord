@@ -86,6 +86,9 @@ const messages = {
     [SeedcordErrorCode.CoreCommandGuildDeployFailed]: (guildId: string) =>
         `Discord refused the command deploy for guild ${paint.sky(guildId)}.\nCheck that the id is right, and that your bot is in that server.`,
 
+    [SeedcordErrorCode.CoreCommandGlobalDeployFailed]: () =>
+        `Discord refused the global command deploy. Check that every global command's name, description and options are valid.`,
+
     [SeedcordErrorCode.DecoratorCommandAlreadyRegistered]: (
         commandName: string,
         existingCall: string,
@@ -250,18 +253,24 @@ const messages = {
         `${paint.bold('build.outDir')} is ${paint.path(outDir)}, which contains ${paint.bold('root')} (${paint.path(root)}). ${paint.bold('seedcord build')} empties ${paint.bold('outDir')} before it writes. Point it at a folder of its own, like ${paint.sky('./dist')}.`,
     [SeedcordErrorCode.CliBuildOutDirNotEmpty]: (outDir: string) =>
         `${paint.bold('build.outDir')} is ${paint.path(outDir)}, which already contains other files. ${paint.bold('seedcord build')} empties ${paint.bold('outDir')} before it writes. Point it at an empty folder, or delete what is in it.`,
-    [SeedcordErrorCode.CliEdgeApplicationUnreadable]: (reason: string) =>
-        `Reading the application from Discord with ${paint.bold('DISCORD_BOT_TOKEN')} failed (${reason}). An edge build reads the public key and command ids from it. Check that the token is still valid.`,
-    [SeedcordErrorCode.CliEdgeCommandsUnreadable]: (where: string, reason: string) =>
-        `Could not read the commands deployed ${where} (${reason}). Check ${paint.bold('DISCORD_BOT_TOKEN')}, and that the bot is in every guild a command in your code targets.`,
+    [SeedcordErrorCode.CliApplicationUnreadable]: (reason: string) =>
+        `Reading the application from Discord with ${paint.bold('DISCORD_BOT_TOKEN')} failed (${reason}). Check that the token is still valid.`,
+    [SeedcordErrorCode.CliCommandsUnreadable]: (where: string, reason: string) =>
+        `Could not read the commands deployed ${where} (${reason}). Check ${paint.bold('DISCORD_BOT_TOKEN')}. For a guild, also check that the bot is in it.`,
     [SeedcordErrorCode.CliEdgeCommandsNotDeployed]: (count: number, commands: string) =>
-        `${count} command${count === 1 ? ' is' : 's are'} in your code with no deployed id on Discord, so the build cannot link ${count === 1 ? 'it' : 'them'}. Deploy with ${paint.bold('seedcord commands')}, then build again.\n${commands}`,
+        `${count} command${count === 1 ? ' is' : 's are'} in your code with no deployed id on Discord, so the build cannot link ${count === 1 ? 'it' : 'them'}. Deploy with ${paint.bold('seedcord commands deploy')}, then build again.\n${commands}`,
     [SeedcordErrorCode.CliEdgeWranglerMissing]: (projectDir: string) =>
         `${paint.bold('seedcord dev')} reads an edge bot's wrangler config through ${paint.bold('wrangler')}, which ${paint.path(projectDir)} does not have installed. Add it as a dev dependency.`,
     [SeedcordErrorCode.CliEdgeWranglerConfigUnreadable]: (wranglerConfig: string, reason: string) =>
         `Wrangler could not read ${paint.path(wranglerConfig)}: ${reason}`,
     [SeedcordErrorCode.CliDevRuntimeNotRunning]: (method: string) =>
         `${paint.bold('seedcord dev')} called ${paint.bold(method)} while the dev runtime was not running. This is a bug in seedcord.`,
+    [SeedcordErrorCode.CliDeployNoCommandsFolder]: (instance: string) =>
+        `${paint.path(instance)} sets ${paint.bold('bot.commands.path')} to ${paint.bold('null')}. Point it at the folder that holds your commands to deploy them.`,
+    [SeedcordErrorCode.CliDeployNeedsYes]: () =>
+        `${paint.bold('seedcord commands deploy')} asks before it deploys, and it can only ask in a terminal with ${paint.bold('CI')} unset. Pass ${paint.bold('--yes')} to deploy without asking.`,
+    [SeedcordErrorCode.CliPurgeNoTargets]: () =>
+        `No scope given. Pass ${paint.bold('--global')}, ${paint.bold('--guilds <ids...>')} or ${paint.bold('--all-guilds')}.`,
     [SeedcordErrorCode.CliBuildFolderProblems]: (count: number) =>
         `${count} folders in the bot config need fixing before ${paint.bold('seedcord build')} can bundle the bot. Each one is listed below.`,
     [SeedcordErrorCode.CliCodegenDuplicateRoute]: (route: string, firstFile: string, secondFile: string) =>
@@ -270,6 +279,10 @@ const messages = {
         `Could not read the commands directory ${paint.path(dir)}. ${reason}`,
     [SeedcordErrorCode.CliCommandConstructorThrew]: (name: string, file: string, reason: string) =>
         `${name} threw while seedcord constructed it. Fix its constructor in ${paint.path(file)}. ${reason}`,
+    [SeedcordErrorCode.CliCommandNotACommand]: (name: string, file: string) =>
+        `${paint.bold(name)} in ${paint.path(file)} carries ${paint.bold('@RegisterCommand')}, but its component is not a slash command or a context menu. Extend ${paint.bold("BuilderComponent<'command'>")} or ${paint.bold("BuilderComponent<'context_menu'>")}.`,
+    [SeedcordErrorCode.CliCommandsNotDeleted]: () =>
+        'Some commands could not be deleted. The warnings above give the reason for each one.',
     [SeedcordErrorCode.CliCommandProblems]: (count: number) =>
         `${count} command files need fixing before seedcord can read the commands. Each one is listed below.`,
     [SeedcordErrorCode.CliCodegenOutOfDate]: (outputPath: string) =>
@@ -303,17 +316,9 @@ const messages = {
         secondFile: string
     ) =>
         `Two ${kind} context-menu commands share the name \`${name}\`. Defined in ${paint.path(firstFile)} and ${paint.path(secondFile)}. Rename one.`,
-    [SeedcordErrorCode.CliCleanAppFetchFailed]: (reason: string) =>
-        `Could not resolve the application from the bot token. ${reason}`,
     [SeedcordErrorCode.CliCleanNoGuilds]: () =>
-        'No guilds given. Pass --guild <ids...> or --all-guilds. Global commands are never touched.',
-    [SeedcordErrorCode.CliCleanPurgeAllGuilds]: () =>
-        '--purge cannot be combined with --all-guilds. Use --guild <ids> to purge specific guilds.',
+        `No guilds given. Pass ${paint.bold('--guilds <ids...>')} or ${paint.bold('--all-guilds')}. Global commands are never touched.`,
     [SeedcordErrorCode.CliCancelled]: () => 'Cancelled.',
-    [SeedcordErrorCode.CliCleanLargeBotUnconfirmed]: (count: number) =>
-        `Refusing to scan ${count} guilds without confirmation. Re-run with --yes, or name specific guilds with --guild <ids>.`,
-    [SeedcordErrorCode.CliCleanApplyNeedsYes]: () =>
-        'Refusing to delete without confirmation in a non-interactive environment. Re-run with --yes.',
     [SeedcordErrorCode.CliTunnelUrlUnavailable]: (seconds: number) =>
         `cloudflared did not report a tunnel URL within ${seconds}s. Check that the binary runs and that the network allows it.`,
     [SeedcordErrorCode.CliTunnelNotVerified]: (url: string) => `Discord rejected ${url} as an interactions endpoint.`,

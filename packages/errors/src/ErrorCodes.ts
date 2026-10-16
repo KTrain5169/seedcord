@@ -92,6 +92,8 @@ export enum SeedcordErrorCode {
     CoreEdgeUnbuilt = 1223,
     /** A relative folder was read in a process that never received the bot's `root`. */
     CoreDirectoryRootUnknown = 1224,
+    /** Discord refused the global command deploy. */
+    CoreCommandGlobalDeployFailed = 1225,
 
     /** A command decorator attempted to re-register an existing command scope. */
     DecoratorCommandAlreadyRegistered = 1301,
@@ -255,18 +257,10 @@ export enum SeedcordErrorCode {
     CliCommandsDirUnreadable = 3115,
     /** Two context-menu commands of the same kind share a name during codegen. */
     CliCodegenDuplicateContextMenu = 3116,
-    /** Could not resolve the application from the bot token during `commands --clean`. */
-    CliCleanAppFetchFailed = 3117,
-    /** `commands --clean` ran with neither --guild nor --all-guilds. */
+    /** `commands clean` ran with neither --guilds nor --all-guilds. */
     CliCleanNoGuilds = 3118,
-    /** `commands --clean` combined --purge with --all-guilds, which would wipe every guild. */
-    CliCleanPurgeAllGuilds = 3119,
     /** An interactive prompt was cancelled (Ctrl-C), so the command aborts without changes. */
     CliCancelled = 3120,
-    /** `commands --clean --all-guilds` matched more guilds than the safety threshold without `--yes`. */
-    CliCleanLargeBotUnconfirmed = 3121,
-    /** `commands --clean --apply` ran in a non-interactive environment without `--yes`, where it cannot prompt. */
-    CliCleanApplyNeedsYes = 3122,
     /** The cloudflared metrics server never reported a quick-tunnel hostname. */
     CliTunnelUrlUnavailable = 3123,
     /** Discord rejected the tunnel URL as an interactions endpoint. */
@@ -319,10 +313,10 @@ export enum SeedcordErrorCode {
     CliEdgeBootFailed = 3147,
     /** An edge bot's `root` holds its seedcord config. */
     CliEdgeRootHoldsConfig = 3148,
-    /** An edge build could not read the application from Discord with `DISCORD_BOT_TOKEN`. */
-    CliEdgeApplicationUnreadable = 3149,
-    /** An edge build could not read the commands deployed globally or to a guild its commands target. */
-    CliEdgeCommandsUnreadable = 3150,
+    /** The CLI could not read the application from Discord with `DISCORD_BOT_TOKEN`. */
+    CliApplicationUnreadable = 3149,
+    /** The CLI could not read the commands deployed globally or to a guild. */
+    CliCommandsUnreadable = 3150,
     /** An edge build found commands in code that have no deployed id on Discord. */
     CliEdgeCommandsNotDeployed = 3151,
     /** An edge bot's project does not have `wrangler` installed. */
@@ -331,6 +325,16 @@ export enum SeedcordErrorCode {
     CliEdgeWranglerConfigUnreadable = 3154,
     /** Something called the dev runtime before `start()` finished or after `stop()`. A bug in seedcord. */
     CliDevRuntimeNotRunning = 3155,
+    /** `seedcord commands deploy` ran on a bot whose `commands.path` is `null`. */
+    CliDeployNoCommandsFolder = 3156,
+    /** `seedcord commands deploy` ran where it cannot ask first, without `--yes`. */
+    CliDeployNeedsYes = 3157,
+    /** `seedcord commands purge` ran with none of --global, --guilds or --all-guilds. */
+    CliPurgeNoTargets = 3158,
+    /** A class carrying `@RegisterCommand` builds a component that is not a command or a context menu. */
+    CliCommandNotACommand = 3159,
+    /** `seedcord commands clean` or `purge` could not delete some of the commands it selected. */
+    CliCommandsNotDeleted = 3160,
 
     /** A create prompt was cancelled (Ctrl-C), and nothing has been written yet. */
     CreateCancelled = 3201,
