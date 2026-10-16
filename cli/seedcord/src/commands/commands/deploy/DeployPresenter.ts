@@ -1,3 +1,4 @@
+import { GLOBAL_ID, skippedNote } from '@seedcord/core/internal';
 import { paint } from '@seedcord/errors';
 
 import { commandLabel, printSections } from '#commands/commands/commandRows';
@@ -5,13 +6,12 @@ import { StepsPresenter } from '#commands/commands/StepsPresenter';
 import { plural } from '#core/format';
 import { unlessCancelled } from '#core/prompts/unlessCancelled';
 
-import type { ScopesInCode } from '#commands/commands/codeScopes';
 import type { CommandRow, CommandSection } from '#commands/commands/commandRows';
 import type { Confirm } from '#commands/commands/confirm';
 import type { PresenterOutput } from '#commands/commands/StepsPresenter';
-import type { ScopeDiff } from './deployPlan';
 import type { DeployStep } from './DeployRunner';
-import type { CommandBody } from '@seedcord/core/internal';
+import type { ScopeDiff } from './diffScope';
+import type { CommandBody, CommandScopes, ScopeId } from '@seedcord/core/internal';
 
 export interface ScopePlan {
     title: string;
@@ -19,12 +19,14 @@ export interface ScopePlan {
     diff: ScopeDiff;
 }
 
-function deployedNote({ global, guilds }: ScopesInCode): string {
+function deployedNote(scopes: CommandScopes): string {
     const parts: string[] = [];
+    const global = scopes.get(GLOBAL_ID);
     if (global) parts.push(`${paint.iris(String(global.length))} global`);
-    if (guilds.size > 0) {
-        const inGuilds = guilds.values().reduce((sum, commands) => sum + commands.length, 0);
-        parts.push(`${paint.iris(String(inGuilds))} in ${plural(guilds.size, 'guild')}`);
+    const guilds = [...scopes].filter(([scope]) => scope !== GLOBAL_ID);
+    if (guilds.length > 0) {
+        const inGuilds = guilds.reduce((sum, [, commands]) => sum + commands.length, 0);
+        parts.push(`${paint.iris(String(inGuilds))} in ${plural(guilds.length, 'guild')}`);
     }
     return parts.join(', ');
 }
@@ -36,6 +38,12 @@ export class DeployPresenter extends StepsPresenter<DeployStep> {
         private readonly verbose: boolean
     ) {
         super(output);
+    }
+
+    public skipped(scopes: readonly ScopeId[], guildLabel: (guildId: string) => string): void {
+        if (scopes.length === 0) return;
+        this.output.line();
+        this.output.line(skippedNote(scopes, guildLabel));
     }
 
     public nothingToDeploy(): void {
@@ -50,14 +58,15 @@ export class DeployPresenter extends StepsPresenter<DeployStep> {
         );
     }
 
-    public async approve(plans: readonly ScopePlan[]): Promise<boolean> {
-        const message = `Deploy to ${plural(plans.length, 'scope')}? Discord replaces the commands in each.`;
-        const yes = await unlessCancelled(this.output, () => this.confirm(message));
-        if (yes === false) this.output.line(paint.mute('Nothing deployed.'));
-        return yes === true;
+    public approve(plans: readonly ScopePlan[]): Promise<boolean> {
+        return this.ask(`Deploy to ${plural(plans.length, 'scope')}? Discord replaces the commands in each.`);
     }
 
-    public deploy(task: () => Promise<unknown>, scopes: ScopesInCode): Promise<unknown> {
+    public deployAnyway(): Promise<boolean> {
+        return this.ask('Deploy them anyway?');
+    }
+
+    public deploy(task: () => Promise<unknown>, scopes: CommandScopes): Promise<unknown> {
         return this.output.step('deploy', task, () => deployedNote(scopes));
     }
 
@@ -67,6 +76,12 @@ export class DeployPresenter extends StepsPresenter<DeployStep> {
         this.output.line(
             paint.mute(`Run ${paint.bold('seedcord build')} and deploy the worker again to pick them up.`)
         );
+    }
+
+    private async ask(message: string): Promise<boolean> {
+        const yes = await unlessCancelled(this.output, () => this.confirm(message));
+        if (yes === false) this.output.line(paint.mute('Nothing deployed.'));
+        return yes === true;
     }
 
     private section({ title, inCode, diff }: ScopePlan): CommandSection {

@@ -1,4 +1,4 @@
-import { resolveDeployTarget } from '@seedcord/core/internal';
+import { resolveDeployTarget, scopeIdsOf } from '@seedcord/core/internal';
 import { paint } from '@seedcord/errors';
 
 import { plural } from '#core/format';
@@ -10,42 +10,30 @@ import type { RunnerDeps } from '#commands/commands/runnerDeps';
 import type { ResolvedTarget } from '#core/config/schema';
 import type { FoundCommand } from '#core/modules/CommandScanner';
 import type { Steps } from '#core/output/Steps';
-import type { CommandBody, CommandScopes } from '@seedcord/core/internal';
+import type { CommandBody, CommandScopes, ScopeId } from '@seedcord/core/internal';
 
 export const LOAD_STEPS = ['read config', 'load bot', 'scan'] as const;
 type LoadStep = (typeof LOAD_STEPS)[number];
-
-// global is unset when no command in code targets it
-export interface ScopesInCode extends CommandScopes {
-    readonly global?: CommandBody[];
-    readonly guilds: Map<string, CommandBody[]>;
-}
 
 interface CodeScopes {
     target: ResolvedTarget['kind'];
     instance: string;
     // undefined when the bot sets commands.path to null
-    scopes: ScopesInCode | undefined;
+    scopes: CommandScopes | undefined;
 }
 
 type LoadDeps = Pick<RunnerDeps, 'projectLoader'>;
 
-export function scopesInCode(found: readonly FoundCommand[], configuredGuilds: readonly string[]): ScopesInCode {
-    const global: CommandBody[] = [];
-    const guilds = new Map<string, CommandBody[]>();
+export function scopesInCode(found: readonly FoundCommand[], configuredGuilds: readonly string[]): CommandScopes {
+    const scopes = new Map<ScopeId, CommandBody[]>();
     for (const { json, meta, className } of found) {
-        const target = resolveDeployTarget(meta, configuredGuilds, className);
-        if (target.scope === 'global') {
-            global.push(json);
-            continue;
-        }
-        for (const guildId of target.guilds) {
-            const inGuild = guilds.get(guildId) ?? [];
-            inGuild.push(json);
-            guilds.set(guildId, inGuild);
+        for (const scope of scopeIdsOf(resolveDeployTarget(meta, configuredGuilds, className))) {
+            const inScope = scopes.get(scope);
+            if (inScope) inScope.push(json);
+            else scopes.set(scope, [json]);
         }
     }
-    return global.length > 0 ? { global, guilds } : { guilds };
+    return scopes;
 }
 
 export async function loadCodeScopes(

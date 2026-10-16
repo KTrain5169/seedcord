@@ -1,10 +1,17 @@
-import { commandRefOf, linkCommands, resolveDeployTarget, resolveEmojis } from '@seedcord/core/internal';
+import {
+    commandRefOf,
+    GLOBAL_ID,
+    linkCommands,
+    readCommands,
+    resolveDeployTarget,
+    resolveEmojis,
+    scopeIdsOf
+} from '@seedcord/core/internal';
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 
 import { scopesInCode } from '#commands/commands/codeScopes';
 import { applicationOf } from '#core/discord/applicationOf';
-import { readDeployed } from '#core/discord/readDeployed';
 
 import type { FoundCommand } from '#core/modules/CommandScanner';
 import type { REST } from '@discordjs/rest';
@@ -49,7 +56,9 @@ async function linkDeployed(
         command,
         target: resolveDeployTarget(command.meta, configuredGuilds, command.className)
     }));
-    const deployed = await readDeployed(rest, applicationId, scopesInCode(found, configuredGuilds).guilds.keys());
+    // notInCode reports stray global commands too
+    const scopes = new Set([GLOBAL_ID, ...scopesInCode(found, configuredGuilds).keys()]);
+    const deployed = await readCommands(scopes, { rest, applicationId });
     assertDeployed(targeted.filter(({ command, target }) => !isDeployedTo(deployed, command, target)));
     return linkCommands(
         deployed,
@@ -57,10 +66,11 @@ async function linkDeployed(
     );
 }
 
-function isDeployedTo({ global, guilds }: DeployResult, { json }: FoundCommand, target: DeployTarget): boolean {
+function isDeployedTo(deployed: DeployResult, { json }: FoundCommand, target: DeployTarget): boolean {
     const { name, type } = commandRefOf(json);
-    const scopes = target.scope === 'global' ? [global] : target.guilds.map((guildId) => guilds.get(guildId));
-    return scopes.every((scope) => [...(scope?.values() ?? [])].some((c) => c.name === name && c.type === type));
+    return scopeIdsOf(target).every((scope) =>
+        [...(deployed.get(scope)?.values() ?? [])].some((c) => c.name === name && c.type === type)
+    );
 }
 
 function assertDeployed(notDeployed: readonly TargetedCommand[]): void {

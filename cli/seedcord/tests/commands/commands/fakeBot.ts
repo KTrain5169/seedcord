@@ -10,12 +10,15 @@ import { ApplicationCommandType, Routes } from 'discord-api-types/v10';
 import { onTestFinished, vi } from 'vitest';
 
 import { Project } from '#core/project/Project';
+import { StateFolder } from '#core/state/StateFolder';
+import { silentLogger } from '#tests/silentLogger';
 
 import type { ProjectLoader } from '#core/config/ProjectLoader';
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { ModuleLoader } from '#core/modules/ModuleLoader';
 import type { Terminal } from '#core/output/terminal';
 import type { REST } from '@discordjs/rest';
+import type { CommandBody } from '@seedcord/core/internal';
 import type { APIApplicationCommand } from 'discord-api-types/v10';
 
 export const APP_ID = 'app-1';
@@ -47,6 +50,9 @@ interface BotOptions {
 
 export type ProjectOpener = Pick<ProjectLoader, 'open'>;
 
+// a test that reuses a project reuses its last deploy
+export type FakeProject = ProjectOpener & { readonly state: StateFolder };
+
 interface FakeDiscord {
     rest: REST;
     gets: string[];
@@ -66,12 +72,16 @@ export function slash(name: string): APIApplicationCommand {
     };
 }
 
+function deployedFrom(command: CommandBody): APIApplicationCommand {
+    return { ...slash(command.name), type: command.type ?? ApplicationCommandType.ChatInput };
+}
+
 export async function fakeProject({
     commands = [Ping, Config],
     commandsPath = './commands',
     guilds = [],
     edge = false
-}: BotOptions = {}): Promise<ProjectOpener> {
+}: BotOptions = {}): Promise<FakeProject> {
     const dir = await mkdtempDisposable(join(tmpdir(), 'bot-'));
     onTestFinished(() => dir.remove());
     const root = dir.path;
@@ -103,7 +113,7 @@ export async function fakeProject({
         importModule: (path: string) => Promise.resolve(byPath.get(path) ?? {}),
         [Symbol.asyncDispose]: () => Promise.resolve()
     } as ModuleLoader & AsyncDisposable;
-    return { open: () => Promise.resolve(new Project(config, modules)) };
+    return { open: () => Promise.resolve(new Project(config, modules)), state: new StateFolder(root, silentLogger) };
 }
 
 // a function answers a GET from its query
@@ -134,10 +144,11 @@ export function fakeDiscord(onDiscord: Record<string, unknown> = {}): FakeDiscor
             const answer = answers[route];
             return reply(answersFromQuery(answer) ? answer(options?.query) : answer);
         }),
-        put: vi.fn(async (route: string, { body }: { body: { name: string }[] }) => {
+        put: vi.fn(async (route: string, { body }: { body: CommandBody[] }) => {
             await reply(answers[route]);
             puts.push({ route, names: body.map((command) => command.name) });
-            return [];
+            answers[route] = body.map(deployedFrom);
+            return answers[route];
         }),
         delete: vi.fn(async (route: string) => {
             await reply(answers[route]);

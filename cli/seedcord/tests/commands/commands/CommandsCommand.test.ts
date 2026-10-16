@@ -16,7 +16,7 @@ import { KEY, PromptTerminal } from '#tests/core/prompts/PromptTerminal';
 import { silentLogger } from '#tests/silentLogger';
 
 import type { Prompter } from '#core/prompts/Prompter';
-import type { ProjectOpener } from '#tests/commands/commands/fakeBot';
+import type { FakeProject } from '#tests/commands/commands/fakeBot';
 import type { Mock } from 'vitest';
 
 const GUILD_PAGE = 200;
@@ -63,7 +63,7 @@ async function runCommands(deps: ConstructorParameters<typeof CommandsCommand>[0
 interface RunOptions {
     prompter?: Prompter;
     onDiscord?: Record<string, unknown>;
-    project?: ProjectOpener;
+    project?: FakeProject;
 }
 
 async function run(
@@ -71,13 +71,14 @@ async function run(
     { prompter, onDiscord = {}, project }: RunOptions = {}
 ): Promise<ReturnType<typeof fakeDiscord>> {
     const discord = fakeDiscord({ ...ON_DISCORD, ...onDiscord });
+    const opened = project ?? (await fakeProject());
     const deps = {
-        projectLoader: project ?? (await fakeProject()),
+        projectLoader: opened,
         openDiscord: () => discord.rest,
         logger: silentLogger
     };
     const runners = {
-        deployRunner: new DeployRunner(deps),
+        deployRunner: new DeployRunner({ ...deps, state: opened.state }),
         listRunner: new ListRunner(deps),
         removeRunner: new RemoveRunner(deps)
     };
@@ -315,13 +316,31 @@ describe('seedcord commands deploy, off a terminal', () => {
             { route: Routes.applicationGuildCommands(APP_ID, '111'), names: ['config'] }
         ]);
     });
+
+    it('deploys the scopes that match the last deploy again with --force', async () => {
+        using _output = captureOutput();
+        const project = await fakeProject();
+        await run(['deploy', '--yes'], { project, onDiscord: EMPTY_DISCORD });
+        const unchanged = {
+            [Routes.applicationCommands(APP_ID)]: [slash('ping')],
+            [Routes.applicationGuildCommands(APP_ID, '111')]: [slash('config')]
+        };
+
+        const { puts } = await run(['deploy', '--yes', '--force'], { project, onDiscord: unchanged });
+
+        expect(puts.map(({ route }) => route)).toEqual([
+            Routes.applicationCommands(APP_ID),
+            Routes.applicationGuildCommands(APP_ID, '111')
+        ]);
+    });
 });
 
 describe('seedcord commands list --json', () => {
     it('prints only the JSON on stdout and moves what the bot printed to stderr', async () => {
         using output = captureOutput();
         const inner = await fakeProject();
-        const project: ProjectOpener = {
+        const project: FakeProject = {
+            state: inner.state,
             open: (dir) => {
                 process.stdout.write('loading the bot\n');
                 return inner.open(dir);

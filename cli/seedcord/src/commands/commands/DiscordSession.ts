@@ -1,18 +1,28 @@
-import { putCommands } from '@seedcord/core/internal';
+import {
+    commandsRoute,
+    GLOBAL_ID,
+    guildSummaries,
+    putCommands,
+    readCommands,
+    readCommandsAt
+} from '@seedcord/core/internal';
 import { asError } from '@seedcord/utils/internal';
 import { Routes } from 'discord-api-types/v10';
 
 import { applicationOf } from '#core/discord/applicationOf';
-import { guildSummaries } from '#core/discord/guildSummaries';
 import { readBotGuilds } from '#core/discord/readBotGuilds';
-import { readDeployed, readGlobalCommands, readGuildCommands } from '#core/discord/readDeployed';
 
-import type { GuildSummary } from '#core/discord/readBotGuilds';
 import type { DiscordRest } from './runnerDeps';
 import type { GuildScope, GuildTargets, Scope, ScopedCommands } from './scope';
-import type { CommandScopes, DeployResult } from '@seedcord/core/internal';
+import type { CommandScopes, DeployResult, GuildSummary, ScopeId } from '@seedcord/core/internal';
 import type { ILogger } from '@seedcord/types';
 import type { APIApplicationCommand, Snowflake } from 'discord-api-types/v10';
+
+function commandRoute(applicationId: Snowflake, scope: ScopeId, commandId: Snowflake): `/${string}` {
+    return scope === GLOBAL_ID
+        ? Routes.applicationCommand(applicationId, commandId)
+        : Routes.applicationGuildCommand(applicationId, scope, commandId);
+}
 
 export interface Scan {
     global: APIApplicationCommand[];
@@ -39,18 +49,6 @@ export interface RemoveResult {
     failed: RemoveFailure[];
 }
 
-function commandsRoute(appId: Snowflake, scope: Scope): `/${string}` {
-    return scope.kind === 'global'
-        ? Routes.applicationCommands(appId)
-        : Routes.applicationGuildCommands(appId, scope.id);
-}
-
-function commandRoute(appId: Snowflake, scope: Scope, commandId: Snowflake): `/${string}` {
-    return scope.kind === 'global'
-        ? Routes.applicationCommand(appId, commandId)
-        : Routes.applicationGuildCommand(appId, scope.id, commandId);
-}
-
 export class DiscordSession {
     private constructor(
         private readonly rest: DiscordRest,
@@ -68,11 +66,14 @@ export class DiscordSession {
         return guildSummaries(this.rest, targets.ids, targets.knownNames);
     }
 
-    // throws on the first guild it cannot read, since a deploy replaces each one
-    public async readTargets(guildIds: readonly string[]): Promise<DeployTargets> {
+    // throws on the first scope it cannot read
+    public async readTargets(scopes: readonly ScopeId[]): Promise<DeployTargets> {
         const [deployed, guilds] = await Promise.all([
-            readDeployed(this.rest, this.appId, guildIds),
-            guildSummaries(this.rest, guildIds)
+            readCommands(scopes, this.reads()),
+            guildSummaries(
+                this.rest,
+                scopes.filter((scope) => scope !== GLOBAL_ID)
+            )
         ]);
         return { deployed, guildNames: new Map(guilds.map(({ id, name }) => [id, name])) };
     }
@@ -83,7 +84,7 @@ export class DiscordSession {
 
     public async readScopes(guilds: readonly GuildSummary[]): Promise<Scan> {
         const [global, ...guildScopes] = await Promise.all([
-            readGlobalCommands(this.rest, this.appId),
+            readCommandsAt(GLOBAL_ID, this.reads()),
             ...guilds.map((guild) => this.readGuild(guild))
         ]);
         return { global: [...global.values()], guilds: guildScopes };
@@ -94,7 +95,7 @@ export class DiscordSession {
         for (const { scope, commands } of selected) {
             for (const command of commands) {
                 try {
-                    await this.rest.delete(commandRoute(this.appId, scope, command.id));
+                    await this.rest.delete(commandRoute(this.appId, scope.id, command.id));
                     result.deleted++;
                 } catch (error: unknown) {
                     result.failed.push({ kind: 'command', scope, command, reason: asError(error).message });
@@ -108,7 +109,7 @@ export class DiscordSession {
         const result: RemoveResult = { deleted: 0, failed: [] };
         for (const { scope, commands } of selected) {
             try {
-                await this.rest.put(commandsRoute(this.appId, scope), { body: [] });
+                await this.rest.put(commandsRoute(this.appId, scope.id), { body: [] });
                 result.deleted += commands.length;
             } catch (error: unknown) {
                 result.failed.push({ kind: 'scope', scope, reason: asError(error).message });
@@ -118,7 +119,11 @@ export class DiscordSession {
     }
 
     private async readGuild(guild: GuildSummary): Promise<ScopedCommands<GuildScope>> {
-        const commands = await readGuildCommands(this.rest, this.appId, guild.id);
+        const commands = await readCommandsAt(guild.id, this.reads());
         return { scope: { kind: 'guild', ...guild }, commands: [...commands.values()] };
+    }
+
+    private reads(): { rest: DiscordRest; applicationId: Snowflake } {
+        return { rest: this.rest, applicationId: this.appId };
     }
 }

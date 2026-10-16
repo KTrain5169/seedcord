@@ -4,9 +4,22 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 import { Logger } from '@seedcord/logger';
-import { type Mock, type MockInstance, afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+    type Mock,
+    type MockInstance,
+    afterAll,
+    afterEach,
+    beforeEach,
+    describe,
+    expect,
+    it,
+    onTestFinished,
+    vi
+} from 'vitest';
 
 import { HmrPlugin } from '#commands/dev/runtime/HmrPlugin';
+import { StateFolder } from '#core/state/StateFolder';
+import { silentLogger } from '#tests/silentLogger';
 
 import type { DevEvent } from '#commands/dev/runtime/events';
 import type { EnvironmentModuleNode, HotUpdateOptions, ViteDevServer } from 'vite';
@@ -80,16 +93,21 @@ interface ConfiguredPlugin {
     plugin: HmrPlugin;
     watcher: EventEmitter;
     listeners: Map<string, (data: unknown) => void>;
+    sent: Mock;
     events: DevEvent[];
 }
 
-function configuredPlugin(config: ConstructorParameters<typeof HmrPlugin>[0]): ConfiguredPlugin {
-    const plugin = new HmrPlugin(config, 'ssr');
+// the last-deploy tests below write to their own folder
+const STATE = new StateFolder(process.cwd(), silentLogger);
+
+function configuredPlugin(config: ConstructorParameters<typeof HmrPlugin>[0], state = STATE): ConfiguredPlugin {
+    const plugin = new HmrPlugin(config, state, 'ssr');
     const listeners = new Map<string, (data: unknown) => void>();
     // justified: spy on the private `hot` getter
     const hotHost = plugin as unknown as { hot: { send: Mock; on: Mock } };
+    const sent = vi.fn();
     vi.spyOn(hotHost, 'hot', 'get').mockReturnValue({
-        send: vi.fn(),
+        send: sent,
         on: vi.fn((event: string, cb: (data: unknown) => void) => listeners.set(event, cb))
     });
 
@@ -103,7 +121,7 @@ function configuredPlugin(config: ConstructorParameters<typeof HmrPlugin>[0]): C
     } as unknown as ViteDevServer;
     (plugin.plugin.configureServer as (s: ViteDevServer) => void)(server);
 
-    return { plugin, watcher, listeners, events };
+    return { plugin, watcher, listeners, sent, events };
 }
 
 describe('HmrPlugin', () => {
@@ -129,7 +147,7 @@ describe('HmrPlugin', () => {
             vi.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
         }
         trace = vi.spyOn(Logger.prototype, 'trace').mockImplementation(() => undefined);
-        hmrPlugin = new HmrPlugin(mockConfig, 'ssr');
+        hmrPlugin = new HmrPlugin(mockConfig, STATE, 'ssr');
     });
 
     afterEach(() => {
@@ -137,7 +155,7 @@ describe('HmrPlugin', () => {
     });
 
     it('carries the config rollback flag onto the hmr payload', () => {
-        const plugin = new HmrPlugin({ ...mockConfig, hmr: { rollback: false } }, 'ssr');
+        const plugin = new HmrPlugin({ ...mockConfig, hmr: { rollback: false } }, STATE, 'ssr');
         const hotSend = vi.fn();
         // justified: spy on the private `hot` getter
         const hotHost = plugin as unknown as { hot: { send: typeof hotSend; on: ReturnType<typeof vi.fn> } };
@@ -164,6 +182,34 @@ describe('HmrPlugin', () => {
         listeners.get('seedcord:server-listening')?.({ port: 4000 });
 
         expect(events).toContainEqual({ type: 'server-listening', port: 4000 });
+    });
+
+    describe('the last deploy', () => {
+        const deployed = { applicationId: 'app-1', scopes: { global: 'a1b2', '111': 'c3d4' } };
+
+        function withState(): ConfiguredPlugin {
+            const dir = mkdtempSync(join(tmpdir(), 'seedcord-hmr-state-'));
+            onTestFinished(() => rmSync(dir, { recursive: true, force: true }));
+            return configuredPlugin(mockConfig, new StateFolder(dir, silentLogger));
+        }
+
+        it('answers a read with the deploy the framework reported for that application', () => {
+            const { listeners, sent } = withState();
+
+            listeners.get('seedcord:commands-deployed')?.(deployed);
+            listeners.get('seedcord:read-deployed')?.({ applicationId: 'app-1' });
+
+            expect(sent).toHaveBeenCalledWith('seedcord:last-deploy', { deployed });
+        });
+
+        it('answers undefined for a deploy saved for another application', () => {
+            const { listeners, sent } = withState();
+
+            listeners.get('seedcord:commands-deployed')?.(deployed);
+            listeners.get('seedcord:read-deployed')?.({ applicationId: 'app-2' });
+
+            expect(sent).toHaveBeenCalledWith('seedcord:last-deploy', { deployed: undefined });
+        });
     });
 
     it.each(['migrations/**', './migrations/**', join(srcRoot, 'migrations/**')])(
