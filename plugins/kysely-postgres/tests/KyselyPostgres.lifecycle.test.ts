@@ -1,4 +1,5 @@
 import { SeedcordErrorCode } from '@seedcord/errors';
+import { Logger } from '@seedcord/logger';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { KyselyPostgres } from '#src/KyselyPostgres';
@@ -42,7 +43,7 @@ describe('KyselyPostgres lifecycle', () => {
         });
     }
 
-    it('translates a connect failure into PluginKyselyConnectionFailed', async () => {
+    it('translates a connect failure into PluginConnectionFailed', async () => {
         const plugin = new KyselyPostgres(mockCore, {
             connectionString: 'postgres://localhost:5432/postgres',
             migrations: { dir: testEnv.resolvePath('migrations') },
@@ -51,7 +52,7 @@ describe('KyselyPostgres lifecycle', () => {
         poolConnect.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
         await expect(plugin.init()).rejects.toThrow(
-            expect.objectContaining({ code: SeedcordErrorCode.PluginKyselyConnectionFailed })
+            expect.objectContaining({ code: SeedcordErrorCode.PluginConnectionFailed })
         );
     });
 
@@ -74,7 +75,7 @@ describe('KyselyPostgres lifecycle', () => {
         poolConnect.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
         await expect(plugin.init()).rejects.toThrow(
-            expect.objectContaining({ code: SeedcordErrorCode.PluginKyselyConnectionFailed })
+            expect.objectContaining({ code: SeedcordErrorCode.PluginConnectionFailed })
         );
 
         expect(poolEnd).toHaveBeenCalledTimes(1);
@@ -134,7 +135,7 @@ describe('KyselyPostgres lifecycle', () => {
         });
 
         await expect(plugin.init()).rejects.toThrow(
-            expect.objectContaining({ code: SeedcordErrorCode.CoreDirectoryUnreadable })
+            expect.objectContaining({ code: SeedcordErrorCode.CorePathUnreadable })
         );
 
         // the bootstrapper's admin pool is the first close, the plugin's own pool is the second
@@ -151,7 +152,7 @@ describe('KyselyPostgres lifecycle', () => {
         poolEnd.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('still busy'));
 
         await expect(plugin.init()).rejects.toThrow(
-            expect.objectContaining({ code: SeedcordErrorCode.CoreDirectoryUnreadable })
+            expect.objectContaining({ code: SeedcordErrorCode.CorePathUnreadable })
         );
     });
 
@@ -159,7 +160,7 @@ describe('KyselyPostgres lifecycle', () => {
         const plugin = build();
 
         expect(() => plugin.services).toThrow(
-            expect.objectContaining({ code: SeedcordErrorCode.PluginKyselyServicesNotReady })
+            expect.objectContaining({ code: SeedcordErrorCode.PluginServicesNotReady })
         );
     });
 
@@ -211,7 +212,7 @@ describe('KyselyPostgres lifecycle', () => {
         await plugin.dispose();
 
         expect(() => plugin.services).toThrow(
-            expect.objectContaining({ code: SeedcordErrorCode.PluginKyselyServicesNotReady })
+            expect.objectContaining({ code: SeedcordErrorCode.PluginServicesNotReady })
         );
     });
 
@@ -221,13 +222,25 @@ describe('KyselyPostgres lifecycle', () => {
         await expect(plugin.dispose()).resolves.toBeUndefined();
     });
 
-    it('translates a pool close failure into PluginKyselyDisconnectFailed', async () => {
+    it('translates a pool close failure into PluginDisconnectFailed', async () => {
         const plugin = build();
         await plugin.init();
         poolEnd.mockRejectedValueOnce(new Error('still busy'));
 
         await expect(plugin.dispose()).rejects.toThrow(
-            expect.objectContaining({ code: SeedcordErrorCode.PluginKyselyDisconnectFailed })
+            expect.objectContaining({ code: SeedcordErrorCode.PluginDisconnectFailed })
         );
+    });
+
+    it('reports a pool close failure once, through the thrown error', async () => {
+        const plugin = build();
+        await plugin.init();
+        poolEnd.mockRejectedValueOnce(new Error('still busy'));
+        const logged = vi.spyOn(Logger.prototype, 'error');
+
+        await plugin.dispose().catch(() => undefined);
+
+        expect(logged).not.toHaveBeenCalled();
+        logged.mockRestore();
     });
 });

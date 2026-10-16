@@ -51,10 +51,13 @@ export function RegisterEventMiddleware<
     return function (ctor: Constructor<EventMiddleware<Events[number]>>): void {
         const priority = Number(options.priority ?? 0);
         if (!Number.isFinite(priority)) {
-            throw new SeedcordTypeError(SeedcordErrorCode.DecoratorInvalidMiddlewarePriority);
+            throw new SeedcordTypeError(SeedcordErrorCode.DecoratorInvalidMiddlewarePriority, [
+                ctor.name,
+                String(options.priority)
+            ]);
         }
         if (options.events?.length === 0) {
-            throw new SeedcordTypeError(SeedcordErrorCode.DecoratorEmptyMiddlewareFilter, ['events']);
+            throw new SeedcordTypeError(SeedcordErrorCode.DecoratorEmptyMiddlewareFilter, [ctor.name, 'events']);
         }
 
         const metadata: EventMiddlewareMetadata = {

@@ -113,12 +113,12 @@ describe('traverseDirectory in a built bot', () => {
         await expect(walk('/bot/subscribers')).resolves.toEqual([]);
     });
 
-    it('reports a folder the build never registered as unreadable', async () => {
+    it('reports a folder the build never registered as missing from the build', async () => {
         register({ folders: ['/handlers'], modules: { '/handlers/Roll.ts': stub('Roll') } });
 
         const error = await rejection(traverseDirectory('/bot/handlerz'));
 
-        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreDirectoryUnreadable });
+        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreDirectoryNotBuilt });
         expect(Error.isError(error) ? error.message : '').toMatch(/handlerz/);
     });
 
@@ -128,7 +128,7 @@ describe('traverseDirectory in a built bot', () => {
 
         const error = await rejection(traverseDirectory('/bot/handlers'));
 
-        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreDirectoryImportFailed });
+        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreImportFailed });
         expect(Error.isError(error) ? error.message : '').toMatch(/Broken\.js/);
         expect(Error.isError(error) ? error.cause : undefined).toMatchObject({ message: 'boom' });
     });
@@ -138,7 +138,7 @@ describe('traverseDirectory in a built bot', () => {
 
         const error = await rejection(traverseDirectory('/elsewhere/handlers'));
 
-        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreDirectoryOutsideRoot });
+        expect(error).toMatchObject({ code: SeedcordErrorCode.CorePathOutsideRoot });
         expect(Error.isError(error) ? error.message : '').toMatch(/\/elsewhere\/handlers[\s\S]*\/bot/);
     });
 });
@@ -188,7 +188,7 @@ describe('readTextFiles in a built bot', () => {
 
         const error = await rejection(readTextFiles('/bot/locales'));
 
-        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreFileUnreadable });
+        expect(error).toMatchObject({ code: SeedcordErrorCode.CorePathUnreadable });
         expect(Error.isError(error) ? error.message : '').toContain(
             path.relative(process.cwd(), '/bot/locales/en.json')
         );
@@ -200,6 +200,6 @@ describe('readTextFiles in a built bot', () => {
 
         const error = await rejection(readTextFiles('/elsewhere/locales'));
 
-        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreDirectoryOutsideRoot });
+        expect(error).toMatchObject({ code: SeedcordErrorCode.CorePathOutsideRoot });
     });
 });

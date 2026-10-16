@@ -11,7 +11,7 @@ function rendered(error: unknown, options: { verbose?: boolean; width?: number }
 }
 
 const outsideRoot = (folder: string): SeedcordError =>
-    new SeedcordError(SeedcordErrorCode.CoreDirectoryOutsideRoot, [folder, '/bot/src']);
+    new SeedcordError(SeedcordErrorCode.CorePathOutsideRoot, [folder, '/bot/src']);
 
 const tag = (code: SeedcordErrorCode): string => `[${String(code)}]`;
 
@@ -26,15 +26,15 @@ describe('renderError', () => {
 
     it('lists each problem in an aggregate as a bullet with its own code', () => {
         const error = new SeedcordAggregateError(
-            SeedcordErrorCode.CliBuildFolderProblems,
+            SeedcordErrorCode.CliProblems,
             [outsideRoot('/bot/handlers'), outsideRoot('/bot/commands')],
             [2]
         );
 
         const [headline, ...bullets] = rendered(error).trimEnd().split('\n');
 
-        const outside = tag(SeedcordErrorCode.CoreDirectoryOutsideRoot);
-        expect(headline).toContain(`  ${tag(SeedcordErrorCode.CliBuildFolderProblems)} `);
+        const outside = tag(SeedcordErrorCode.CorePathOutsideRoot);
+        expect(headline).toContain(`  ${tag(SeedcordErrorCode.CliProblems)} `);
         expect(bullets).toEqual([
             expect.stringContaining(`  • ${outside} /bot/handlers `),
             expect.stringContaining(`  • ${outside} /bot/commands `)
@@ -43,7 +43,7 @@ describe('renderError', () => {
 
     it('wraps on words to the width and indents wrapped lines under the bullet text', () => {
         const error = new SeedcordAggregateError(
-            SeedcordErrorCode.CliBuildFolderProblems,
+            SeedcordErrorCode.CliProblems,
             [outsideRoot('/bot/handlers'), outsideRoot('/bot/commands')],
             [2]
         );
@@ -91,7 +91,7 @@ describe('renderError', () => {
                 cause: new Error(reason)
             });
         const error = new SeedcordAggregateError(
-            SeedcordErrorCode.CliCommandProblems,
+            SeedcordErrorCode.CliProblems,
             [constructorThrew('Ban', 'database not ready'), constructorThrew('Roll', 'bad option')],
             [2]
         );
