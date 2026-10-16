@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { settled } from '#tests/ui/settled';
-
-import { KEY, PromptTerminal } from './PromptTerminal';
+import { KEY, PromptTerminal } from '#src/PromptTerminal';
+import { settled } from '#src/settled';
 
 const QUESTION = '  ? Guilds to clean';
 const GUILDS = {

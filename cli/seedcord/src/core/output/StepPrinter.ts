@@ -1,3 +1,4 @@
+import { Spinner } from '@seedcord/cli-prompts';
 import { paint } from '@seedcord/errors';
 import { WORDMARK } from '@seedcord/errors/internal';
 
@@ -7,7 +8,6 @@ import { version } from '#core/version';
 import { holdOutput } from './holdOutput';
 import { levelMark } from './levelMark';
 import { renderError } from './renderError';
-import { Spinner } from './Spinner';
 import { widthOf } from './terminal';
 import { wrapLines } from './wrapLines';
 

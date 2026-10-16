@@ -8,7 +8,7 @@ import type { DiscordSession, RemoveResult, Scan } from '#commands/commands/Disc
 import type { EmptyMessage } from '#commands/commands/remove/RemoveMode';
 import type { RemoveWizard, WizardPlan } from '#commands/commands/remove/RemoveWizard';
 import type { GuildTargets, ScopedCommands } from '#commands/commands/scope';
-import type { Prompter } from '#core/prompts/Prompter';
+import type { Prompter } from '@seedcord/cli-prompts';
 
 export class PurgeMode extends RemoveMode {
     public readonly itemName = 'command';

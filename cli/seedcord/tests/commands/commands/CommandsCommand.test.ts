@@ -1,6 +1,7 @@
 import { stripVTControlCharacters } from 'node:util';
 
 import { Command } from '@commander-js/extra-typings';
+import { KEY, PromptTerminal } from '@seedcord/cli-prompts/testing';
 import { paint, SeedcordErrorCode } from '@seedcord/errors';
 import { Routes } from 'discord-api-types/v10';
 import { Envapter, PortableSource } from 'envapt';
@@ -12,11 +13,10 @@ import { ListRunner } from '#commands/commands/list/ListRunner';
 import { RemoveRunner } from '#commands/commands/remove/RemoveRunner';
 import { FAKE_TOKEN } from '#tests/commands/build/smoke';
 import { APP_ID, botGuilds, fakeDiscord, fakeProject, slash } from '#tests/commands/commands/fakeBot';
-import { KEY, PromptTerminal } from '#tests/core/prompts/PromptTerminal';
 import { silentLogger } from '#tests/silentLogger';
 
-import type { Prompter } from '#core/prompts/Prompter';
 import type { FakeProject } from '#tests/commands/commands/fakeBot';
+import type { Prompter } from '@seedcord/cli-prompts';
 import type { Mock } from 'vitest';
 
 const GUILD_PAGE = 200;

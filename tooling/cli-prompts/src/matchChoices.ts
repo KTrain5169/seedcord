@@ -1,8 +1,10 @@
 import uFuzzy from '@leeoniya/ufuzzy';
 
-import { includesIgnoreCase } from '#core/format';
-
 import type { Choice } from './Choice';
+
+function includesIgnoreCase(text: string, search: string): boolean {
+    return text.toLowerCase().includes(search.trim().toLowerCase());
+}
 
 // "mhub" finds "Main Hub"
 // eslint-disable-next-line new-cap -- external library

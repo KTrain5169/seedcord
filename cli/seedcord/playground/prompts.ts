@@ -1,6 +1,7 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
 import { REST, RESTEvents } from '@discordjs/rest';
+import { Prompter } from '@seedcord/cli-prompts';
 import { GLOBAL_ID, putCommands } from '@seedcord/core/internal';
 import { isSeedcordError, paint, SeedcordErrorCode } from '@seedcord/errors';
 
@@ -10,7 +11,6 @@ import { RemoveRunner } from '#commands/commands/remove/RemoveRunner';
 import { RemoveWizard, WIZARD_STEPS } from '#commands/commands/remove/RemoveWizard';
 import { cliLogger } from '#core/cliLogger';
 import { StepPrinter } from '#core/output/StepPrinter';
-import { Prompter } from '#core/prompts/Prompter';
 
 import type { WizardQuestions } from '#commands/commands/remove/RemoveWizard';
 

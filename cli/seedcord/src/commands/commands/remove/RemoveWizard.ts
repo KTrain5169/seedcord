@@ -1,16 +1,16 @@
+import { unlessCancelled } from '@seedcord/cli-prompts';
 import { paint } from '@seedcord/errors';
 
 import { plural } from '#core/format';
-import { unlessCancelled } from '#core/prompts/unlessCancelled';
 
 import { RemovePresenter } from './RemovePresenter';
 import { REMOVE_STEPS } from './removeSteps';
 
 import type { GuildTargets } from '#commands/commands/scope';
 import type { StepPrinter } from '#core/output/StepPrinter';
-import type { Prompter } from '#core/prompts/Prompter';
 import type { RemoveMode } from './RemoveMode';
 import type { RemoveRunner } from './RemoveRunner';
+import type { Prompter } from '@seedcord/cli-prompts';
 import type { GuildSummary } from '@seedcord/core/internal';
 
 export const WIZARD_STEPS = ['guilds', ...REMOVE_STEPS] as const;

@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { PROMPT_MARKS } from '#core/prompts/rows';
-import { settled } from '#tests/ui/settled';
-
-import { KEY, PromptTerminal } from './PromptTerminal';
+import { KEY, PromptTerminal } from '#src/PromptTerminal';
+import { PROMPT_MARKS } from '#src/rows';
+import { settled } from '#src/settled';
 
 const GUILDS = {
     message: 'Guilds to clean',

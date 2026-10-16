@@ -1,3 +1,4 @@
+import { settled, stableFrame } from '@seedcord/cli-prompts/testing';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -10,7 +11,6 @@ import { COMPACT_ROWS } from '#ui/tier';
 
 import { renderAt } from './renderAt';
 import { renderOnScreen } from './renderOnScreen';
-import { settled, stableFrame } from './settled';
 
 import type { LogFilters } from '#ui/devPrefs';
 import type { LogRecord } from '@seedcord/types';

@@ -1,8 +1,8 @@
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { expect, vi } from 'vitest';
 
-import { Prompter } from '#core/prompts/Prompter';
-import { KeyboardStdin, ScreenStdout } from '#tests/ui/terminalStubs';
+import { Prompter } from './Prompter';
+import { KeyboardStdin, ScreenStdout } from './terminalStubs';
 
 // the bytes terminals send for each key
 export const KEY = {

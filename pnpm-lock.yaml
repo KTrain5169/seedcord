@@ -193,9 +193,15 @@ catalogs:
     chalk:
       specifier: ^6.0.0
       version: 6.0.1
+    cli-spinners:
+      specifier: ^3.4.0
+      version: 3.4.0
     cross-env:
       specifier: ^10.1.0
       version: 10.1.0
+    ink:
+      specifier: ^8.0.0
+      version: 8.0.0
     lodash.merge:
       specifier: ^4.6.2
       version: 4.6.2
@@ -242,6 +248,9 @@ catalogs:
       specifier: ^2.9.1
       version: 2.9.1
   eslint:
+    '@eslint-react/eslint-plugin':
+      specifier: ^5.18.1
+      version: 5.18.1
     '@types/eslint-plugin-security':
       specifier: ^3.0.1
       version: 3.0.1
@@ -278,6 +287,9 @@ catalogs:
     eslint-plugin-react-compiler:
       specifier: 19.1.0-rc.2
       version: 19.1.0-rc.2
+    eslint-plugin-react-hooks:
+      specifier: ^7.1.1
+      version: 7.1.1
     eslint-plugin-security:
       specifier: ^4.0.1
       version: 4.0.1
@@ -912,7 +924,7 @@ importers:
         specifier: catalog:deps
         version: 6.0.1
       cli-spinners:
-        specifier: ^3.4.0
+        specifier: catalog:deps
         version: 3.4.0
       commander:
         specifier: ^15.0.0
@@ -921,7 +933,7 @@ importers:
         specifier: ^0.38.52
         version: 0.38.56
       ink:
-        specifier: ^8.0.0
+        specifier: catalog:deps
         version: 8.0.0(@types/react@19.3.0)(react@19.3.1)
       ink-spinner:
         specifier: ^5.0.0
@@ -946,8 +958,11 @@ importers:
         specifier: catalog:peer
         version: 1.63.2(@types/node@26.1.2)(vite@8.3.4(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.0))(wrangler@4.150.0(@types/node@26.1.2))
       '@eslint-react/eslint-plugin':
-        specifier: ^5.18.1
+        specifier: catalog:eslint
         version: 5.18.1(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@6.0.3)
+      '@seedcord/cli-prompts':
+        specifier: workspace:^
+        version: link:../../tooling/cli-prompts
       '@seedcord/eslint-config':
         specifier: workspace:^
         version: link:../../tooling/eslint-config
@@ -969,9 +984,6 @@ importers:
       '@types/react':
         specifier: catalog:react
         version: 19.3.0
-      '@xterm/headless':
-        specifier: ^6.0.0
-        version: 6.0.0
       discord.js:
         specifier: catalog:peer
         version: 14.27.0
@@ -979,7 +991,7 @@ importers:
         specifier: catalog:peer
         version: 8.2.3
       eslint-plugin-react-hooks:
-        specifier: ^7.1.1
+        specifier: catalog:eslint
         version: 7.1.1(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)
       ink-testing-library:
         specifier: ^4.0.0
@@ -1687,6 +1699,55 @@ importers:
       vitest:
         specifier: catalog:test
         version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1)(vite@8.3.4(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+
+  tooling/cli-prompts:
+    dependencies:
+      '@leeoniya/ufuzzy':
+        specifier: catalog:deps
+        version: 1.0.19
+      '@seedcord/errors':
+        specifier: workspace:^
+        version: link:../../packages/errors
+      cli-spinners:
+        specifier: catalog:deps
+        version: 3.4.0
+      ink:
+        specifier: catalog:deps
+        version: 8.0.0(@types/react@19.3.0)(react@19.3.1)
+      react:
+        specifier: catalog:react
+        version: 19.3.1
+      typescript:
+        specifier: catalog:peer
+        version: 6.0.3
+    devDependencies:
+      '@eslint-react/eslint-plugin':
+        specifier: catalog:eslint
+        version: 5.18.1(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@6.0.3)
+      '@seedcord/eslint-config':
+        specifier: workspace:^
+        version: link:../eslint-config
+      '@seedcord/tsconfig':
+        specifier: workspace:^
+        version: link:../tsconfig
+      '@seedcord/tsdown-config':
+        specifier: workspace:^
+        version: link:../tsdown-config
+      '@seedcord/vitest-config':
+        specifier: workspace:^
+        version: link:../vitest-config
+      '@types/react':
+        specifier: catalog:react
+        version: 19.3.0
+      '@xterm/headless':
+        specifier: ^6.0.0
+        version: 6.0.0
+      eslint-plugin-react-hooks:
+        specifier: catalog:eslint
+        version: 7.1.1(eslint@10.8.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)
+      vitest:
+        specifier: catalog:test
+        version: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@26.1.2)(@vitest/coverage-istanbul@4.1.11)(@vitest/coverage-v8@4.1.11)(jsdom@30.1.1)(vite@8.3.4(@types/node@26.1.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   tooling/docs-engine:
     dependencies:

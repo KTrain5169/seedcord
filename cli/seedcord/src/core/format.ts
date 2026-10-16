@@ -18,7 +18,3 @@ export function formatBytes(bytes: number): string {
     if (bytes < BYTES_PER_MB) return `${(bytes / BYTES_PER_KB).toFixed(1)} kB`;
     return `${(bytes / BYTES_PER_MB).toFixed(1)} MB`;
 }
-
-export function includesIgnoreCase(text: string, search: string): boolean {
-    return text.toLowerCase().includes(search.trim().toLowerCase());
-}

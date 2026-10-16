@@ -1,8 +1,7 @@
+import { KeyboardStdin, ScreenStdout } from '@seedcord/cli-prompts/testing';
 import { render } from 'ink';
 
-import { KeyboardStdin, ScreenStdout } from './terminalStubs';
-
-import type { Size } from './terminalStubs';
+import type { Size } from '@seedcord/cli-prompts/testing';
 import type { ReactElement } from 'react';
 
 export interface OnScreen {

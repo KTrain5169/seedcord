@@ -1,5 +1,6 @@
 import { stripVTControlCharacters } from 'node:util';
 
+import { KEY, PromptTerminal } from '@seedcord/cli-prompts/testing';
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { ApplicationCommandType, Routes } from 'discord-api-types/v10';
 import { describe, expect, it } from 'vitest';
@@ -11,7 +12,6 @@ import { RemoveWizard, WIZARD_STEPS } from '#commands/commands/remove/RemoveWiza
 import { levelMark } from '#core/output/levelMark';
 import { StepPrinter } from '#core/output/StepPrinter';
 import { APP_ID, fakeDiscord, slash } from '#tests/commands/commands/fakeBot';
-import { KEY, PromptTerminal } from '#tests/core/prompts/PromptTerminal';
 
 import type { WizardQuestions } from '#commands/commands/remove/RemoveWizard';
 import type { APIApplicationCommand } from 'discord-api-types/v10';

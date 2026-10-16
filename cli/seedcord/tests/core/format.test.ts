@@ -1,23 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatBytes, formatDuration, includesIgnoreCase, plural } from '#core/format';
-
-describe('includesIgnoreCase', () => {
-    it('matches a substring regardless of case on either side', () => {
-        expect(includesIgnoreCase('My Guild', 'guild')).toBe(true);
-        expect(includesIgnoreCase('my guild', 'GUILD')).toBe(true);
-        expect(includesIgnoreCase('ABC123', 'abc')).toBe(true);
-    });
-
-    it('treats an empty or whitespace search as a match', () => {
-        expect(includesIgnoreCase('anything', '')).toBe(true);
-        expect(includesIgnoreCase('anything', '   ')).toBe(true);
-    });
-
-    it('is false when the substring is absent', () => {
-        expect(includesIgnoreCase('My Guild', 'zzz')).toBe(false);
-    });
-});
+import { formatBytes, formatDuration, plural } from '#core/format';
 
 describe('formatDuration', () => {
     it('shows milliseconds under a second and seconds from there', () => {

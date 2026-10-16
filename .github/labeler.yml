@@ -58,6 +58,9 @@
 '📦 eslint-utils':
   - changed-files:
       - any-glob-to-any-file: 'tooling/eslint-utils/**'
+'📦 cli-prompts':
+  - changed-files:
+      - any-glob-to-any-file: 'tooling/cli-prompts/**'
 '📦 tsconfig':
   - changed-files:
       - any-glob-to-any-file: 'tooling/tsconfig/**'

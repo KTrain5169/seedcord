@@ -1,10 +1,10 @@
+import { unlessCancelled } from '@seedcord/cli-prompts';
 import { GLOBAL_ID, skippedNote } from '@seedcord/core/internal';
 import { paint } from '@seedcord/errors';
 
 import { commandLabel, printSections } from '#commands/commands/commandRows';
 import { StepsPresenter } from '#commands/commands/StepsPresenter';
 import { plural } from '#core/format';
-import { unlessCancelled } from '#core/prompts/unlessCancelled';
 
 import type { CommandRow, CommandSection } from '#commands/commands/commandRows';
 import type { Confirm } from '#commands/commands/confirm';

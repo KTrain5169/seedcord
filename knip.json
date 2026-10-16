@@ -69,6 +69,7 @@
             "ignoreDependencies": ["discord.js"]
         },
         "tooling/eslint-utils": {},
+        "tooling/cli-prompts": {},
         "packages/event-emitter": {
             "entry": ["**/*.types-test.ts"]
         },
@@ -104,7 +105,7 @@
         },
         "cli/seedcord": {
             "entry": ["tests/fixtures/*/**/*.{ts,js}"],
-            "ignoreDependencies": ["cloudflare"]
+            "ignoreDependencies": ["cloudflare", "@leeoniya/ufuzzy", "cli-spinners"]
         },
         "cli/create-seedcord": {
             "entry": ["**/*.types-test.ts"]

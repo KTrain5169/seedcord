@@ -1,12 +1,11 @@
 import { Option } from '@commander-js/extra-typings';
+import { Prompter, unlessCancelled } from '@seedcord/cli-prompts';
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordTypeError } from '@seedcord/errors/internal';
 
 import { BaseCommand } from '#core/BaseCommand';
 import { isInteractive } from '#core/interactive';
 import { stderrSteps } from '#core/output/stderrSteps';
-import { Prompter } from '#core/prompts/Prompter';
-import { unlessCancelled } from '#core/prompts/unlessCancelled';
 import { isVerbose } from '#core/verbose';
 
 import { askClean, CleanMode } from './clean/CleanMode';

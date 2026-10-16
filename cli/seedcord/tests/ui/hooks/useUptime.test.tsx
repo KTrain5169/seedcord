@@ -1,9 +1,9 @@
+import { settled } from '@seedcord/cli-prompts/testing';
 import { Text } from 'ink';
 import { render } from 'ink-testing-library';
 import React from 'react';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
-import { settled } from '#tests/ui/settled';
 import { useUptime } from '#ui/hooks/useUptime';
 import { DevStore } from '#ui/stores/DevStore';
 

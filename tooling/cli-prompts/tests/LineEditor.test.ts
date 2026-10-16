@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { LineEditor } from '#core/prompts/LineEditor';
+import { LineEditor } from '#src/LineEditor';
 
 const caretAtEnd = (text: string): LineEditor => LineEditor.empty().insert(text);
 
