@@ -88,7 +88,7 @@
         "@seedcord/tsconfig": "workspace:^",
         "@seedcord/tsdown-config": "workspace:^",
         "@seedcord/vitest-config": "workspace:^",
-        "@vitest/coverage-istanbul": "catalog:test",
+        "@vitest/coverage-istanbul": "5.0.3",
         "envapt": "catalog:peer",
         "esbuild": "^0.28.1",
         "vitest": "catalog:test"
