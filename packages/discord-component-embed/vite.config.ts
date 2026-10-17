@@ -1,8 +1,12 @@
 import { createTsdownConfig } from '@seedcord/tsdown-config';
-import { createTestConfig } from '@seedcord/vitest-config';
+import { aliasFromTsconfig, createTestConfig } from '@seedcord/vitest-config';
 import { defineConfig } from 'vite-plus';
 
+// required to resolve jsxImportSource to discord-component-embed/* (eg. discord-component-embed/jsx-dev-runtime)
+const alias = aliasFromTsconfig(import.meta.url);
+
 export default defineConfig({
+    resolve: { alias },
     test: createTestConfig(),
     pack: [
         createTsdownConfig({
