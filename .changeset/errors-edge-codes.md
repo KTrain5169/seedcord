@@ -2,4 +2,4 @@
 '@seedcord/errors': minor
 ---
 
-Added `CliConfigEntryOnEdge`, `CliEdgeVitePluginMissing`, `CliEdgeRootHoldsConfig`, `CliEdgeCompatDateTooOld`, `CliEdgeNodeCompatOff` and `CliEdgeBootFailed` for the CLI's edge build.
+Added `CliEdgeRootHoldsConfig`, `CliEdgeCompatDateTooOld`, `CliEdgeNodeCompatOff`, `CliEdgeBootFailed`, `CliEdgeOnBun`, `CliEdgeNoWorker` and `CliConfigFieldUnused` for edge bots.

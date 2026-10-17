@@ -12,6 +12,7 @@ import { CommandScanner } from '#core/modules/CommandScanner';
 import { importInstance } from '#core/modules/importInstance';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
 import { printResolvedConfig } from '#core/output/printResolvedConfig';
+import { startupShell } from '#core/viteMode';
 
 import { AugmentationBuilder } from './AugmentationBuilder';
 import { renderAugmentation } from './renderAugmentation';
@@ -56,10 +57,10 @@ function botSpecifier(root: string, instance: string): string {
 export class CodegenRunner {
     constructor(private readonly deps: CodegenRunnerDeps) {}
 
-    public static create(steps: Steps<CodegenStep>, logger: ILogger): CodegenRunner {
+    public static create(steps: Steps<CodegenStep>, logger: ILogger, shell = startupShell): CodegenRunner {
         return new CodegenRunner({
             steps,
-            projectLoader: new ProjectLoader(openModuleLoader),
+            projectLoader: new ProjectLoader(openModuleLoader, shell),
             generator: new AugmentationBuilder(logger),
             logger
         });

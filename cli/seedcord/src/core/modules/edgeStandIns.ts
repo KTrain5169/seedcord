@@ -1,3 +1,4 @@
+import type { WorkerEnv } from './workerEnv';
 import type { Plugin } from 'vite';
 
 export const BIND_ENV_ID = 'seedcord:bind-env';
@@ -26,9 +27,8 @@ export function withExports(_exports, fn) { return fn(); }
 export function withEnvAndExports(_env, _exports, fn) { return fn(); }
 `;
 
-// vars override process.env
-export function edgeStandIns(vars: Record<string, unknown> = {}): Plugin {
-    const env = `{ ...process.env, ...${JSON.stringify(vars)} }`;
+// loadEnv runs cloudflare.config.ts. a config that imports neither module never calls it
+export function edgeStandIns(loadEnv: () => Promise<WorkerEnv>): Plugin {
     return {
         name: 'seedcord:edge-stand-ins',
         resolveId(id) {
@@ -36,10 +36,11 @@ export function edgeStandIns(vars: Record<string, unknown> = {}): Plugin {
             if (id === 'cloudflare:workers') return CLOUDFLARE_WORKERS_ID;
             return undefined;
         },
-        load(id) {
-            if (id === RESOLVED_BIND_ENV_ID) return bindEnv(env);
-            if (id === CLOUDFLARE_WORKERS_ID) return cloudflareWorkers(env);
-            return undefined;
+        async load(id) {
+            if (id !== RESOLVED_BIND_ENV_ID && id !== CLOUDFLARE_WORKERS_ID) return undefined;
+            const workerEnv = await loadEnv();
+            const values = JSON.stringify(workerEnv.values());
+            return id === RESOLVED_BIND_ENV_ID ? bindEnv(values) : cloudflareWorkers(values);
         }
     };
 }

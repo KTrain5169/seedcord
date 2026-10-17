@@ -2,6 +2,7 @@ import { cliLogger } from '#core/cliLogger';
 import { ProjectLoader } from '#core/config/ProjectLoader';
 import { restFromEnv } from '#core/discord/restFromEnv';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
+import { startupShell } from '#core/viteMode';
 
 import type { REST } from '@discordjs/rest';
 import type { ILogger } from '@seedcord/types';
@@ -16,7 +17,7 @@ export interface RunnerDeps {
 
 export function defaultRunnerDeps(): RunnerDeps {
     return {
-        projectLoader: new ProjectLoader(openModuleLoader),
+        projectLoader: new ProjectLoader(openModuleLoader, startupShell),
         openDiscord: restFromEnv,
         logger: cliLogger('Commands')
     };

@@ -66,18 +66,16 @@
     "peerDependencies": {
         "@cloudflare/vite-plugin": "catalog:peer",
         "envapt": "catalog:peer",
-        "typescript": "catalog:consumerTypes",
-        "wrangler": "catalog:peer"
+        "typescript": "catalog:consumerTypes"
     },
     "peerDependenciesMeta": {
         "@cloudflare/vite-plugin": {
             "optional": true
-        },
-        "wrangler": {
-            "optional": true
         }
     },
     "dependencies": {
+        "@cloudflare/build-output-utils": "0.9.2",
+        "@cloudflare/config": "0.26.0",
         "@commander-js/extra-typings": "^15.0.0",
         "@discordjs/rest": "catalog:deps",
         "@leeoniya/ufuzzy": "catalog:deps",
@@ -110,13 +108,13 @@
         "@seedcord/tsdown-config": "workspace:^",
         "@seedcord/vitest-config": "workspace:^",
         "@types/react": "catalog:react",
+        "cf": "catalog:deps",
         "discord.js": "catalog:peer",
         "envapt": "catalog:peer",
         "eslint-plugin-react-hooks": "catalog:eslint",
         "ink-testing-library": "^4.0.0",
         "tsx": "catalog:deps",
-        "typescript": "catalog:peer",
-        "wrangler": "catalog:peer"
+        "typescript": "catalog:peer"
     },
     "publishConfig": {
         "access": "public",

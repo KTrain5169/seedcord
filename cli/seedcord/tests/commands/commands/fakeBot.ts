@@ -104,9 +104,9 @@ export async function fakeProject({
         instance,
         configFile: resolve(root, 'seedcord.config.ts'),
         target: edge
-            ? { kind: 'edge', wranglerConfig: resolve(root, 'wrangler.jsonc') }
-            : { kind: 'server', entry: resolve(root, 'index.ts') },
-        build: { outDir: resolve(root, 'dist') }
+            ? { kind: 'edge', cloudflareConfig: resolve(root, 'cloudflare.config.ts') }
+            : { kind: 'server', entry: resolve(root, 'index.ts'), outDir: resolve(root, 'dist') },
+        build: {}
     } as ResolvedSeedcordConfig;
     // justified: the commands runners read only importModule off the loader
     const modules = {

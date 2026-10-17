@@ -1,4 +1,4 @@
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 
 import { warnLinks } from '@seedcord/core/internal';
 import { SeedcordErrorCode } from '@seedcord/errors';
@@ -8,21 +8,22 @@ import { createBuilder } from 'vite';
 
 import { cliLogger } from '#core/cliLogger';
 import { restFromEnv } from '#core/discord/restFromEnv';
-import { importCloudflare, loadCloudflare, WORKER_ENVIRONMENT } from '#core/modules/cloudflarePlugin';
+import { importCloudflare, WORKER_ENVIRONMENT } from '#core/modules/cloudflarePlugin';
 import { CommandScanner } from '#core/modules/CommandScanner';
 import { functionExportsOf } from '#core/modules/workerExports';
 import { viteKey } from '#core/project/ProjectFiles';
 
 import { assertNodeCompat } from './assertNodeCompat';
 import { bootWorker } from './bootWorker';
+import { CloudflareWorker } from './CloudflareWorker';
 import { bundleFailed, bundleStats, ENTRY_FILE_NAME } from './output';
 import { pinModulePaths } from './pinModulePaths';
 import { readDiscord } from './readDiscord';
 import { TargetBuild } from './TargetBuild';
-import { WORKER_ENTRY_ID, workerEntry } from './workerEntry';
+import { workerEntry } from './workerEntry';
 
 import type { EdgeTarget } from '#core/config/detectTarget';
-import type { CloudflarePlugin, ImportCloudflare } from '#core/modules/cloudflarePlugin';
+import type { ImportCloudflare } from '#core/modules/cloudflarePlugin';
 import type { Project } from '#core/project/Project';
 import type { BundleStats } from './output';
 import type { CommandsInCode } from './readDiscord';
@@ -49,12 +50,10 @@ function captureChunks(onChunks: (chunks: Rolldown.OutputChunk[]) => void): Plug
     };
 }
 
-function workerEnvironment(outDir: string): Record<string, EnvironmentOptions> {
+function workerEnvironment(): Record<string, EnvironmentOptions> {
     return {
         [WORKER_ENVIRONMENT]: {
             build: {
-                outDir,
-                emptyOutDir: true,
                 sourcemap: true,
                 minify: false,
                 rolldownOptions: {
@@ -73,12 +72,9 @@ function workerEnvironment(outDir: string): Record<string, EnvironmentOptions> {
 
 export class EdgeBuild extends TargetBuild {
     public readonly kind = 'edge';
-    // the plugin writes .wrangler/deploy/config.json under vite's root
-    // wrangler deploy reads it from beside the wrangler config
-    private readonly viteRoot: string;
     private readonly deps: EdgeBuildDeps;
     private readonly logger = cliLogger('Build');
-    private cloudflare?: Promise<CloudflarePlugin>;
+    private cloudflare?: Promise<CloudflareWorker>;
 
     constructor(
         project: Project,
@@ -86,7 +82,6 @@ export class EdgeBuild extends TargetBuild {
         deps: Partial<EdgeBuildDeps> = {}
     ) {
         super(project);
-        this.viteRoot = dirname(target.wranglerConfig);
         this.deps = { ...DEFAULT_DEPS, ...deps };
     }
 
@@ -110,13 +105,14 @@ export class EdgeBuild extends TargetBuild {
 
     public async bundle(ids: BakedIds): Promise<BundleStats> {
         const { config, files, modules } = this.project;
-        const { viteRoot, target } = this;
-        const { outDir } = config.build;
-        const folders = await files.foldersIncludingEmpty();
+        const { viteRoot, cloudflareConfig } = this.target;
+        const [folders, cloudflare] = await Promise.all([files.foldersIncludingEmpty(), this.worker()]);
 
-        let chunks: Rolldown.OutputChunk[] = [];
+        let chunks: Rolldown.OutputChunk[] | undefined;
         const builder = await createBuilder({
+            // cf deploy --prebuilt reads .cloudflare/output from here
             root: viteRoot,
+            mode: config.viteMode,
             configFile: false,
             publicDir: false,
             logLevel: 'warn',
@@ -133,27 +129,31 @@ export class EdgeBuild extends TargetBuild {
                 captureChunks((captured) => {
                     chunks = captured;
                 }),
-                await this.workerPlugins()
+                cloudflare.plugins({ persistState: false })
             ],
             resolve: { tsconfigPaths: true },
-            environments: workerEnvironment(outDir)
+            environments: workerEnvironment()
         }).catch(bundleFailed);
         await builder.buildApp().catch(bundleFailed);
-        assertNodeCompat(outDir, target.wranglerConfig);
+        chunks ??= bundleFailed(`the ${WORKER_ENVIRONMENT} environment wrote no bundle`);
+        const built = await cloudflare.built().catch(bundleFailed);
+        assertNodeCompat(built, cloudflareConfig);
 
-        return bundleStats(chunks, files, join(outDir, ENTRY_FILE_NAME));
+        return bundleStats(chunks, files, join(built.bundleDir, ENTRY_FILE_NAME));
     }
 
     public override async boot(): Promise<void> {
+        const cloudflare = await this.worker();
         await bootWorker({
-            root: this.viteRoot,
-            plugins: [await this.workerPlugins()],
-            environments: workerEnvironment(this.project.config.build.outDir)
+            root: this.target.viteRoot,
+            mode: this.project.config.viteMode,
+            plugins: [cloudflare.plugins({ persistState: false })],
+            environments: workerEnvironment()
         });
     }
 
     public nextCommands(): NextCommand[] {
-        return [['deploy', 'wrangler deploy']];
+        return [['deploy', 'cf deploy --prebuilt']];
     }
 
     private async commandsInCode(commands: CommandsConfig): Promise<CommandsInCode | undefined> {
@@ -163,15 +163,8 @@ export class EdgeBuild extends TargetBuild {
         return { found, configuredGuilds: commands.guilds ?? [] };
     }
 
-    private async workerPlugins(): Promise<Plugin[]> {
-        this.cloudflare ??= loadCloudflare(this.viteRoot, this.deps.importCloudflare);
-        const cloudflare = await this.cloudflare;
-        return cloudflare({
-            configPath: this.target.wranglerConfig,
-            config: { main: WORKER_ENTRY_ID },
-            viteEnvironment: { name: WORKER_ENVIRONMENT },
-            inspectorPort: false,
-            persistState: false
-        });
+    private worker(): Promise<CloudflareWorker> {
+        this.cloudflare ??= CloudflareWorker.load(this.target, this.deps.importCloudflare);
+        return this.cloudflare;
     }
 }

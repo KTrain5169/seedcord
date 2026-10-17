@@ -2,19 +2,22 @@ import { randomUUID } from 'node:crypto';
 import { cp, rm, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
+import { bindings } from 'cf/config';
 import { Routes } from 'discord-api-types/v10';
 import { onTestFinished } from 'vitest';
 
 import { EdgeBuild } from '#commands/build/builder/EdgeBuild';
+import { ShellMode } from '#core/viteMode';
 
 import { quickBuildRunner } from './quickBuildRunner';
 import { APP_ID, ED25519_KEY_BYTES, FAKE_TOKEN } from './smoke';
 
 import type { BuildRunner } from '#commands/build/BuildRunner';
 import type { REST } from '@discordjs/rest';
+import type { WorkerConfig } from 'cf/config';
 
 const EDGE_BOT = join(import.meta.dirname, '../../fixtures/edge-bot');
-const BUILD_OUTPUT = new Set(['dist', '.wrangler']);
+const BUILD_OUTPUT = new Set(['dist', '.cloudflare']);
 
 const encoder = new TextEncoder();
 
@@ -56,12 +59,30 @@ export function fakeDiscord(publicKey = ANY_PUBLIC_KEY): Pick<REST, 'get'> {
     };
 }
 
-export function edgeBuildRunner(discord = fakeDiscord()): BuildRunner {
+export function edgeBuildRunner(discord = fakeDiscord(), shell = new ShellMode()): BuildRunner {
     return quickBuildRunner((project) => {
         const { target } = project.config;
         if (target.kind !== 'edge') throw new Error(`edgeBuildRunner got a ${target.kind} project`);
         return new EdgeBuild(project, target, { openDiscord: () => discord });
-    });
+    }, shell);
+}
+
+// writes cloudflare.config.ts with the fixture's name, date and secrets, plus the fields passed in
+export async function writeCloudflareConfig(
+    projectDir: string,
+    { env, ...worker }: Partial<WorkerConfig>
+): Promise<void> {
+    const config: WorkerConfig = {
+        name: 'edge-bot',
+        compatibilityDate: '2026-08-04',
+        ...worker,
+        env: { DISCORD_BOT_TOKEN: bindings.secret(), DISCORD_PUBLIC_KEY: bindings.secret(), ...env }
+    };
+    // the binding helpers return plain objects
+    await writeFile(
+        join(projectDir, 'cloudflare.config.ts'),
+        `export default { worker: ${JSON.stringify(config)} };\n`
+    );
 }
 
 export type SignRequest = (body: string) => Promise<Headers>;
@@ -71,7 +92,7 @@ interface SigningEnv {
     sign: SignRequest;
 }
 
-// wrangler reads .dev.vars beside the wrangler config into the worker's env
+// the plugin reads .dev.vars beside cloudflare.config.ts into the worker's env
 export async function writeSigningEnv(projectDir: string): Promise<SigningEnv> {
     // justified: @types/node has no CryptoKeyPair global for what generateKey('Ed25519') returns
     const pair = (await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify'])) as {

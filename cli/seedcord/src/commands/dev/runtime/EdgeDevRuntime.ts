@@ -6,30 +6,26 @@ import { SeedcordError } from '@seedcord/errors/internal';
 import { LoggerChannelRegistry } from '@seedcord/logger';
 import { installNodeDefaults } from '@seedcord/logger/node';
 import chalk from 'chalk';
-import { Envapter } from 'envapt';
 import { createServer, createServerModuleRunner } from 'vite';
 
-import { WORKER_ENTRY_ID, workerEntry } from '#commands/build/builder/workerEntry';
+import { CloudflareWorker } from '#commands/build/builder/CloudflareWorker';
+import { workerEntry } from '#commands/build/builder/workerEntry';
 import { listenHostFor } from '#commands/dev/tunnel/listenHost';
-import {
-    importCloudflare,
-    importWrangler,
-    loadCloudflare,
-    readWranglerDev,
-    WORKER_ENVIRONMENT
-} from '#core/modules/cloudflarePlugin';
+import { reportWorkerExports, WORKER_ENVIRONMENT } from '#core/modules/cloudflarePlugin';
 import { edgeStandIns } from '#core/modules/edgeStandIns';
 import { RunnerModuleLoader } from '#core/modules/RunnerModuleLoader';
 import { mergeViteConfig } from '#core/modules/userCodeConfig';
+import { WorkerEnv } from '#core/modules/workerEnv';
 import { functionExportsOf } from '#core/modules/workerExports';
 import { ProjectFiles, viteKey } from '#core/project/ProjectFiles';
 
 import { BaseDevRuntime } from './BaseDevRuntime';
 import { edgeViteConfig } from './devServerConfig';
 import { listenForInteractions } from './listenForInteractions';
+import { loadWorkerEntry } from './loadWorkerEntry';
 import { WorkerConfigFiles } from './workerConfigFiles';
 
-import type { EdgeTarget } from '#core/config/detectTarget';
+import type { ResolvedEdgeTarget } from '#core/config/schema';
 import type { StartedRuntime } from './BaseDevRuntime';
 import type { DevRuntimeContext } from './DevRuntime';
 import type {
@@ -85,27 +81,27 @@ function installCliLogSinks(stack: AsyncDisposableStack): void {
 export class EdgeDevRuntime extends BaseDevRuntime<EdgeStarted> {
     private settleStart?: (() => void) | undefined;
 
-    public constructor(private readonly target: EdgeTarget) {
+    public constructor(private readonly target: ResolvedEdgeTarget) {
         super();
     }
 
     protected async open(context: DevRuntimeContext, resources: AsyncDisposableStack): Promise<EdgeStarted> {
         const { config } = context;
-        const viteRoot = dirname(this.target.wranglerConfig);
-        const files = new ProjectFiles(config.root, config.build.outDir, dirname(config.configFile));
+        const { viteRoot } = this.target;
+        const files = new ProjectFiles(config.root, dirname(config.configFile));
         installCliLogSinks(resources);
         this.emit(context, { type: 'progress', status: 'Loading Cloudflare plugin…' });
-        const environment = Envapter.get('CLOUDFLARE_ENV');
-        const [folders, cloudflare, { port, vars }] = await Promise.all([
+        const [folders, cloudflare, workerEnv] = await Promise.all([
             files.foldersIncludingEmpty(),
-            loadCloudflare(viteRoot, importCloudflare),
-            readWranglerDev(this.target.wranglerConfig, environment, importWrangler)
+            CloudflareWorker.load(this.target),
+            WorkerEnv.load(this.target.cloudflareConfig, config.viteMode)
         ]);
         const modulesReady = Promise.withResolvers<RunnerModuleLoader>();
-        const workerConfig = new WorkerConfigFiles(this.target.wranglerConfig, environment);
+        const workerConfig = new WorkerConfigFiles(this.target.cloudflareConfig, workerEnv.files);
         const hmr = this.openHmr(context, WORKER_ENVIRONMENT, resources, workerConfig);
         const server = await createServer(
             mergeViteConfig(edgeViteConfig(config, viteRoot, process.cwd()), {
+                mode: config.viteMode,
                 plugins: [
                     workerEntry({
                         files,
@@ -116,30 +112,27 @@ export class EdgeDevRuntime extends BaseDevRuntime<EdgeStarted> {
                             const instance = relative(process.cwd(), config.instance);
                             this.emit(context, { type: 'progress', status: `Importing ${instance}…` });
                             const names = await functionExportsOf(await modulesReady.promise, config.instance);
+                            reportWorkerExports(names);
                             this.emit(context, { type: 'progress', status: 'Starting workerd…' });
                             return names;
                         },
                         mode: { kind: 'dev', root: config.root, cwd: process.cwd() }
                     }),
-                    inNodeOnly(edgeStandIns(vars)),
+                    inNodeOnly(edgeStandIns(() => Promise.resolve(workerEnv))),
                     // cloudflare() loads the worker entry during createServer. the entry's export list comes from this copy
                     nodeCopy(modulesReady.resolve),
                     hmr.plugin,
-                    cloudflare({
-                        configPath: this.target.wranglerConfig,
-                        config: { main: WORKER_ENTRY_ID },
-                        viteEnvironment: { name: WORKER_ENVIRONMENT },
-                        inspectorPort: false
-                    })
+                    cloudflare.plugins()
                 ]
             })
         );
         resources.defer(() => server.close());
+        await loadWorkerEntry(server.middlewares, config.instance);
         const modules = await modulesReady.promise;
         const endpoint = await listenForInteractions(server.middlewares, {
-            port,
+            port: this.target.port,
             host: listenHostFor(config.tunnel),
-            wranglerConfig: this.target.wranglerConfig
+            configFile: config.configFile
         });
         resources.use(endpoint.server);
         // close() waits on open keep-alive sockets

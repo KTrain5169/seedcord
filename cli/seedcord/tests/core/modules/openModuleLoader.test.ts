@@ -1,6 +1,5 @@
 import { existsSync } from 'node:fs';
-import { mkdir, mkdtempDisposable, symlink, writeFile } from 'node:fs/promises';
-import { createServer as createNetServer } from 'node:net';
+import { mkdir, mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -8,6 +7,8 @@ import { SeedcordErrorCode, isSeedcordError } from '@seedcord/errors';
 import { afterEach, assert, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { openModuleLoader } from '#core/modules/openModuleLoader';
+import { cloudflareConfigSource, linkPackages } from '#tests/edgeFolder';
+import { holdViteHmrPort } from '#tests/viteHmrPort';
 
 import type { BuildTarget } from '#core/config/detectTarget';
 
@@ -18,8 +19,11 @@ afterEach(() => {
 
 const SERVER: BuildTarget = { kind: 'server' };
 
-function edgeTarget(root: string): BuildTarget {
-    return { kind: 'edge', wranglerConfig: join(root, 'wrangler.jsonc') };
+async function edgeTarget(root: string): Promise<BuildTarget> {
+    const cloudflareConfig = join(root, 'cloudflare.config.ts');
+    await writeFile(cloudflareConfig, cloudflareConfigSource('SEEDCORD_PROBE: bindings.secret()'));
+    await linkPackages(root, ['cf']);
+    return { kind: 'edge', cloudflareConfig, viteRoot: root };
 }
 
 // a package whose default export reports which build its conditions picked
@@ -35,8 +39,7 @@ async function writeRuntimePackage(root: string, name: string): Promise<void> {
 // every edge bot installs envapt, a peer of @seedcord/http
 async function edgeProject(): Promise<string> {
     const root = await project();
-    await mkdir(join(root, 'node_modules'), { recursive: true });
-    await symlink(join(import.meta.dirname, '../../../node_modules/envapt'), join(root, 'node_modules', 'envapt'));
+    await linkPackages(root, ['envapt']);
     return root;
 }
 
@@ -66,26 +69,13 @@ async function writeEntry(root: string, specifier: string): Promise<string> {
     return entry;
 }
 
-// vite's default hmr websocket port
-const VITE_HMR_PORT = 24_678;
-
-// a dev server in another test worker may already hold it
-async function holdPort(port: number): Promise<void> {
-    const holder = createNetServer();
-    await new Promise<void>((resolve) => {
-        holder.once('error', () => resolve());
-        holder.listen(port, () => resolve());
-    });
-    onTestFinished(() => new Promise<void>((resolve) => holder.close(() => resolve())));
-}
-
 describe('openModuleLoader', () => {
     it('opens no hmr websocket while another process holds its port', async () => {
-        await holdPort(VITE_HMR_PORT);
+        await holdViteHmrPort();
         const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const root = await project();
 
-        await using modules = await openModuleLoader(root, SERVER);
+        await using modules = await openModuleLoader(root, SERVER, 'development');
         await modules.importModule(await writeEntry(root, './lib/greeting'));
 
         expect(logged).not.toHaveBeenCalled();
@@ -95,7 +85,7 @@ describe('openModuleLoader', () => {
         const root = await project();
         await mkdir(join(root, 'node_modules'));
 
-        await using modules = await openModuleLoader(root, SERVER);
+        await using modules = await openModuleLoader(root, SERVER, 'development');
         await modules.importModule(await writeEntry(root, './lib/greeting'));
 
         expect(existsSync(join(root, 'node_modules', '.vite'))).toBe(false);
@@ -105,7 +95,7 @@ describe('openModuleLoader', () => {
         const root = await project({ paths: { '#lib/*': ['./src/lib/*'] } });
         const entry = await writeEntry(root, '#lib/greeting');
 
-        await using modules = await openModuleLoader(root, SERVER);
+        await using modules = await openModuleLoader(root, SERVER, 'development');
         const module = await modules.importModule<{ value: string }>(entry);
 
         expect(module.value).toBe('hi');
@@ -121,7 +111,7 @@ describe('openModuleLoader', () => {
         );
         const entry = await writeEntry(root, './lib/card');
 
-        await using modules = await openModuleLoader(root, SERVER);
+        await using modules = await openModuleLoader(root, SERVER, 'development');
         const module = await modules.importModule<{ value: string }>(entry);
 
         expect(module.value).toBe('b');
@@ -132,7 +122,7 @@ describe('openModuleLoader', () => {
         const config = join(root, 'seedcord.config.mts');
         await writeFile(config, `export default { instance: './bot.ts' } satisfies object;\n`, 'utf8');
 
-        await using modules = await openModuleLoader(root, SERVER);
+        await using modules = await openModuleLoader(root, SERVER, 'development');
         const module = await modules.importModule<{ default: unknown }>(config);
 
         expect(module.default).toEqual({ instance: './bot.ts' });
@@ -141,7 +131,7 @@ describe('openModuleLoader', () => {
     it('throws CliEntryNotFound for a file that does not exist', async () => {
         const root = await project();
 
-        await using modules = await openModuleLoader(root, SERVER);
+        await using modules = await openModuleLoader(root, SERVER, 'development');
 
         await expect(modules.importModule(join(root, 'src', 'missing.ts'))).rejects.toMatchObject({
             code: SeedcordErrorCode.CliEntryNotFound
@@ -153,7 +143,7 @@ describe('openModuleLoader', () => {
         const entry = join(root, 'src', 'broken.ts');
         await writeFile(entry, `throw new Error('top level boom');\n`, 'utf8');
 
-        await using modules = await openModuleLoader(root, SERVER);
+        await using modules = await openModuleLoader(root, SERVER, 'development');
         const caught: unknown = await modules.importModule(entry).catch((error: unknown) => error);
 
         assert(isSeedcordError(caught));
@@ -167,7 +157,7 @@ describe('openModuleLoader', () => {
         const entry = join(root, 'entry.ts');
         await writeFile(entry, `export const value = 'hi';\n`, 'utf8');
 
-        await using modules = await openModuleLoader(root, SERVER);
+        await using modules = await openModuleLoader(root, SERVER, 'development');
 
         await expect(modules.importModule(entry)).rejects.toMatchObject({ code: SeedcordErrorCode.CliPathHasHash });
     });
@@ -176,7 +166,7 @@ describe('openModuleLoader', () => {
         const root = await project();
         const entry = await writeEntry(root, './lib/greeting');
 
-        await using modules = await openModuleLoader(root, SERVER);
+        await using modules = await openModuleLoader(root, SERVER, 'development');
         const module = await modules.importModule<{ value: string }>(entry);
 
         expect(module.value).toBe('hi');
@@ -191,8 +181,8 @@ describe('openModuleLoader for an edge bot', () => {
             await writeRuntimePackage(root, name);
             const entry = await writeModule(root, `export { default } from '${name}';\n`);
 
-            await using onServer = await openModuleLoader(root, SERVER);
-            await using onEdge = await openModuleLoader(root, edgeTarget(root));
+            await using onServer = await openModuleLoader(root, SERVER, 'development');
+            await using onEdge = await openModuleLoader(root, await edgeTarget(root), 'development');
             const fromServer = await onServer.importModule<{ default: string }>(entry);
             const fromEdge = await onEdge.importModule<{ default: string }>(entry);
 
@@ -201,7 +191,7 @@ describe('openModuleLoader for an edge bot', () => {
         }
     );
 
-    it('loads cloudflare:workers with process.env as its env', async () => {
+    it("loads cloudflare:workers with the shell's value for a declared secret", async () => {
         vi.stubEnv('SEEDCORD_PROBE', 'from the shell');
         const root = await edgeProject();
         const entry = await writeModule(
@@ -209,10 +199,24 @@ describe('openModuleLoader for an edge bot', () => {
             `import { env } from 'cloudflare:workers';\nexport const probe = env.SEEDCORD_PROBE;\n`
         );
 
-        await using modules = await openModuleLoader(root, edgeTarget(root));
+        await using modules = await openModuleLoader(root, await edgeTarget(root), 'development');
         const module = await modules.importModule<{ probe: string }>(entry);
 
         expect(module.probe).toBe('from the shell');
+    });
+
+    it("loads cloudflare:workers with .env's value for a declared secret", async () => {
+        const root = await edgeProject();
+        await writeFile(join(root, '.env'), 'SEEDCORD_PROBE=from .env\n', 'utf8');
+        const entry = await writeModule(
+            root,
+            `import { env } from 'cloudflare:workers';\nexport const probe = env.SEEDCORD_PROBE;\n`
+        );
+
+        await using modules = await openModuleLoader(root, await edgeTarget(root), 'development');
+        const module = await modules.importModule<{ probe: string }>(entry);
+
+        expect(module.probe).toBe('from .env');
     });
 
     it('loads classes that extend the cloudflare:workers base classes', async () => {
@@ -228,7 +232,7 @@ describe('openModuleLoader for an edge bot', () => {
             ].join('\n')
         );
 
-        await using modules = await openModuleLoader(root, edgeTarget(root));
+        await using modules = await openModuleLoader(root, await edgeTarget(root), 'development');
         const module = await modules.importModule<Record<string, unknown>>(entry);
 
         expect(Object.keys(module).toSorted()).toEqual(['Api', 'Counter', 'Signup']);
@@ -237,13 +241,13 @@ describe('openModuleLoader for an edge bot', () => {
     it('throws CoreImportFailed for an edge bot without envapt installed', async () => {
         const root = await project();
 
-        await expect(openModuleLoader(root, edgeTarget(root))).rejects.toMatchObject({
+        await expect(openModuleLoader(root, await edgeTarget(root), 'development')).rejects.toMatchObject({
             code: SeedcordErrorCode.CoreImportFailed,
             message: expect.stringContaining('envapt') as string
         });
     });
 
-    it("binds envapt's workerd build to process.env", async () => {
+    it("binds envapt's workerd build to the worker's env", async () => {
         vi.stubEnv('SEEDCORD_PROBE', 'from the shell');
         const root = await edgeProject();
         const entry = await writeModule(
@@ -251,7 +255,7 @@ describe('openModuleLoader for an edge bot', () => {
             `import { Envapter } from 'envapt';\nexport const probe = Envapter.get('SEEDCORD_PROBE');\n`
         );
 
-        await using modules = await openModuleLoader(root, edgeTarget(root));
+        await using modules = await openModuleLoader(root, await edgeTarget(root), 'development');
         const module = await modules.importModule<{ probe: string }>(entry);
 
         expect(module.probe).toBe('from the shell');

@@ -5,6 +5,7 @@ import { cliLogger } from '#core/cliLogger';
 import { ProjectLoader } from '#core/config/ProjectLoader';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
 import { quietSteps } from '#core/output/quietSteps';
+import { startupShell } from '#core/viteMode';
 import { resetChannelColors } from '#ui/channelColor';
 import { profileMark } from '#ui/profile';
 
@@ -47,7 +48,7 @@ export class DevRunner {
             createTunnelCoordinator(tunnelLogger, (status) => store.setTunnel(status), tunnel);
 
         return new DevRunner({
-            projectLoader: new ProjectLoader(openModuleLoader),
+            projectLoader: new ProjectLoader(openModuleLoader, startupShell),
             store,
             state,
             codegen: CodegenRunner.create(quietSteps, codegenLogger),

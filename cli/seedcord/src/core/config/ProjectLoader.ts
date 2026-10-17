@@ -1,19 +1,21 @@
 import { dirname, resolve } from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { SeedcordTypeError, throwSingleOrAggregate } from '@seedcord/errors/internal';
-import { isPlainObject, isStringArray } from '@seedcord/utils/internal';
+import { SeedcordTypeError } from '@seedcord/errors/internal';
 import { isInside } from '@seedcord/utils/node/internal';
+import { Envapter } from 'envapt';
 
 import { Project } from '#core/project/Project';
 import { resolveDefaultExport } from '#utils/resolveDefaultExport';
 
 import { assertNoHashPaths } from './assertNoHashPaths';
 import { assertTargetMatchesTsconfig } from './assertTargetMatchesTsconfig';
+import { ConfigValidator } from './ConfigValidator';
 import { detectTarget } from './detectTarget';
 import { locateConfig } from './locateConfig';
 
 import type { ModuleLoader, OpenModules } from '#core/modules/ModuleLoader';
+import type { DefaultMode, ShellMode } from '#core/viteMode';
 import type { BuildTarget } from './detectTarget';
 import type {
     ResolvedSeedcordBuildConfig,
@@ -27,85 +29,8 @@ import type {
     SeedcordServerConfig
 } from './schema';
 
-function isOptionalString(value: unknown): boolean {
-    return value === undefined || typeof value === 'string';
-}
-
-function invalidField(field: string, expected: string): SeedcordTypeError {
-    return new SeedcordTypeError(SeedcordErrorCode.CliConfigInvalidField, [field, expected]);
-}
-
-function* buildProblems(value: unknown): Generator<SeedcordTypeError> {
-    if (value === undefined) return;
-    if (!isPlainObject(value)) {
-        yield invalidField('build', 'an object');
-        return;
-    }
-    if (!isOptionalString(value.outDir)) yield invalidField('build.outDir', 'a string');
-    if (!isOptionalString(value.tsconfig)) yield invalidField('build.tsconfig', 'a string');
-}
-
-function* typecheckProblems(value: unknown): Generator<SeedcordTypeError> {
-    if (value === undefined || typeof value === 'boolean') return;
-    if (!isPlainObject(value)) {
-        yield invalidField('hmr.typecheck', 'a boolean or an object');
-        return;
-    }
-    if (!isOptionalString(value.tsconfig)) yield invalidField('hmr.typecheck.tsconfig', 'a string');
-}
-
-function* hmrProblems(value: unknown): Generator<SeedcordTypeError> {
-    if (value === undefined) return;
-    if (!isPlainObject(value)) {
-        yield invalidField('hmr', 'an object');
-        return;
-    }
-    if (value.restart !== undefined && !isStringArray(value.restart)) {
-        yield invalidField('hmr.restart', 'an array of strings');
-    }
-    if (value.rollback !== undefined && typeof value.rollback !== 'boolean') {
-        yield invalidField('hmr.rollback', 'a boolean');
-    }
-    yield* typecheckProblems(value.typecheck);
-}
-
-function* tunnelProblems(value: unknown): Generator<SeedcordTypeError> {
-    if (value === undefined || typeof value === 'boolean') return;
-    // discord only accepts an https interactions endpoint
-    if (typeof value !== 'string' || URL.parse(value)?.protocol !== 'https:') {
-        yield invalidField('tunnel', 'a boolean or an https URL');
-    }
-}
-
-function isNonEmptyString(value: unknown): boolean {
-    return typeof value === 'string' && value.length > 0;
-}
-
-function* entryProblems(entry: unknown, target: BuildTarget, configFile: string): Generator<SeedcordTypeError> {
-    if (target.kind === 'server' && !isNonEmptyString(entry)) {
-        yield invalidField('entry', 'a string that points to your startup script');
-    }
-    if (target.kind === 'edge' && entry !== undefined) {
-        yield new SeedcordTypeError(SeedcordErrorCode.CliConfigEntryOnEdge, [configFile, target.wranglerConfig]);
-    }
-}
-
-function* configProblems(
-    raw: Record<string, unknown>,
-    target: BuildTarget,
-    configFile: string
-): Generator<SeedcordTypeError> {
-    if (!isNonEmptyString(raw.instance))
-        yield invalidField('instance', 'a string that points to the file that default exports your bot');
-    yield* entryProblems(raw.entry, target, configFile);
-    if (!isOptionalString(raw.root)) yield invalidField('root', 'a string');
-    if (raw.idleAnimation !== undefined && typeof raw.idleAnimation !== 'boolean') {
-        yield invalidField('idleAnimation', 'a boolean');
-    }
-    yield* tunnelProblems(raw.tunnel);
-    yield* buildProblems(raw.build);
-    yield* hmrProblems(raw.hmr);
-}
+// the node http Seedcord's default port
+const EDGE_DEV_PORT = 3000;
 
 function resolveTunnel(value: boolean | string | undefined): ResolvedTunnel {
     if (value === false) return { mode: 'off' };
@@ -120,36 +45,44 @@ function resolveTypecheck(value: SeedcordHmrConfig['typecheck'], root: string): 
     return { enabled: true, tsconfig: resolve(root, value.tsconfig) };
 }
 
-function validateConfig(raw: unknown, target: BuildTarget, configFile: string): asserts raw is SeedcordConfig {
-    if (!isPlainObject(raw)) throw new SeedcordTypeError(SeedcordErrorCode.CliConfigInvalidExport);
-    throwSingleOrAggregate([...configProblems(raw, target, configFile)], SeedcordErrorCode.CliProblems);
-}
-
 export class ProjectLoader {
-    constructor(private readonly openModules: OpenModules) {}
+    constructor(
+        private readonly openModules: OpenModules,
+        private readonly shell: ShellMode,
+        private readonly defaultMode: DefaultMode = 'development'
+    ) {}
 
     public async open(projectDir = process.cwd()): Promise<Project> {
+        const mode = this.shell.viteMode(this.defaultMode);
+        Envapter.environment = mode;
         const configPath = locateConfig(projectDir);
         const configDir = dirname(configPath);
         const target = detectTarget(configDir);
-        await using onFailure = new AsyncDisposableStack();
-        const modules = onFailure.use(await this.openModules(configDir, target));
-        const project = new Project(await this.readConfig(modules, configPath, target), modules);
+        await using configLoader = new AsyncDisposableStack();
+        const configModules = configLoader.use(await this.openModules(configDir, target, mode, 'config'));
+        const project = new Project(await this.readConfig(configModules, configPath, target, mode), configModules);
         await assertNoHashPaths(project);
         await assertTargetMatchesTsconfig(project);
+        // a server bot runs its code under the same node conditions
+        if (target.kind === 'server') {
+            configLoader.move();
+            return project;
+        }
 
-        onFailure.move();
-        return project;
+        // the checks above go first because opening this runs cloudflare.config.ts
+        return new Project(project.config, await this.openModules(configDir, target, mode));
     }
 
     private async readConfig(
         modules: ModuleLoader,
         configPath: string,
-        target: BuildTarget
+        target: BuildTarget,
+        mode: string
     ): Promise<ResolvedSeedcordConfig> {
         const loadedModule = await modules.importModule(configPath);
         const config: unknown = await Promise.resolve(resolveDefaultExport(loadedModule));
-        validateConfig(config, target, configPath);
+        const validator: ConfigValidator = new ConfigValidator(target, configPath);
+        validator.validate(config);
 
         const configDir = dirname(configPath);
         const root = resolve(configDir, config.root ?? '.');
@@ -161,33 +94,37 @@ export class ProjectLoader {
             instance,
             root,
             configFile: configPath,
-            target: this.resolveTarget(root, target, config),
+            target: this.resolveTarget(root, configDir, target, config),
             build,
             typecheck,
             idleAnimation: config.idleAnimation ?? true,
+            viteMode: mode,
             tunnel: resolveTunnel(config.tunnel),
             hmr: config.hmr
         } satisfies ResolvedSeedcordConfig;
     }
 
-    private resolveTarget(root: string, target: BuildTarget, config: SeedcordConfig): ResolvedTarget {
-        if (target.kind === 'edge') return target;
+    private resolveTarget(
+        root: string,
+        configDir: string,
+        target: BuildTarget,
+        config: SeedcordConfig
+    ): ResolvedTarget {
+        if (target.kind === 'edge') return { ...target, port: config.port ?? EDGE_DEV_PORT };
 
-        // justified: entryProblems already required entry on a server target
-        const entry = resolve(root, (config as SeedcordServerConfig).entry);
+        // justified: ConfigValidator already required entry on a server target
+        const server = config as SeedcordServerConfig;
+        const entry = resolve(root, server.entry);
         if (!isInside(root, entry)) {
             throw new SeedcordTypeError(SeedcordErrorCode.CorePathOutsideRoot, [entry, root]);
         }
-        return { ...target, entry };
+        return { ...target, entry, outDir: resolve(configDir, server.build?.outDir ?? 'dist') };
     }
 
     private resolveBuildOptions(
         configDir: string,
         build: SeedcordBuildConfig | undefined
     ): ResolvedSeedcordBuildConfig {
-        const outDir = resolve(configDir, build?.outDir ?? 'dist');
-        const tsconfig = build?.tsconfig ? resolve(configDir, build.tsconfig) : undefined;
-
-        return tsconfig ? { outDir, tsconfig } : { outDir };
+        return build?.tsconfig ? { tsconfig: resolve(configDir, build.tsconfig) } : {};
     }
 }

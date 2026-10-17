@@ -1,6 +1,7 @@
 import { join } from 'node:path';
+import { stripVTControlCharacters } from 'node:util';
 
-import { SeedcordErrorCode } from '@seedcord/errors';
+import { isSeedcordError, SeedcordErrorCode } from '@seedcord/errors';
 import { Envapter, PortableSource } from 'envapt';
 import { assert, describe, expect, it } from 'vitest';
 
@@ -8,6 +9,7 @@ import { EdgeBuild } from '#commands/build/builder/EdgeBuild';
 import { ProjectLoader } from '#core/config/ProjectLoader';
 import { importInstance } from '#core/modules/importInstance';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
+import { ShellMode } from '#core/viteMode';
 
 import type { BakedIds } from '@seedcord/core/internal';
 
@@ -29,21 +31,23 @@ function notFound(name: string, importer: string): Error {
 
 describe('EdgeBuild', () => {
     it('throws CliDependencyMissing when the project lacks @cloudflare/vite-plugin', async () => {
-        await using project = await new ProjectLoader(openModuleLoader).open(EDGE_BOT);
+        await using project = await new ProjectLoader(openModuleLoader, new ShellMode()).open(EDGE_BOT);
         const { target } = project.config;
         assert(target.kind === 'edge');
 
         const missing = notFound('@cloudflare/vite-plugin', '/bot/node_modules/seedcord/dist/cli.mjs');
         const build = new EdgeBuild(project, target, { importCloudflare: () => Promise.reject(missing) });
 
-        await expect(build.bundle(NO_IDS)).rejects.toMatchObject({
-            code: SeedcordErrorCode.CliDependencyMissing,
-            message: expect.stringContaining('edge-bot') as string
-        });
+        const caught: unknown = await build.bundle(NO_IDS).catch((error: unknown) => error);
+
+        assert(isSeedcordError(caught));
+        expect(caught.code).toBe(SeedcordErrorCode.CliDependencyMissing);
+        expect(stripVTControlCharacters(caught.message)).toContain('Add @cloudflare/vite-plugin to');
+        expect(caught.message).toContain('edge-bot');
     });
 
     it('throws CoreImportFailed when the plugin loads but one of its own imports is missing', async () => {
-        await using project = await new ProjectLoader(openModuleLoader).open(EDGE_BOT);
+        await using project = await new ProjectLoader(openModuleLoader, new ShellMode()).open(EDGE_BOT);
         const { target } = project.config;
         assert(target.kind === 'edge');
 
@@ -57,7 +61,7 @@ describe('EdgeBuild', () => {
     });
 
     it('throws ConfigMissingEnv when DISCORD_BOT_TOKEN is unset', async () => {
-        await using project = await new ProjectLoader(openModuleLoader).open(EDGE_BOT);
+        await using project = await new ProjectLoader(openModuleLoader, new ShellMode()).open(EDGE_BOT);
         const { target } = project.config;
         assert(target.kind === 'edge');
         const { config } = await importInstance(project.modules, project.config.instance);
@@ -70,7 +74,7 @@ describe('EdgeBuild', () => {
     });
 
     it('scans a relative commands path from root', async () => {
-        await using project = await new ProjectLoader(openModuleLoader).open(EDGE_BOT);
+        await using project = await new ProjectLoader(openModuleLoader, new ShellMode()).open(EDGE_BOT);
         const { target, root } = project.config;
         assert(target.kind === 'edge');
         const { config } = await importInstance(project.modules, project.config.instance);

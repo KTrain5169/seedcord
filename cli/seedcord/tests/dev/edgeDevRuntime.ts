@@ -17,21 +17,33 @@ import { silentLogger } from '#tests/silentLogger';
 import { resolveDefaultExport } from '#utils/resolveDefaultExport';
 
 import type { DevEventHandler } from '#commands/dev/runtime/events';
-import type { ResolvedSeedcordConfig } from '#core/config/schema';
+import type { ResolvedEdgeTarget, ResolvedSeedcordConfig } from '#core/config/schema';
 import type { LogRecord } from '@seedcord/types';
 import type { SeedcordInstance } from '@seedcord/types/internal';
 import type { AddressInfo } from 'node:net';
 
-export function edgeConfig(projectDir: string): ResolvedSeedcordConfig {
+// a port probed up front can go to another worker before the runtime binds it
+const ANY_PORT = 0;
+
+function edgeTarget(projectDir: string, port: number): ResolvedEdgeTarget {
+    return { kind: 'edge', cloudflareConfig: join(projectDir, 'cloudflare.config.ts'), viteRoot: projectDir, port };
+}
+
+function configWith(projectDir: string, target: ResolvedEdgeTarget, viteMode: string): ResolvedSeedcordConfig {
     // justified: the runtime reads only these fields
     return {
         configFile: join(projectDir, 'seedcord.config.ts'),
         root: join(projectDir, 'src'),
         instance: join(projectDir, 'src/bot.ts'),
-        target: { kind: 'edge', wranglerConfig: join(projectDir, 'wrangler.jsonc') },
-        build: { outDir: join(projectDir, 'dist') },
+        target,
+        build: {},
+        viteMode,
         tunnel: { mode: 'quick' }
     } as ResolvedSeedcordConfig;
+}
+
+export function edgeConfig(projectDir: string, port = ANY_PORT): ResolvedSeedcordConfig {
+    return configWith(projectDir, edgeTarget(projectDir, port), 'development');
 }
 
 export const liveVars = { DISCORD_BOT_TOKEN: FAKE_TOKEN, DISCORD_PUBLIC_KEY: 'ab'.repeat(ED25519_KEY_BYTES) };
@@ -105,13 +117,7 @@ export async function editFile(path: string, edit: (text: string) => string): Pr
     await writeFile(path, edit(await readFile(path, 'utf8')));
 }
 
-async function setDevPort(projectDir: string, port: number): Promise<void> {
-    await editFile(join(projectDir, 'wrangler.jsonc'), (text) =>
-        text.replace('"compatibility_date"', `"dev": { "port": ${String(port)} },\n    "compatibility_date"`)
-    );
-}
-
-// wrangler reads .dev.vars beside the wrangler config into the worker's env
+// the plugin reads .dev.vars beside cloudflare.config.ts into the worker's env
 export async function writeDevVars(projectDir: string, vars: Record<string, string>): Promise<void> {
     const lines = Object.entries(vars).map(([key, value]) => `${key}=${value}\n`);
     await writeFile(join(projectDir, '.dev.vars'), lines.join(''));
@@ -121,15 +127,11 @@ interface EdgeProject extends AsyncDisposable {
     readonly projectDir: string;
 }
 
-// a port probed up front can go to another worker before the runtime binds it
-const ANY_PORT = 0;
-
-export async function edgeProject(vars: Record<string, string> = liveVars, port = ANY_PORT): Promise<EdgeProject> {
+export async function edgeProject(vars: Record<string, string> = liveVars): Promise<EdgeProject> {
     await using cleanup = new AsyncDisposableStack();
     const { projectDir, remove } = await copyEdgeBot();
     cleanup.defer(remove);
     await writeDevVars(projectDir, vars);
-    await setDevPort(projectDir, port);
     const owned = cleanup.move();
     return { projectDir, [Symbol.asyncDispose]: () => owned.disposeAsync() };
 }
@@ -182,9 +184,14 @@ interface StartedRuntime extends AsyncDisposable {
     port(): number;
 }
 
-export async function startedRuntime(projectDir: string, onEvent?: DevEventHandler): Promise<StartedRuntime> {
-    const config = edgeConfig(projectDir);
-    const runtime = new EdgeDevRuntime({ kind: 'edge', wranglerConfig: join(projectDir, 'wrangler.jsonc') });
+export async function startedRuntime(
+    projectDir: string,
+    onEvent?: DevEventHandler,
+    { devPort = ANY_PORT, viteMode = 'development' } = {}
+): Promise<StartedRuntime> {
+    const target = edgeTarget(projectDir, devPort);
+    const config = configWith(projectDir, target, viteMode);
+    const runtime = new EdgeDevRuntime(target);
     let listening: number | undefined;
     const recordPort: DevEventHandler = (event) => {
         if (event.type === 'server-listening') listening = event.port;

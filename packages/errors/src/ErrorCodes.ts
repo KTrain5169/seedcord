@@ -50,7 +50,7 @@ export enum SeedcordErrorCode {
     CoreBotRoleMissing = 1204,
     /** A bot controller was constructed without the folder that holds its handlers. */
     CoreControllerPathMissing = 1205,
-    /** A file threw while seedcord imported it, in the bot or in the CLI. */
+    /** A file that seedcord could not import, in the bot or in the CLI. */
     CoreImportFailed = 1206,
     /** A file or folder that seedcord reads could not be read. */
     CorePathUnreadable = 1207,
@@ -240,7 +240,7 @@ export enum SeedcordErrorCode {
     CliBundleFailed = 3114,
     /** `build.outDir` is `root` or a folder that contains it. */
     CliConfigOutDirDeletesRoot = 3115,
-    /** The project is missing a dev dependency the CLI runs, like `typescript` or `wrangler`. */
+    /** The project is missing a dev dependency the CLI runs, like `typescript` or `@cloudflare/vite-plugin`. */
     CliDependencyMissing = 3116,
     /** `build.outDir` already has other files in it. */
     CliBuildOutDirNotEmpty = 3117,
@@ -252,15 +252,15 @@ export enum SeedcordErrorCode {
     CliPathHasHash = 3120,
     /** An edge bot's tsconfig is missing the `workerd` condition. */
     CliEdgeWithoutWorkerdCondition = 3121,
-    /** A bot with no wrangler config sets the `workerd` condition in its tsconfig. */
-    CliWorkerdConditionWithoutWrangler = 3122,
-    /** TypeScript or wrangler could not read the project's tsconfig or wrangler config. */
+    /** A bot with no `cloudflare.config.ts` sets the `workerd` condition in its tsconfig. */
+    CliWorkerdConditionWithoutCloudflareConfig = 3122,
+    /** TypeScript could not read the project's tsconfig, or Cloudflare's config loader could not read `cloudflare.config.ts`. */
     CliConfigFileUnreadable = 3123,
     /** The CLI could not start the TypeScript compiler. */
     CliTypescriptNotStarted = 3124,
-    /** An edge bot's seedcord config sets `entry`. */
-    CliConfigEntryOnEdge = 3125,
-    /** An edge bot's `compatibility_date` is older than Cloudflare's Node compat default, and no flag turns it on. */
+    /** A config file sets a field this bot can't set, like `entry` on an edge bot or `port` on a server bot. */
+    CliConfigFieldUnused = 3125,
+    /** An edge bot's `compatibilityDate` is older than Cloudflare's Node compat default, and no flag turns it on. */
     CliEdgeCompatDateTooOld = 3126,
     /** An edge bot sets `no_nodejs_compat`. */
     CliEdgeNodeCompatOff = 3127,
@@ -280,6 +280,10 @@ export enum SeedcordErrorCode {
     CliCommandNotACommand = 3134,
     /** `seedcord commands clean` or `purge` could not delete some of the commands it picked. */
     CliCommandsNotDeleted = 3135,
+    /** The CLI ran on Bun for an edge bot. */
+    CliEdgeOnBun = 3136,
+    /** An edge bot's `cloudflare.config.ts` sets no `worker`. */
+    CliEdgeNoWorker = 3137,
 
     /** A flag answers a question that the earlier answers skip. */
     CreateFlagNotApplicable = 3201,
