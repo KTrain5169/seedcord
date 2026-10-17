@@ -2,7 +2,6 @@ name: checks
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, ready_for_review]
     paths:
       - '**'
       - '!**/*.md'
@@ -32,7 +31,6 @@ permissions:
 
 jobs:
   lint:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -50,7 +48,6 @@ jobs:
       - run: pnpm lint
 
   format:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     name: Format
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -66,7 +63,6 @@ jobs:
       - run: pnpm fmt:check
 
   typecheck:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     name: Type check
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -83,7 +79,6 @@ jobs:
       - run: pnpm tc:root
 
   test:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -99,7 +94,6 @@ jobs:
       - run: pnpm turbo test
 
   build:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     name: Build
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -116,7 +110,6 @@ jobs:
       - run: pnpm codegen:check
 
   typescript-floor:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     name: TypeScript floor
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -133,7 +126,6 @@ jobs:
       - run: pnpm check:typescript-floor
 
   node-floor:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     name: Node floor
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -147,7 +139,6 @@ jobs:
       - run: pnpm turbo test --continue --filter='!@seedcord/scripts'
 
   bun:
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     name: Bun ${{ matrix.label }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
