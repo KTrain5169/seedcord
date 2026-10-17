@@ -1,10 +1,11 @@
-import { basename } from 'node:path';
+import { basename, resolve } from 'node:path';
 
-import { text } from '@clack/prompts';
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { SeedcordTypeError } from '@seedcord/errors/internal';
 
-import { requireAnswer } from './requireAnswer';
+import { claimTarget } from '#scaffold/target';
+
+import { validatorFor } from './validatorFor';
 
 import type { Step } from '#interview/types';
 
@@ -13,12 +14,23 @@ const FORMAT = 'lowercase, digits, and . _ -';
 
 const MAX_NAME = 64;
 
+// shells read these even inside the double quotes summary.ts prints the path in
+const QUOTE_BREAKING = /[$`"!%]/;
+
 function parseDirectory(raw: string): string {
     const value = raw.trim();
     if (value === '') {
         throw new SeedcordTypeError(SeedcordErrorCode.CreateInvalidAnswer, [
             'dir',
             'A project directory cannot be empty.'
+        ]);
+    }
+
+    const breaking = QUOTE_BREAKING.exec(value)?.[0];
+    if (breaking !== undefined) {
+        throw new SeedcordTypeError(SeedcordErrorCode.CreateInvalidAnswer, [
+            'dir',
+            `Pick a path without ${breaking}. A shell reads it even inside the quotes of the commands printed at the end.`
         ]);
     }
 
@@ -44,23 +56,15 @@ function parseDirectory(raw: string): string {
 
 export const directoryStep: Step<'directory'> = {
     key: 'directory',
+    label: 'folder',
     flag: { name: 'dir', description: 'where the project goes', parse: parseDirectory },
-    ask: async (_answers, streams) =>
+    ask: async (_answers, prompter) =>
         parseDirectory(
-            requireAnswer(
-                await text({
-                    ...streams,
-                    message: `Where should the project go? ${paint.mute(FORMAT)}`,
-                    placeholder: 'my-bot',
-                    validate: (value) => {
-                        try {
-                            parseDirectory(value ?? '');
-                            return undefined;
-                        } catch (error) {
-                            return Error.isError(error) ? error.message : 'Enter a directory name.';
-                        }
-                    }
-                })
-            )
-        )
+            await prompter.text({
+                message: `Where should the project go? ${paint.mute(FORMAT)}`,
+                placeholder: 'my-bot',
+                validate: validatorFor((value) => claimTarget(resolve(parseDirectory(value))))
+            })
+        ),
+    shown: (directory) => directory
 };

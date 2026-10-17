@@ -7,8 +7,14 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import { scaffold } from '#scaffold/scaffold';
 
 import type { StepUi } from '#cli/steps';
-import type { CommandRunner } from '#scaffold/scaffold';
+import type { CommandRunner, ScaffoldResult } from '#scaffold/scaffold';
 import type { ScaffoldAnswers } from '#template/context';
+
+async function scaffolded(...args: Parameters<typeof scaffold>): Promise<Extract<ScaffoldResult, { created: true }>> {
+    const result = await scaffold(...args);
+    if (!result.created) throw new Error('scaffold wrote nothing');
+    return result;
+}
 
 const TEMPLATES = resolve(import.meta.dirname, '../../templates');
 
@@ -26,14 +32,18 @@ const GATEWAY: ScaffoldAnswers = {
     transport: 'gateway',
     capabilities: ['guild-messages'],
     token: 'aaa.bbb.ccc',
-    botColor: 'Blurple'
+    botColor: 'Blurple',
+    install: true,
+    git: true
 };
 
 const HTTP: ScaffoldAnswers = {
     directory: 'my-bot',
     transport: 'http',
     token: 'aaa.bbb.ccc',
-    botColor: 'Blurple'
+    botColor: 'Blurple',
+    install: true,
+    git: true
 };
 
 interface Recorded {
@@ -73,11 +83,16 @@ function stepRecorder(): { steps: StepUi; seen: string[] } {
     return {
         seen,
         steps: {
-            run: async (labels, work) => {
-                seen.push(labels.running);
-                const result = await work();
-                seen.push(`done: ${labels.done}`);
-                return result;
+            run: async (label, work) => {
+                seen.push(label);
+                try {
+                    const result = await work();
+                    seen.push(`done: ${label}`);
+                    return result;
+                } catch (error) {
+                    seen.push(`failed: ${label}`);
+                    throw error;
+                }
             },
             skip: (label) => {
                 seen.push(`skipped: ${label}`);
@@ -92,8 +107,6 @@ function baseInput(target: string, steps: StepUi = stepRecorder().steps): Parame
         templatesRoot: TEMPLATES,
         answers: GATEWAY,
         agent: 'pnpm',
-        install: true,
-        git: true,
         steps
     };
 }
@@ -178,7 +191,7 @@ describe('scaffold', () => {
         const target = await scratchTarget();
         const { runner, calls } = recorder();
 
-        await scaffold({ ...baseInput(target), install: false }, runner);
+        await scaffold({ ...baseInput(target), answers: { ...GATEWAY, install: false } }, runner);
 
         expect(calls.map((call) => call.command)).toEqual(['git', 'git', 'git']);
     });
@@ -191,38 +204,42 @@ describe('scaffold', () => {
         await scaffold(baseInput(target, steps), runner);
 
         expect(seen).toEqual([
-            'Writing files',
-            'done: Files written',
-            'Installing dependencies',
-            'done: Dependencies installed',
-            'Formatting',
-            'done: Code formatted',
-            'Generating types',
-            'done: Types generated',
-            'Setting up git',
-            'done: Committed'
+            'files',
+            'done: files',
+            'install',
+            'done: install',
+            'format',
+            'done: format',
+            'types',
+            'done: types',
+            'git',
+            'done: git'
         ]);
     });
 
-    it('keeps the project and reports why when git fails', async () => {
+    it('keeps the project and says it is uncommitted when git fails', async () => {
         const target = await scratchTarget();
         const { runner } = recorder('commit');
+        const { steps, seen } = stepRecorder();
 
-        const result = await scaffold(baseInput(target), runner);
+        const result = await scaffolded(baseInput(target, steps), runner);
 
-        expect(result.notices.join('\n')).toContain('commit blew up');
+        expect(seen).toContain('failed: git');
+        expect(result.notices).toEqual(['The project is complete and uncommitted.']);
         await expect(readdir(target)).resolves.toContain('package.json');
     });
 
     it('keeps going to git and the summary when the install fails', async () => {
         const target = await scratchTarget();
         const { runner, calls } = recorder('-D');
+        const { steps, seen } = stepRecorder();
 
-        const result = await scaffold(baseInput(target), runner);
+        const result = await scaffolded(baseInput(target, steps), runner);
 
         expect(result.installed).toBe(false);
         expect(result.failed).toBe(true);
-        expect(result.notices.join('\n')).toContain('-D blew up');
+        expect(seen).toContain('failed: install');
+        expect(result.notices.join('\n')).not.toContain('-D blew up');
         expect(calls.map((call) => call.command)).toContain('git');
     });
 
@@ -241,7 +258,7 @@ describe('scaffold', () => {
         const target = await scratchTarget();
         const { runner, calls } = recorder(undefined, '-D');
 
-        const result = await scaffold(baseInput(target), runner);
+        const result = await scaffolded(baseInput(target), runner);
 
         expect(result.installed).toBe(true);
         expect(result.failed).toBe(false);
@@ -256,11 +273,14 @@ describe('scaffold', () => {
         const target = await scratchTarget();
         // the dev install lists prettier too
         const { runner, calls } = recorder('prettier --write');
+        const { steps, seen } = stepRecorder();
 
-        const result = await scaffold(baseInput(target), runner);
+        const result = await scaffolded(baseInput(target, steps), runner);
 
         expect(result.installed).toBe(true);
-        expect(result.notices.join('\n')).toContain('prettier --write blew up');
+        expect(result.failed).toBe(true);
+        expect(seen).toContain('failed: format');
+        expect(result.notices.join('\n')).not.toContain('prettier --write blew up');
         expect(calls.map((call) => call.args.join(' ')).some((args) => args.includes('codegen'))).toBe(true);
     });
 
@@ -269,11 +289,11 @@ describe('scaffold', () => {
         const { runner } = recorder();
         const { steps, seen } = stepRecorder();
 
-        await scaffold({ ...baseInput(target, steps), install: false }, runner);
+        await scaffold({ ...baseInput(target, steps), answers: { ...GATEWAY, install: false } }, runner);
 
-        expect(seen).toContain('skipped: Dependencies installed');
-        expect(seen).toContain('skipped: Code formatted');
-        expect(seen).toContain('skipped: Types generated');
+        expect(seen).toContain('skipped: install');
+        expect(seen).toContain('skipped: format');
+        expect(seen).toContain('skipped: types');
     });
 
     it('marks git skipped when git is off', async () => {
@@ -281,16 +301,16 @@ describe('scaffold', () => {
         const { runner } = recorder();
         const { steps, seen } = stepRecorder();
 
-        await scaffold({ ...baseInput(target, steps), git: false }, runner);
+        await scaffold({ ...baseInput(target, steps), answers: { ...GATEWAY, git: false } }, runner);
 
-        expect(seen).toContain('skipped: Committed');
+        expect(seen).toContain('skipped: git');
     });
 
     it('skips git when git is off', async () => {
         const target = await scratchTarget();
         const { runner, calls } = recorder();
 
-        await scaffold({ ...baseInput(target), git: false }, runner);
+        await scaffold({ ...baseInput(target), answers: { ...GATEWAY, git: false } }, runner);
 
         expect(calls.every((call) => call.command !== 'git')).toBe(true);
     });
@@ -320,7 +340,7 @@ describe('scaffold cleanup', () => {
         const target = await scratchTarget();
         const { runner } = recorder('add');
 
-        const result = await scaffold(baseInput(target), runner);
+        const result = await scaffolded(baseInput(target), runner);
 
         expect(result.installed).toBe(false);
         await expect(readdir(target)).resolves.toContain('package.json');
@@ -331,19 +351,24 @@ describe('scaffold cleanup', () => {
         await mkdir(target, { recursive: true });
         const { runner } = recorder('add');
 
-        const result = await scaffold(baseInput(target), runner);
+        const result = await scaffolded(baseInput(target), runner);
 
         expect(result.installed).toBe(false);
         await expect(readdir(target)).resolves.toContain('package.json');
     });
 
-    it('removes the directory it created when writing fails', async () => {
+    it('removes the directory it created and reports nothing created when writing fails', async () => {
         const target = await scratchTarget();
         const { runner } = recorder();
+        const { steps, seen } = stepRecorder();
 
-        await expect(
-            scaffold({ ...baseInput(target), templatesRoot: join(target, 'missing-templates') }, runner)
-        ).rejects.toThrow();
+        const result = await scaffold(
+            { ...baseInput(target, steps), templatesRoot: join(target, 'missing-templates') },
+            runner
+        );
+
+        expect(result).toEqual({ created: false });
+        expect(seen).toContain('failed: files');
         await expect(readdir(target)).rejects.toThrow();
     });
 
@@ -354,7 +379,7 @@ describe('scaffold cleanup', () => {
 
         await expect(
             scaffold({ ...baseInput(target), templatesRoot: join(target, 'missing-templates') }, runner)
-        ).rejects.toThrow();
+        ).resolves.toEqual({ created: false });
         // claimTarget only accepts an empty target
         await expect(readdir(target)).resolves.toEqual([]);
     });

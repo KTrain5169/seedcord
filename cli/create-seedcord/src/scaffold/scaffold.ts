@@ -7,7 +7,7 @@ import { claimTarget } from '#scaffold/target';
 import { buildContext } from '#template/context';
 import { renderTemplates } from '#template/render';
 
-import type { StepLabels, StepUi } from '#cli/steps';
+import type { StepLabel, StepUi } from '#cli/steps';
 import type { GitPlan } from '#scaffold/git';
 import type { ScaffoldAnswers, TemplateContext } from '#template/context';
 import type { AgentName } from 'package-manager-detector';
@@ -20,22 +20,17 @@ export interface ScaffoldInput {
     templatesRoot: string;
     answers: ScaffoldAnswers;
     agent: AgentName;
-    install: boolean;
-    git: boolean;
     steps: StepUi;
 }
 
-export interface ScaffoldResult {
-    installed: boolean;
-    notices: string[];
-    failed: boolean;
-}
-
-const INSTALL_STEPS = {
-    install: { running: 'Installing dependencies', done: 'Dependencies installed' },
-    format: { running: 'Formatting', done: 'Code formatted' },
-    codegen: { running: 'Generating types', done: 'Types generated' }
-} satisfies Record<string, StepLabels>;
+export type ScaffoldResult =
+    | { created: false }
+    | {
+          created: true;
+          installed: boolean;
+          notices: string[];
+          failed: boolean;
+      };
 
 const DEV_PACKAGES = [
     '@seedcord/eslint-config',
@@ -67,30 +62,29 @@ async function writeTree(target: string, files: { path: string; contents: string
 }
 
 // a throw here would cut the summary in index.ts short
-async function runStep(steps: StepUi, labels: StepLabels, work: () => Promise<unknown>): Promise<string | null> {
+async function succeeded(steps: StepUi, label: StepLabel, work: () => Promise<unknown>): Promise<boolean> {
     try {
-        await steps.run(labels, work);
-        return null;
-    } catch (error: unknown) {
-        return Error.isError(error) ? error.message : String(error);
+        await steps.run(label, work);
+        return true;
+    } catch {
+        // StepUi already printed the failure
+        return false;
     }
 }
 
 async function gitNoticeFor(input: ScaffoldInput, run: CommandRunner, plan: GitPlan): Promise<string | null> {
     if (!plan.init) {
-        input.steps.skip('Committed');
+        input.steps.skip('git');
         return plan.notice;
     }
 
-    const reason = await runStep(input.steps, { running: 'Setting up git', done: 'Committed' }, async () => {
+    const committed = await succeeded(input.steps, 'git', async () => {
         await run('git', ['init'], input.target);
         await run('git', ['add', '.'], input.target);
         await run('git', ['commit', '-m', 'chore: create seedcord bot'], input.target);
     });
 
-    if (reason === null) return plan.notice;
-
-    return `${reason} The project is complete and uncommitted.`;
+    return committed ? plan.notice : 'The project is complete and uncommitted.';
 }
 
 interface InstallOutcome {
@@ -100,7 +94,7 @@ interface InstallOutcome {
 }
 
 function skipInstallSteps(steps: StepUi): InstallOutcome {
-    for (const labels of Object.values(INSTALL_STEPS)) steps.skip(labels.done);
+    for (const label of ['install', 'format', 'types'] as const) steps.skip(label);
 
     return { installed: false, notices: [], failed: false };
 }
@@ -118,66 +112,60 @@ async function runInstallSteps(input: ScaffoldInput, run: CommandRunner, isGatew
         if (warning !== null) warnings.push(warning);
     };
 
-    const install = await runStep(steps, INSTALL_STEPS.install, async () => {
+    const installed = await succeeded(steps, 'install', async () => {
         collect(await run(deps.command, deps.args, target));
         collect(await run(dev.command, dev.args, target));
     });
 
     // npx and bun x fetch a missing binary from the registry
-    if (install !== null) {
-        steps.skip(INSTALL_STEPS.format.done);
-        steps.skip(INSTALL_STEPS.codegen.done);
+    if (!installed) {
+        steps.skip('format');
+        steps.skip('types');
 
-        return { installed: false, notices: [install, ...warnings], failed: true };
+        return { installed: false, notices: warnings, failed: true };
     }
 
-    const formatted = await runStep(steps, INSTALL_STEPS.format, () => run(format.command, format.args, target));
-    const generated = await runStep(steps, INSTALL_STEPS.codegen, () => run(codegen.command, codegen.args, target));
-    const failures = [formatted, generated].filter((reason) => reason !== null);
+    const formatted = await succeeded(steps, 'format', () => run(format.command, format.args, target));
+    const generated = await succeeded(steps, 'types', () => run(codegen.command, codegen.args, target));
 
-    return { installed: true, notices: [...warnings, ...failures], failed: failures.length > 0 };
+    return { installed: true, notices: warnings, failed: !formatted || !generated };
 }
 
 // scaffold deletes this directory when writing fails; every step after it keeps the tree
-async function writeProject(input: ScaffoldInput, plan: GitPlan, existed: boolean): Promise<TemplateContext> {
-    const context = buildContext(input.answers, {
-        developerUsername: plan.developerUsername,
-        agent: input.agent
+async function writeProject(input: ScaffoldInput, context: TemplateContext, existed: boolean): Promise<boolean> {
+    const written = await succeeded(input.steps, 'files', async () => {
+        await mkdir(input.target, { recursive: true });
+        await writeTree(input.target, await renderTemplates(input.templatesRoot, context));
     });
 
-    try {
-        await input.steps.run({ running: 'Writing files', done: 'Files written' }, async () => {
-            await mkdir(input.target, { recursive: true });
-            await writeTree(input.target, await renderTemplates(input.templatesRoot, context));
-        });
-
-        return context;
-    } catch (error) {
+    if (!written) {
         await rm(input.target, { recursive: true, force: true });
         // claimTarget refuses a non-empty target
         if (existed) await mkdir(input.target, { recursive: true });
-
-        throw error;
     }
+
+    return written;
 }
 
 export async function scaffold(input: ScaffoldInput, run: CommandRunner): Promise<ScaffoldResult> {
-    const { existed } = await claimTarget(input.target);
+    const { existed } = claimTarget(input.target);
 
     // execFile rejects when cwd does not exist
     const parent = dirname(input.target);
     await mkdir(parent, { recursive: true });
 
-    const plan = gitPlanFrom(await probeGit(parent), input.git);
-    const context = await writeProject(input, plan, existed);
+    const plan = gitPlanFrom(await probeGit(parent), input.answers.git);
+    const context = buildContext(input.answers, { developerUsername: plan.developerUsername, agent: input.agent });
+    if (!(await writeProject(input, context, existed))) return { created: false };
 
-    const outcome = input.install
+    const outcome = input.answers.install
         ? await runInstallSteps(input, run, context.isGateway)
         : skipInstallSteps(input.steps);
 
     const gitNotice = await gitNoticeFor(input, run, plan);
 
     return {
+        created: true,
         installed: outcome.installed,
         notices: gitNotice === null ? outcome.notices : [...outcome.notices, gitNotice],
         failed: outcome.failed
