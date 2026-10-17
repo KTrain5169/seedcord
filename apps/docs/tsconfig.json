@@ -31,7 +31,7 @@
         "tests/**/*.tsx",
         "eslint.config.ts",
         "next.config.ts",
-        "vitest.config.ts",
+        "vite.config.ts",
         ".next/types/**/*.ts",
         "worker.ts",
         "check-links.ts"
