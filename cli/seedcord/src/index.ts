@@ -1,6 +1,7 @@
 export {
     defineConfig,
     SEEDCORD_CONFIG_FILENAMES,
+    type SeedcordBaseBuildConfig,
     type SeedcordBuildConfig,
     type SeedcordConfig,
     type SeedcordHmrConfig,

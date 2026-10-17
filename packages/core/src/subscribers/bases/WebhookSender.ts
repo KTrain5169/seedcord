@@ -28,8 +28,9 @@ export class WebhookSender {
 
     constructor(url: string) {
         const match = /\/webhooks\/(\d+)\/([\w$-]+)$/.exec(url);
-        if (!match?.[1] || !match[2])
-            throw new SeedcordTypeError(SeedcordErrorCode.ConfigWebhookUrlInvalid, ['The url']);
+        if (!match?.[1] || !match[2]) {
+            throw new SeedcordTypeError(SeedcordErrorCode.CoreWebhookUrlInvalid, [new.target.name]);
+        }
         this.route = Routes.webhook(match[1], match[2]);
     }
 

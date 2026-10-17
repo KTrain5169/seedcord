@@ -4,10 +4,17 @@ import { assertNever } from '@seedcord/utils';
 import { builtFilesSource } from './builtFiles';
 
 import type { ProjectFiles } from '#core/project/ProjectFiles';
+import type { PluginConfig } from '@cloudflare/vite-plugin';
 import type { BakedIds } from '@seedcord/core/internal';
 import type { Plugin } from 'vite';
 
-export const WORKER_ENTRY_ID = 'virtual:seedcord/worker';
+const WORKER_ENTRY_ID = 'virtual:seedcord/worker';
+
+type EntryCustomizer = NonNullable<PluginConfig['config']>;
+
+// the fields this returns replace the ones in cloudflare.config.ts
+export const workerEntryConfig: EntryCustomizer = () => ({ entrypoint: WORKER_ENTRY_ID });
+
 const BIND_ENV_ID = 'virtual:seedcord/bind-env';
 const BUILT_FILES_ID = 'virtual:seedcord/built-files';
 const BAKED_IDS_ID = 'virtual:seedcord/baked-ids';
@@ -21,10 +28,10 @@ import { Envapter, PortableSource } from 'envapt';
 Envapter.useSource(new PortableSource(env));
 `;
 
-const DEV_CWD_ID = 'virtual:seedcord/dev-cwd';
+const CWD_ID = 'virtual:seedcord/cwd';
 
-// workerd returns /bundle from process.cwd(). paint.path prints paths relative to it
-function devCwdSource(cwd: string): string {
+// workerd returns /bundle from process.cwd(). paint.path and the file loaders print paths relative to it
+function cwdSource(cwd: string): string {
     return `process.cwd = () => ${JSON.stringify(cwd)};\n`;
 }
 
@@ -48,17 +55,23 @@ function bakedIdsSource(ids: BakedIds): string {
 
 interface ModeSetup {
     root: string;
+    cwd: string;
     sourcePaths: boolean;
-    module: [id: string, source: string];
+    modules: [id: string, source: string][];
 }
 
 function modeSetup(mode: EntryMode): ModeSetup {
     switch (mode.kind) {
         case 'dev': {
-            return { root: mode.root, sourcePaths: true, module: [DEV_CWD_ID, devCwdSource(mode.cwd)] };
+            return { root: mode.root, cwd: mode.cwd, sourcePaths: true, modules: [] };
         }
         case 'build': {
-            return { root: WORKER_ROOT, sourcePaths: false, module: [BAKED_IDS_ID, bakedIdsSource(mode.ids)] };
+            return {
+                root: WORKER_ROOT,
+                cwd: WORKER_ROOT,
+                sourcePaths: false,
+                modules: [[BAKED_IDS_ID, bakedIdsSource(mode.ids)]]
+            };
         }
         default: {
             return assertNever(mode);
@@ -68,10 +81,11 @@ function modeSetup(mode: EntryMode): ModeSetup {
 
 // the entry imports these in order, ahead of the instance file
 function setupSources({ files, folders, rootKey, mode }: WorkerEntryOptions): Map<string, string> {
-    const { root, sourcePaths, module } = modeSetup(mode);
+    const { root, cwd, sourcePaths, modules } = modeSetup(mode);
     const rootExpression = JSON.stringify(root);
     return new Map([
-        module,
+        [CWD_ID, cwdSource(cwd)],
+        ...modules,
         // the instance file may read env while it loads
         [BIND_ENV_ID, BIND_ENV],
         [BUILT_FILES_ID, builtFilesSource({ files, folders, rootExpression, rootKey, sourcePaths })]

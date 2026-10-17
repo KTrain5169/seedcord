@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { BuildRunner } from '#commands/build/BuildRunner';
 import { quietSteps } from '#core/output/quietSteps';
+import { ShellMode } from '#core/viteMode';
 
 const OUTSIDE_ROOT_BOT = join(import.meta.dirname, '../../fixtures/outside-root-bot');
 
@@ -14,8 +15,8 @@ describe('seedcord build on a bot with a folder outside root', () => {
     it('throws before writing anything', async () => {
         await rm(join(OUTSIDE_ROOT_BOT, 'dist'), { recursive: true, force: true });
 
-        await expect(BuildRunner.create(quietSteps).run(OUTSIDE_ROOT_BOT)).rejects.toMatchObject({
-            code: SeedcordErrorCode.CoreDirectoryOutsideRoot
+        await expect(BuildRunner.create(quietSteps, new ShellMode()).run(OUTSIDE_ROOT_BOT)).rejects.toMatchObject({
+            code: SeedcordErrorCode.CorePathOutsideRoot
         });
         expect(existsSync(join(OUTSIDE_ROOT_BOT, 'dist'))).toBe(false);
     }, 120_000);

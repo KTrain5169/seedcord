@@ -7,7 +7,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 
 import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
 
-import { devConfigFor } from './devConfigFor';
+import { devContextFor } from './devConfigFor';
 
 // the entry loads ban.ts the way traverseDirectory loads a command file
 async function writeProject(dir: string): Promise<void> {
@@ -33,11 +33,28 @@ async function startedRuntime(): Promise<{ runtime: ServerDevRuntime; ban: strin
 
     const runtime = new ServerDevRuntime();
     onTestFinished(() => runtime.stop());
-    await runtime.start({ config: devConfigFor(dir, 'index.ts') });
+    await runtime.start(devContextFor(dir, 'index.ts'));
     const { module } = await runtime.loadEntry();
 
     return { runtime, ban: join(dir, 'src', 'commands', 'ban.ts'), entry: module };
 }
+
+describe('dev runtime mode', () => {
+    it('runs the bot in the mode the shell sets', async () => {
+        const temp = await mkdtempDisposable(join(tmpdir(), 'dev-mode-'));
+        onTestFinished(() => temp.remove());
+        await writeProject(temp.path);
+        await writeFile(join(temp.path, 'src', 'mode.ts'), 'export const mode = import.meta.env.MODE;\n');
+        const context = devContextFor(temp.path, 'mode.ts');
+        const runtime = new ServerDevRuntime();
+        onTestFinished(() => runtime.stop());
+
+        await runtime.start({ ...context, config: { ...context.config, viteMode: 'staging' } });
+        const { module } = await runtime.loadEntry();
+
+        expect(module).toMatchObject({ mode: 'staging' });
+    }, 60_000);
+});
 
 describe('dev runtime importModule', () => {
     it('returns the module the running bot already imported', async () => {

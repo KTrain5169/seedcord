@@ -5,8 +5,9 @@ import { beforeAll, describe, expect, it } from 'vite-plus/test';
 
 import { BuildRunner } from '#commands/build/BuildRunner';
 import { quietSteps } from '#core/output/quietSteps';
+import { ShellMode } from '#core/viteMode';
 
-import { hasBun, smokeBunBinary } from './bun';
+import { compilesBunBinaries, smokeBunBinary } from './bun';
 import { smoke } from './smoke';
 
 import type { BuildResult } from '#commands/build/BuildRunner';
@@ -18,7 +19,7 @@ describe('seedcord build on an http bot', () => {
     let result: BuildResult;
 
     beforeAll(async () => {
-        result = await BuildRunner.create(quietSteps).run(HTTP_BOT);
+        result = await BuildRunner.create(quietSteps, new ShellMode()).run(HTTP_BOT);
         output = await smoke('http', process.execPath, [join(HTTP_BOT, 'dist/index.mjs')]);
     }, 120_000);
 
@@ -64,7 +65,7 @@ describe('seedcord build on an http bot', () => {
         expect(output).toContain('fixture:text a source folder named logs');
     });
 
-    it.skipIf(!hasBun())(
+    it.skipIf(!compilesBunBinaries())(
         'still loads its files as a bun binary moved away from dist',
         async () => {
             const binaryOutput = await smokeBunBinary('http', HTTP_BOT);

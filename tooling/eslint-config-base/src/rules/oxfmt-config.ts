@@ -14,7 +14,10 @@ export const OXFMT_CONFIG: OxfmtConfig = {
         '**/coverage/**',
         'pnpm-lock.yaml',
         '**/seedcord-gen.d.ts',
-        '**/.wrangler/**'
+        '**/.seedcord/**',
+        '**/.cloudflare/**',
+        '**/.wrangler/**',
+        '**/worker-configuration.d.ts'
     ],
     tabWidth: 4,
     semi: true,

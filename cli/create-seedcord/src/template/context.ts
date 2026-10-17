@@ -1,7 +1,7 @@
 import { basename } from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { SeedcordError } from '@seedcord/errors/internal';
+import { SeedcordTypeError } from '@seedcord/errors/internal';
 
 import ownPackage from '#package' with { type: 'json' };
 
@@ -11,8 +11,10 @@ import { intentsFor, partialsFor } from '#interview/capabilities';
 import type { Answers } from '#interview/types';
 import type { AgentName } from 'package-manager-detector';
 
+const REQUIRED = ['directory', 'transport', 'token', 'botColor', 'install', 'git'] as const;
+
 // runFlow leaves capabilities unset for an http bot
-export type ScaffoldAnswers = Partial<Answers> & Pick<Answers, 'botColor' | 'directory' | 'token' | 'transport'>;
+export type ScaffoldAnswers = Partial<Answers> & Pick<Answers, (typeof REQUIRED)[number]>;
 
 // the three that make messageCreate fire
 const MESSAGE_CAPABILITIES = new Set(['guild-messages', 'message-text', 'direct-messages']);
@@ -31,13 +33,11 @@ export interface TemplateContext {
     engines: { node: string; bun: string };
 }
 
-const REQUIRED = ['directory', 'transport', 'token', 'botColor'] as const;
-
 // runFlow either fills these or throws
 export function requireScaffoldAnswers(answers: Partial<Answers>): ScaffoldAnswers {
     for (const key of REQUIRED) {
         if (answers[key] === undefined) {
-            throw new SeedcordError(SeedcordErrorCode.CreateInvalidAnswer, [key, 'No answer was collected.']);
+            throw new SeedcordTypeError(SeedcordErrorCode.CreateInvalidAnswer, [key, 'No answer was collected.']);
         }
     }
 

@@ -1,24 +1,26 @@
 import { sep } from 'node:path';
 
 import { SlashCommandBuilder } from '@discordjs/builders';
-import { RESTEvents } from '@discordjs/rest';
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 import { Logger } from '@seedcord/logger';
 import { formatFilePath } from '@seedcord/utils';
-import { unlessAborted } from '@seedcord/utils/internal';
 import { traverseDirectory } from '@seedcord/utils/node';
 import { resolveFolder } from '@seedcord/utils/node/internal';
-import { Routes } from 'discord-api-types/v10';
 import { Envapter } from 'envapt';
 
 import { getDevChannel } from '#hmr/devChannel';
 import { HmrModuleHandler } from '#hmr/HmrModuleHandler';
 import { CommandInjector } from '#src/commands/CommandInjector';
 import { contextMenuLeaves } from '#src/commands/contextMenuLeaves';
+import { DeployReporter } from '#src/commands/DeployReporter';
 import { resolveDeployTarget } from '#src/commands/deployTarget';
 import { isCommandClass } from '#src/commands/isCommandClass';
-import { indexById } from '#src/commands/linkCommands';
+import { LastDeploy } from '#src/commands/LastDeploy';
+import { planDeploy } from '#src/commands/planDeploy';
+import { putCommands } from '#src/commands/putCommands';
+import { readCommands } from '#src/commands/readCommands';
+import { GLOBAL_ID, scopeIdsOf } from '#src/commands/scopes';
 import { slashRouteLeaves } from '#src/commands/slashRouteLeaves';
 import { CommandMetadataKey } from '#src/metadataKeys';
 import { PublishDefault } from '#subscribers/publishDefault';
@@ -28,10 +30,11 @@ import type { CoreBase } from '#interfaces/CoreBase';
 import type { ContextMenuLeaves } from '#src/commands/contextMenuLeaves';
 import type { DeployTarget } from '#src/commands/deployTarget';
 import type { CommandCtor } from '#src/commands/isCommandClass';
+import type { CommandBody, CommandScopes } from '#src/commands/putCommands';
+import type { ScopeId } from '#src/commands/scopes';
 import type { CommandBuilder, DeployResult } from '#src/commands/types';
 import type { Initializeable } from '#src/plugin/Plugin';
 import type { AllSubscriptions } from '#subscribers/types/Subscriptions';
-import type { RateLimitData } from '@discordjs/rest';
 import type { HmrAware, HmrUpdateEvent } from '@seedcord/types';
 import type { APIApplicationCommand } from 'discord-api-types/v10';
 
@@ -48,8 +51,6 @@ interface DeployHooks {
     check?: (commands: CommandBuilder[]) => void;
 }
 
-const MS_PER_SECOND = 1000;
-
 // discord's global command bucket allows 2 PUTs a minute
 // 75s covers a full wait plus the request itself
 export const COMMAND_DEPLOY_TIMEOUT_MS = 75_000;
@@ -63,8 +64,7 @@ export class CommandRegistry implements Initializeable, HmrAware {
     private readonly logger = new Logger('Commands', { channel: 'commands' });
     private isInitialised = false;
 
-    public readonly globalCommands: CommandBuilder[] = [];
-    public readonly guildCommands = new Map<string, CommandBuilder[]>();
+    public readonly scopedCommands = new Map<ScopeId, CommandBuilder[]>();
 
     private readonly ctorToCommand = new Map<CommandCtor, CommandArtifact>();
 
@@ -75,6 +75,8 @@ export class CommandRegistry implements Initializeable, HmrAware {
     private readonly hmrHandler?: HmrModuleHandler<CommandCtor, void, CommandArtifact | undefined>;
     private readonly pendingEvents = new Map<string, HmrUpdateEvent>();
     private readonly injector = new CommandInjector();
+    private readonly lastDeploy = new LastDeploy();
+    private readonly reporter = new DeployReporter(this.logger);
 
     private readonly dir: string;
     private readonly configuredGuilds: readonly string[];
@@ -127,7 +129,10 @@ export class CommandRegistry implements Initializeable, HmrAware {
 
         utils.summary(
             'Loaded commands',
-            { global: this.globalCommands.length, 'guild groups': this.guildCommands.size },
+            {
+                global: this.scopedCommands.get(GLOBAL_ID)?.length ?? 0,
+                'guild groups': [...this.scopedCommands.keys()].filter((scope) => scope !== GLOBAL_ID).length
+            },
             'debug'
         );
 
@@ -198,14 +203,10 @@ export class CommandRegistry implements Initializeable, HmrAware {
 
         const target = resolveDeployTarget(meta, this.configuredGuilds, Ctor.name);
 
-        if (target.scope === 'global') {
-            this.globalCommands.push(comp);
-        } else {
-            for (const g of target.guilds) {
-                const arr = this.guildCommands.get(g) ?? [];
-                arr.push(comp);
-                this.guildCommands.set(g, arr);
-            }
+        for (const scope of scopeIdsOf(target)) {
+            const inScope = this.scopedCommands.get(scope);
+            if (inScope) inScope.push(comp);
+            else this.scopedCommands.set(scope, [comp]);
         }
 
         this.ctorToCommand.set(Ctor, { name: comp.name, ...target });
@@ -219,16 +220,10 @@ export class CommandRegistry implements Initializeable, HmrAware {
         const info = artifacts ?? this.ctorToCommand.get(ctor);
         if (!info) return;
 
-        if (info.scope === 'global') {
-            const idx = this.globalCommands.findIndex((c) => c.name === info.name);
-            if (idx !== -1) this.globalCommands.splice(idx, 1);
-        } else {
-            for (const g of info.guilds) {
-                const arr = this.guildCommands.get(g);
-                if (!arr) continue;
-                const idx = arr.findIndex((c) => c.name === info.name);
-                if (idx !== -1) arr.splice(idx, 1);
-            }
+        for (const scope of scopeIdsOf(info)) {
+            const inScope = this.scopedCommands.get(scope) ?? [];
+            const idx = inScope.findIndex((c) => c.name === info.name);
+            if (idx !== -1) inScope.splice(idx, 1);
         }
         this.ctorToCommand.delete(ctor);
     }
@@ -244,75 +239,41 @@ export class CommandRegistry implements Initializeable, HmrAware {
 
     /** @internal */
     public async setCommands(signal?: AbortSignal): Promise<DeployResult> {
-        const result: DeployResult = { global: new Map(), guilds: new Map() };
-        const appId = this.core.applicationId;
+        // read here because gateway assigns core.rest after this registry is constructed
+        const { rest, applicationId } = this.core;
+        const last = await this.lastDeploy.read(applicationId, signal);
+        const plan = await planDeploy(this.commandBodies(), last?.scopes, (unchanged) =>
+            readCommands(unchanged, { rest, applicationId, signal })
+        );
+        await this.reporter.readGuildNames(rest, [...plan.toPut.keys(), ...plan.skipped], signal);
+        if (plan.toPut.size > 0) this.lastDeploy.save({ applicationId, scopes: plan.skippedHashes });
+        const put = await putCommands(plan.toPut, {
+            rest,
+            applicationId,
+            logger: this.logger,
+            signal,
+            onDeployed: (scope: ScopeId, commands: readonly CommandBody[]) => this.reporter.deployed(scope, commands)
+        });
 
-        if (this.globalCommands.length > 0) {
-            const deployed = await this.put(Routes.applicationCommands(appId), this.globalCommands, signal);
-            result.global = indexById(deployed);
-            const tag = this.globalCommands.length === 1 ? 'command' : 'commands';
-            this.logger.utils.block(
-                `Deployed ${this.globalCommands.length} global ${tag}`,
-                this.logger.utils.wrap(this.globalCommands.map((command) => command.name)),
-                'info'
-            );
-        }
-
-        for (const [guildId, commands] of this.guildCommands.entries()) {
-            const deployed = await this.putGuild(appId, guildId, commands, signal);
-            result.guilds.set(guildId, indexById(deployed));
-            const tag = commands.length === 1 ? 'command' : 'commands';
-            this.logger.utils.block(
-                `Deployed ${paint.iris.bold(commands.length)} ${tag} to ${paint.sky.bold(guildId)}`,
-                this.logger.utils.wrap(commands.map((command) => command.name)),
-                'info'
-            );
-        }
+        this.reporter.skipped(plan.skipped);
+        const result: DeployResult = new Map([...plan.onDiscord, ...put]);
+        this.lastDeploy.save({ applicationId, scopes: plan.hashes });
 
         this.injector.inject(result, this.allCommands());
         this.core.bus[PublishDefault]('commandsDeployed', deployedPayload(result));
         return result;
     }
 
-    private async putGuild(
-        appId: string,
-        guildId: string,
-        commands: readonly CommandBuilder[],
-        signal: AbortSignal | undefined
-    ): Promise<APIApplicationCommand[]> {
-        try {
-            return await this.put(Routes.applicationGuildCommands(appId, guildId), commands, signal);
-        } catch (error) {
-            throw new SeedcordError(SeedcordErrorCode.CoreCommandGuildDeployFailed, [guildId], { cause: error });
-        }
-    }
-
-    private async put(
-        route: `/${string}`,
-        commands: readonly CommandBuilder[],
-        signal: AbortSignal | undefined
-    ): Promise<APIApplicationCommand[]> {
-        const body = commands.map((command) => command.toJSON());
-        // read here because gateway assigns core.rest after this registry is constructed
-        const { rest } = this.core;
-        const reportWait = (info: RateLimitData): void => {
-            if (info.method !== 'PUT' || !info.url.endsWith(route)) return;
-            const seconds = Math.ceil(info.timeToReset / MS_PER_SECOND);
-            this.logger.warn(`Discord rate-limited the command deploy. It continues in ${paint.amber(`${seconds}s`)}.`);
-        };
-
-        rest.on(RESTEvents.RateLimited, reportWait);
-        try {
-            // @discordjs/rest checks the signal before it sends a request. Its rate-limit sleep ignores it
-            // justified: the bulk-overwrite routes return the deployed command array
-            return (await unlessAborted(rest.put(route, { body, signal }), signal)) as APIApplicationCommand[];
-        } finally {
-            rest.off(RESTEvents.RateLimited, reportWait);
-        }
+    private commandBodies(): CommandScopes {
+        // a guild-only start keeps the global commands another deploy put there
+        const deployable = this.scopedCommands
+            .entries()
+            .filter(([scope, commands]) => scope !== GLOBAL_ID || commands.length > 0);
+        return new Map(deployable.map(([scope, commands]) => [scope, commands.map((c) => c.toJSON())]));
     }
 
     private allCommands(): CommandBuilder[] {
-        return [...this.globalCommands, ...this.guildCommands.values()].flat();
+        return [...this.scopedCommands.values()].flat();
     }
 
     private routeLeaves(): Set<string> {
@@ -326,7 +287,8 @@ export class CommandRegistry implements Initializeable, HmrAware {
 
 function deployedPayload(result: DeployResult): AllSubscriptions['commandsDeployed'] {
     const guilds: Record<string, APIApplicationCommand[]> = {};
-    for (const [guildId, deployed] of result.guilds) guilds[guildId] = [...deployed.values()];
-
-    return { global: [...result.global.values()], guilds };
+    for (const [scope, deployed] of result) {
+        if (scope !== GLOBAL_ID) guilds[scope] = [...deployed.values()];
+    }
+    return { global: [...(result.get(GLOBAL_ID)?.values() ?? [])], guilds };
 }

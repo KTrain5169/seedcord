@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, onTestFinished, vi, type Mock } from '
 
 import { DevRunner } from '#commands/dev/DevRunner';
 import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
+import { StateFolder } from '#core/state/StateFolder';
 import { silentLogger } from '#tests/silentLogger';
 import { DevStore } from '#ui/stores/DevStore';
 
@@ -16,7 +17,6 @@ import type { TunnelRouter } from '#commands/dev/tunnel/TunnelRouter';
 import type { ProjectLoader } from '#core/config/ProjectLoader';
 import type { ILogger } from '@seedcord/types';
 
-
 const readyBot = fakeBot();
 
 const devConfig = {
@@ -27,6 +27,8 @@ const devConfig = {
     typecheck: { enabled: false },
     idleAnimation: true
 };
+
+const STATE = new StateFolder(devConfig.root, silentLogger);
 
 function readyRuntime(): DevRuntime {
     return fakeRuntime({ default: readyBot });
@@ -53,6 +55,7 @@ function makeRunner(
         // justified: the session reads only these config fields
         projectLoader: { open: () => Promise.resolve(project) } as unknown as Pick<ProjectLoader, 'open'>,
         store: new DevStore(),
+        state: STATE,
         codegen,
         codegenLogger,
         tunnel,
@@ -159,6 +162,7 @@ function runWithSlowConfig(): SlowConfigRun {
         // justified: the session reads only these config fields
         projectLoader: { open: openConfig } as unknown as Pick<ProjectLoader, 'open'>,
         store,
+        state: STATE,
         codegen: fakeCodegen(),
         codegenLogger: silentLogger,
         tunnel: fakeTunnel(),
@@ -387,6 +391,7 @@ describe('DevRunner run', () => {
             // justified: the session reads only these config fields
             projectLoader: projectLoader as unknown as Pick<ProjectLoader, 'open'>,
             store,
+            state: STATE,
             codegen: fakeCodegen(),
             codegenLogger: silentLogger,
             tunnel: fakeTunnel(),
@@ -398,7 +403,7 @@ describe('DevRunner run', () => {
         await runner.quit();
         await running;
 
-        expect(error.message).toMatch(/Cannot find entry file|Failed to load url/);
+        expect(error.message).toMatch(/Cannot find the entry file|Failed to load url/);
         expect(projectLoader.open).toHaveBeenCalledOnce();
     });
 });

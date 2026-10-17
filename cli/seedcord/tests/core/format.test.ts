@@ -1,34 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { formatBytes, formatDuration, includesIgnoreCase, plural } from '#core/format';
-
-describe('includesIgnoreCase', () => {
-    it('matches a substring regardless of case on either side', () => {
-        expect(includesIgnoreCase('My Guild', 'guild')).toBe(true);
-        expect(includesIgnoreCase('my guild', 'GUILD')).toBe(true);
-        expect(includesIgnoreCase('ABC123', 'abc')).toBe(true);
-    });
-
-    it('treats an empty or whitespace search as a match', () => {
-        expect(includesIgnoreCase('anything', '')).toBe(true);
-        expect(includesIgnoreCase('anything', '   ')).toBe(true);
-    });
-
-    it('is false when the substring is absent', () => {
-        expect(includesIgnoreCase('My Guild', 'zzz')).toBe(false);
-    });
-});
-
-describe('formatDuration', () => {
-    it('shows milliseconds under a second and seconds from there', () => {
-        expect(formatDuration(12.4)).toBe('12ms');
-        expect(formatDuration(2400)).toBe('2.4s');
-    });
-
-    it('switches to seconds when the milliseconds round up to 1000', () => {
-        expect(formatDuration(999.6)).toBe('1.0s');
-    });
-});
+import { formatBytes, plural } from '#core/format';
 
 describe('formatBytes', () => {
     it('picks the unit that keeps the number short', () => {

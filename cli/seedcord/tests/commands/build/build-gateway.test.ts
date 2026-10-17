@@ -2,17 +2,15 @@ import { join } from 'node:path';
 
 import { beforeAll, describe, expect, it } from 'vite-plus/test';
 
-import { BuildRunner } from '#commands/build/BuildRunner';
-import { quietSteps } from '#core/output/quietSteps';
-
-import { hasBun, smokeBunBinary } from './bun';
+import { compilesBunBinaries, smokeBunBinary } from './bun';
+import { quickBuildRunner } from './quickBuildRunner';
 import { smoke } from './smoke';
 
 const GATEWAY_BOT = join(import.meta.dirname, '../../fixtures/gateway-bot');
 
 describe('seedcord build on a gateway bot', () => {
     beforeAll(async () => {
-        await BuildRunner.create(quietSteps).run(GATEWAY_BOT);
+        await quickBuildRunner().run(GATEWAY_BOT);
     }, 120_000);
 
     it('loads its handlers', async () => {
@@ -21,7 +19,7 @@ describe('seedcord build on a gateway bot', () => {
         expect(output).toContain('fixture:handlers-loaded');
     }, 120_000);
 
-    it.skipIf(!hasBun())(
+    it.skipIf(!compilesBunBinaries())(
         'loads its handlers as a bun binary moved away from dist',
         async () => {
             const output = await smokeBunBinary('gateway', GATEWAY_BOT);

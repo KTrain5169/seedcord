@@ -4,6 +4,8 @@ import { runEslint } from './scripts/src/lint-staged.ts';
 
 export default defineConfig({
     staged: {
+        // this will become 'vp check --fix --no-error-on-unmatched-pattern'
+        // once eslint has been replaced with oxlint
         '*': 'vp fmt --no-error-on-unmatched-pattern',
         '*.{ts,tsx,js,jsx,cjs,mjs}': runEslint
     },
@@ -24,6 +26,7 @@ export default defineConfig({
             'pnpm-lock.yaml',
             '**/seedcord-gen.d.ts',
             '**/.seedcord/**',
+            '**/.cloudflare/**',
             '**/.wrangler/**',
             '**/worker-configuration.d.ts'
         ],

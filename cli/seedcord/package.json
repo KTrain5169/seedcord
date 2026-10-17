@@ -60,6 +60,7 @@
     "scripts": {
         "dev": "tsx src/cli.ts",
         "preview": "tsx playground/preview.tsx",
+        "preview:prompts": "tsx playground/prompts.ts",
         "build": "vp pack",
         "clean": "rm -rf dist",
         "lint": "eslint '**/*.{ts,tsx}' 'bin/**/*.mjs' --cache --no-error-on-unmatched-pattern",
@@ -72,9 +73,11 @@
         "coverage": "vp test run --coverage"
     },
     "dependencies": {
-        "@clack/prompts": "catalog:deps",
+        "@cloudflare/build-output-utils": "0.9.2",
+        "@cloudflare/config": "0.26.0",
         "@commander-js/extra-typings": "^15.0.0",
         "@discordjs/rest": "catalog:deps",
+        "@leeoniya/ufuzzy": "catalog:deps",
         "@seedcord/core": "workspace:^",
         "@seedcord/errors": "workspace:^",
         "@seedcord/event-emitter": "workspace:^",
@@ -82,10 +85,10 @@
         "@seedcord/types": "workspace:^",
         "@seedcord/utils": "workspace:^",
         "chalk": "catalog:deps",
-        "cli-spinners": "^3.4.0",
+        "cli-spinners": "catalog:deps",
         "commander": "^15.0.0",
         "discord-api-types": "catalog:deps",
-        "ink": "^8.0.0",
+        "ink": "catalog:deps",
         "ink-spinner": "^5.0.0",
         "minimatch": "^10.2.6",
         "react": "catalog:react",
@@ -95,7 +98,8 @@
     },
     "devDependencies": {
         "@cloudflare/vite-plugin": "catalog:peer",
-        "@eslint-react/eslint-plugin": "^5.18.1",
+        "@eslint-react/eslint-plugin": "catalog:eslint",
+        "@seedcord/cli-prompts": "workspace:^",
         "@seedcord/eslint-config": "workspace:^",
         "@seedcord/gateway": "workspace:^",
         "@seedcord/http": "workspace:^",
@@ -103,27 +107,22 @@
         "@seedcord/tsdown-config": "workspace:^",
         "@seedcord/vitest-config": "workspace:^",
         "@types/react": "catalog:react",
-        "@xterm/headless": "^6.0.0",
+        "cf": "catalog:deps",
         "discord.js": "catalog:peer",
         "envapt": "catalog:peer",
-        "eslint-plugin-react-hooks": "^7.1.1",
+        "eslint-plugin-react-hooks": "catalog:eslint",
         "ink-testing-library": "^4.0.0",
         "tsx": "catalog:deps",
         "typescript": "catalog:peer",
-        "vitest": "catalog:test",
-        "wrangler": "catalog:peer"
+        "vitest": "catalog:test"
     },
     "peerDependencies": {
         "@cloudflare/vite-plugin": "catalog:peer",
         "envapt": "catalog:peer",
-        "typescript": "catalog:consumerTypes",
-        "wrangler": "catalog:peer"
+        "typescript": "catalog:consumerTypes"
     },
     "peerDependenciesMeta": {
         "@cloudflare/vite-plugin": {
-            "optional": true
-        },
-        "wrangler": {
             "optional": true
         }
     },

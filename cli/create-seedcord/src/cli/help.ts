@@ -1,20 +1,19 @@
+import { VERBOSE_FLAG } from '#cli/parseInput';
 import { noFlagName } from '#interview/applyFlags';
 import { STEPS } from '#interview/steps';
 
 import type { AnyStep } from '#interview/types';
 
 const EXTRA = [
-    { name: 'no-install', description: 'skip installing dependencies' },
-    { name: 'no-git', description: 'skip git init and the first commit' },
+    { name: VERBOSE_FLAG, description: 'show the stack frames a failed step leaves out' },
     { name: 'version', short: 'v', description: 'print the version' },
     { name: 'help', short: 'h', description: 'print this' }
 ];
 
-function flagsOf(step: AnyStep): { name: string; description: string }[] {
-    const { noFlag } = step.flag;
-    if (noFlag === undefined) return [step.flag];
+function flagsOf({ flag }: AnyStep): { name: string; description: string }[] {
+    if (flag.noFlag === undefined) return [flag];
 
-    return [step.flag, { name: noFlagName(step.flag.name), description: noFlag }];
+    return [flag, { name: noFlagName(flag.name), description: flag.noFlag }];
 }
 
 function spelling(flag: { name: string; short?: string }): string {

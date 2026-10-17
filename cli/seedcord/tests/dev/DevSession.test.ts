@@ -7,6 +7,7 @@ import { assert, describe, expect, it, onTestFinished, vi } from 'vite-plus/test
 
 import { DevSession } from '#commands/dev/DevSession';
 import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
+import { StateFolder } from '#core/state/StateFolder';
 import { silentLogger } from '#tests/silentLogger';
 import { DevStore } from '#ui/stores/DevStore';
 
@@ -18,24 +19,30 @@ import type { DevRuntime } from '#commands/dev/runtime/DevRuntime';
 import type { DevEvent, DevEventHandler } from '#commands/dev/runtime/events';
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 
-
 function config(): ResolvedSeedcordConfig {
     return {
         root: process.cwd(),
         configFile: `${process.cwd()}/seedcord.config.ts`,
-        target: { kind: 'server', entry: `${process.cwd()}/package.json` },
+        target: { kind: 'server', entry: `${process.cwd()}/package.json`, outDir: 'dist' },
         instance: `${process.cwd()}/package.json`,
         tunnel: { mode: 'quick' },
         typecheck: { enabled: false },
         idleAnimation: true,
-        build: { outDir: 'dist' }
+        build: {},
+        viteMode: 'development'
     };
 }
 
 const UNCHANGED = { outputPath: 'seedcord-gen.d.ts', changed: false };
 
 function sessionDeps(store = new DevStore(), onEvent: DevEventHandler = () => undefined): DevSessionDeps {
-    return { store, onEvent, codegen: { writeFrom: () => Promise.resolve(UNCHANGED) }, codegenLogger: silentLogger };
+    return {
+        store,
+        onEvent,
+        codegen: { writeFrom: () => Promise.resolve(UNCHANGED) },
+        codegenLogger: silentLogger,
+        state: new StateFolder(process.cwd(), silentLogger)
+    };
 }
 
 // start() spawns tsc --watch before it reaches the throw, so every case has to stop the session

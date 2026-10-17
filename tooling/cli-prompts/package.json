@@ -1,0 +1,68 @@
+{
+    "name": "@seedcord/cli-prompts",
+    "version": "0.0.1",
+    "private": true,
+    "description": "The Ink prompts and step spinner both seedcord CLIs bundle",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/seedcord/seedcord.git",
+        "directory": "tooling/cli-prompts"
+    },
+    "type": "module",
+    "types": "./dist/index.d.mts",
+    "imports": {
+        "#src/*": "./src/*"
+    },
+    "exports": {
+        ".": {
+            "import": {
+                "types": "./dist/index.d.mts",
+                "default": "./dist/index.mjs"
+            }
+        },
+        "./testing": {
+            "import": {
+                "types": "./dist/testing.d.mts",
+                "default": "./dist/testing.mjs"
+            }
+        }
+    },
+    "scripts": {
+        "build": "vp pack",
+        "clean": "rm -rf dist",
+        "lint": "eslint '**/*.{ts,tsx}' --cache --no-error-on-unmatched-pattern",
+        "lint:fix": "eslint '**/*.{ts,tsx}' --fix --cache --no-error-on-unmatched-pattern",
+        "fmt": "vp fmt --write '**/*.{ts,tsx,json,md}' --cache --no-error-on-unmatched-pattern",
+        "fmt:check": "vp fmt --check '**/*.{ts,tsx,json,md}' --cache --no-error-on-unmatched-pattern",
+        "tc": "tsgo --noEmit",
+        "preview": "tsx playground/preview.ts",
+        "test": "vp test run",
+        "test:watch": "vp test dev"
+    },
+    "dependencies": {
+        "@leeoniya/ufuzzy": "catalog:deps",
+        "@seedcord/errors": "workspace:^",
+        "cli-spinners": "catalog:deps",
+        "ink": "catalog:deps",
+        "react": "catalog:react"
+    },
+    "devDependencies": {
+        "@eslint-react/eslint-plugin": "catalog:eslint",
+        "@seedcord/eslint-config": "workspace:^",
+        "@seedcord/tsconfig": "workspace:^",
+        "@seedcord/tsdown-config": "workspace:^",
+        "@seedcord/vitest-config": "workspace:^",
+        "@types/react": "catalog:react",
+        "@xterm/headless": "^6.0.0",
+        "eslint-plugin-react-hooks": "catalog:eslint",
+        "tsx": "catalog:deps",
+        "vitest": "catalog:test"
+    },
+    "peerDependencies": {
+        "typescript": "catalog:peer"
+    },
+    "engines": {
+        "bun": ">=1.4.2",
+        "node": ">=24.11"
+    }
+}

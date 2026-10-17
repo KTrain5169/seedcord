@@ -4,7 +4,6 @@ import { DevStore } from '#ui/stores/DevStore';
 
 import type { DevEvent } from '#commands/dev/runtime/events';
 
-
 describe('DevStore', () => {
     it('starts in the initial state', () => {
         const state = new DevStore().getState();

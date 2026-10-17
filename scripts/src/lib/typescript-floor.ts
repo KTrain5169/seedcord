@@ -7,3 +7,13 @@ export function lowestTypescript(workspaceYaml: string, catalog: string): string
     if (version === undefined) throw new Error(`pnpm-workspace.yaml's ${catalog} catalog has no typescript range`);
     return version;
 }
+
+// tsc prints `path(line,col): error TS...`, or a bare `error TS...` for one with no file
+const ERROR_FILE = /^(.+?)\(\d+,\d+\): error TS/;
+
+export function errorsInside(errors: readonly string[], folders: readonly string[]): string[] {
+    return errors.filter((line) => {
+        const file = ERROR_FILE.exec(line)?.[1];
+        return file === undefined || folders.some((folder) => file.startsWith(folder));
+    });
+}

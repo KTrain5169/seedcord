@@ -8,7 +8,10 @@ import { Logger } from '@seedcord/logger';
 import { resolveFromRoot } from '@seedcord/utils/node/internal';
 import { minimatch } from 'minimatch';
 
+import { deployedCommandsFile, lastDeployOf } from '#core/state/deployedCommands';
+
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
+import type { StateFolder } from '#core/state/StateFolder';
 import type { DevEvent } from './events';
 import type { WorkerConfigFiles } from './workerConfigFiles';
 import type { HmrEventType, HmrUpdateEvent } from '@seedcord/types';
@@ -50,6 +53,7 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
 
     constructor(
         private readonly config: ResolvedSeedcordConfig,
+        private readonly state: StateFolder,
         private readonly botEnvironment: string,
         private readonly workerConfig?: WorkerConfigFiles
     ) {
@@ -105,6 +109,14 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
 
         this.dev?.on('seedcord:server-listening', (data) => {
             this.emit('event', { type: 'server-listening', port: data.port });
+        });
+
+        this.dev?.on('seedcord:read-deployed', ({ applicationId }) => {
+            this.dev?.send('seedcord:last-deploy', { deployed: lastDeployOf(this.state, applicationId) });
+        });
+
+        this.dev?.on('seedcord:commands-deployed', (deployed) => {
+            this.state.write(deployedCommandsFile, deployed);
         });
 
         this.dev?.on('seedcord:register-critical-files', (data) => {

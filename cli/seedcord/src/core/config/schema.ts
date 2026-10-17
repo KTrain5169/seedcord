@@ -2,21 +2,28 @@ import type { EdgeTarget, ServerTarget } from './detectTarget';
 import type { TypedOmit } from '@seedcord/types';
 
 /**
- * Build configuration used by the Seedcord CLI.
+ * Build options every bot takes. An edge bot takes only these, because `@cloudflare/vite-plugin`
+ * writes its worker to `.cloudflare/output`.
  */
-export interface SeedcordBuildConfig {
-    /**
-     * Directory where build artifacts should be emitted.
-     *
-     * @defaultValue `./dist` relative to the config directory
-     */
-    outDir?: string;
+export interface SeedcordBaseBuildConfig {
     /**
      * The tsconfig that `seedcord build` type checks the project with.
      *
      * @defaultValue the `tsconfig.json` beside the config file
      */
     tsconfig?: string;
+}
+
+/**
+ * Build options for a bot that runs on node or bun.
+ */
+export interface SeedcordBuildConfig extends SeedcordBaseBuildConfig {
+    /**
+     * Directory where build artifacts should be emitted.
+     *
+     * @defaultValue `./dist` relative to the config directory
+     */
+    outDir?: string;
 }
 
 /**
@@ -83,6 +90,13 @@ export interface SeedcordConfig {
      */
     tunnel?: boolean | string;
     /**
+     * The port `seedcord dev` serves the worker's interactions endpoint on. `0` picks a free port
+     * on each run. A `tunnel` URL needs a fixed port.
+     *
+     * @defaultValue `3000`
+     */
+    port?: number;
+    /**
      * Runs any always-on animations in `seedcord dev`.
      *
      * @defaultValue `true`
@@ -91,7 +105,7 @@ export interface SeedcordConfig {
     /**
      * Optional build configuration overrides.
      */
-    build?: SeedcordBuildConfig;
+    build?: SeedcordBaseBuildConfig;
     /**
      * Optional HMR configuration.
      */
@@ -106,26 +120,40 @@ export interface SeedcordServerConfig extends SeedcordConfig {
      * The file that starts the bot, the one that calls `start()`.
      */
     entry: string;
+    /**
+     * Optional build configuration overrides.
+     */
+    build?: SeedcordBuildConfig;
+    /**
+     * A node http bot sets its port in `new Seedcord({ port })`.
+     */
+    port?: never;
 }
 
 export type ResolvedTunnel = { mode: 'off' } | { mode: 'quick' } | { mode: 'url'; url: string };
 
-export type ResolvedTarget = (ServerTarget & { entry: string }) | EdgeTarget;
+export type ResolvedEdgeTarget = EdgeTarget & { port: number };
+
+export type ResolvedServerTarget = ServerTarget & { entry: string; outDir: string };
+
+export type ResolvedTarget = ResolvedServerTarget | ResolvedEdgeTarget;
 
 export type ResolvedTypecheck = { enabled: false } | { enabled: true; tsconfig?: string };
 
 export interface ResolvedSeedcordBuildConfig {
-    outDir: string;
     tsconfig?: string;
 }
 
 // every path in here is absolute
-export interface ResolvedSeedcordConfig extends Required<TypedOmit<SeedcordConfig, 'build' | 'hmr' | 'tunnel'>> {
+export interface ResolvedSeedcordConfig extends Required<
+    TypedOmit<SeedcordConfig, 'build' | 'hmr' | 'tunnel' | 'port'>
+> {
     tunnel: ResolvedTunnel;
     configFile: string;
     target: ResolvedTarget;
     build: ResolvedSeedcordBuildConfig;
     typecheck: ResolvedTypecheck;
+    viteMode: string;
     // restart globs pass through unresolved
     hmr?: SeedcordHmrConfig | undefined;
 }

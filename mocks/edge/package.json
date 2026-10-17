@@ -12,11 +12,11 @@
     "scripts": {
         "dev": "seedcord dev",
         "build": "seedcord build",
-        "deploy": "seedcord build && wrangler deploy",
+        "deploy": "seedcord build && cf deploy --prebuilt",
         "codegen": "seedcord codegen",
-        "types": "wrangler types",
-        "postinstall": "wrangler types",
-        "clean": "rm -rf dist .wrangler",
+        "types": "cf workers types",
+        "postinstall": "cf workers types",
+        "clean": "rm -rf .cloudflare",
         "lint": "eslint '**/*.{ts,tsx}' --cache --no-error-on-unmatched-pattern",
         "lint:fix": "eslint '**/*.{ts,tsx}' --fix --cache --no-error-on-unmatched-pattern",
         "fmt": "vp fmt --write '**/*.{ts,tsx,json,jsonc,md}' --no-error-on-unmatched-pattern",
@@ -33,7 +33,7 @@
         "@cloudflare/vite-plugin": "catalog:peer",
         "@seedcord/eslint-config": "workspace:^",
         "@seedcord/tsconfig": "workspace:^",
-        "seedcord": "workspace:^",
-        "wrangler": "catalog:peer"
+        "cf": "catalog:deps",
+        "seedcord": "workspace:^"
     }
 }

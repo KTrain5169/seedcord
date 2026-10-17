@@ -1,6 +1,5 @@
 import { Command } from '@commander-js/extra-typings';
 import { installNodeDefaults } from '@seedcord/logger/node';
-import { Envapter, Environment } from 'envapt';
 
 import { BuildCommand } from '#commands/build/BuildCommand';
 import { CodegenCommand } from '#commands/codegen/CodegenCommand';
@@ -12,10 +11,6 @@ import { addVerboseOption } from '#core/verbose';
 import { version } from '.';
 
 async function main(): Promise<void> {
-    if (!process.env.ENV && !process.env.ENVIRONMENT && !process.env.NODE_ENV) {
-        Envapter.environment = Environment.Development;
-    }
-
     installNodeDefaults();
 
     const program = addVerboseOption(new Command().name('seedcord').description('seedcord CLI').version(version));

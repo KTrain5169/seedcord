@@ -1,6 +1,8 @@
 {
     "$schema": "https://turbo.build/schema.json",
     "ui": "tui",
+    // 2 ran a core change's tests faster than 4
+    "concurrency": "2",
     "tasks": {
         "build": {
             "dependsOn": ["^build"],
@@ -87,7 +89,10 @@
             "dependsOn": ["^build"]
         },
         "test": {
-            "dependsOn": ["^build"]
+            "dependsOn": ["^build"],
+            // turbo doesn't hash the os.
+            // ci would replay linux test results on windows and mac otherwise
+            "env": ["RUNNER_OS"]
         },
         "@seedcord/core#lint": {
             "dependsOn": ["^build", "@seedcord/core#build"]

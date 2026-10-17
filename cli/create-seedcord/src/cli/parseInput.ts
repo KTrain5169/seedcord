@@ -1,29 +1,22 @@
 import { parseArgs } from 'node:util';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { SeedcordError } from '@seedcord/errors/internal';
+import { SeedcordTypeError } from '@seedcord/errors/internal';
 
 import { applyFlags, noFlagName } from '#interview/applyFlags';
 import { STEPS } from '#interview/steps';
 
 import type { Answers } from '#interview/types';
 
-export interface CliInput {
-    supplied: Partial<Answers>;
-    install: boolean;
-    git: boolean;
-}
+export const VERBOSE_FLAG = 'verbose';
 
-const OPTIONS = {
-    ...Object.fromEntries(STEPS.map((step) => [step.flag.name, { type: 'string' }] as const)),
-    ...Object.fromEntries(
-        STEPS.filter((step) => step.flag.noFlag !== undefined).map(
-            (step) => [noFlagName(step.flag.name), { type: 'boolean' }] as const
-        )
-    ),
-    'no-install': { type: 'boolean' },
-    'no-git': { type: 'boolean' }
-} as const;
+const OPTIONS = Object.fromEntries([
+    ...STEPS.flatMap(({ flag }) => [
+        [flag.name, { type: 'parse' in flag ? 'string' : 'boolean' }] as const,
+        ...(flag.noFlag === undefined ? [] : [[noFlagName(flag.name), { type: 'boolean' }] as const])
+    ]),
+    [VERBOSE_FLAG, { type: 'boolean' }] as const
+]);
 
 const HELP_FLAGS = new Set(['--help', '-h']);
 const VERSION_FLAGS = new Set(['--version', '-v']);
@@ -37,11 +30,15 @@ export function wantsVersion(argv: string[]): boolean {
     return argv.some((argument) => VERSION_FLAGS.has(argument));
 }
 
+export function wantsVerbose(argv: string[]): boolean {
+    return argv.includes(`--${VERBOSE_FLAG}`);
+}
+
 function readArgv(argv: string[]): { values: Record<string, unknown>; positionals: string[] } {
     try {
         return parseArgs({ args: argv, options: OPTIONS, allowPositionals: true, strict: true });
     } catch (error) {
-        throw new SeedcordError(SeedcordErrorCode.CreateBadUsage, [
+        throw new SeedcordTypeError(SeedcordErrorCode.CreateBadUsage, [
             Error.isError(error) ? error.message : 'Could not read the command line.'
         ]);
     }
@@ -49,12 +46,12 @@ function readArgv(argv: string[]): { values: Record<string, unknown>; positional
 
 function directoryFrom(positionals: string[], flagged: unknown): string | undefined {
     if (positionals.length > 1) {
-        throw new SeedcordError(SeedcordErrorCode.CreateBadUsage, ['Pass one directory at most.']);
+        throw new SeedcordTypeError(SeedcordErrorCode.CreateBadUsage, ['Pass one directory at most.']);
     }
 
     const [bare] = positionals;
     if (bare !== undefined && typeof flagged === 'string' && flagged !== bare) {
-        throw new SeedcordError(SeedcordErrorCode.CreateInvalidAnswer, [
+        throw new SeedcordTypeError(SeedcordErrorCode.CreateInvalidAnswer, [
             'dir',
             'The directory was given twice. Pass it as an argument or as a flag.'
         ]);
@@ -63,7 +60,7 @@ function directoryFrom(positionals: string[], flagged: unknown): string | undefi
     return typeof flagged === 'string' ? flagged : bare;
 }
 
-export function parseInput(argv: string[]): CliInput {
+export function parseInput(argv: string[]): Partial<Answers> {
     const { values, positionals } = readArgv(argv);
     const directory = directoryFrom(positionals, values.dir);
 
@@ -74,9 +71,5 @@ export function parseInput(argv: string[]): CliInput {
         )
     );
 
-    return {
-        supplied: applyFlags(STEPS, raw),
-        install: values['no-install'] !== true,
-        git: values['no-git'] !== true
-    };
+    return applyFlags(STEPS, raw);
 }

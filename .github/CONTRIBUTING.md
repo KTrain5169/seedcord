@@ -170,12 +170,13 @@ Have it load the others only for these tasks:
 - [`changeset-guidelines`](../.agents/skills/changeset-guidelines/SKILL.md) before writing a changeset
 - [`envapt`](../.agents/skills/envapt/SKILL.md) when code reads config through `envapt`
 - [`release-version`](../.agents/skills/release-version/SKILL.md) for prepping a release, a maintainer-only job
+- [`test-performance`](../.agents/skills/test-performance/SKILL.md) when writing a test, a test helper, or a vitest config, or when a test is slow or fails only in the full suite
 
 Before you open a PR, run [`/branch-audit`](../.claude/commands/branch-audit.md) or have your agent run it. It reviews everything your branch changes against `next`. Fix what it finds before you push.
 
 ## CI
 
-[`checks.yml`](workflows/checks.yml) runs on every PR that is not a draft, and [`commitlint.yml`](workflows/commitlint.yml) checks every commit in it. CI runs the checks from `vp run prePush:all` on every package. A PR that fails CI will not get a detailed review.
+[`checks.yml`](workflows/checks.yml) runs on every PR, drafts included, and [`commitlint.yml`](workflows/commitlint.yml) checks every commit in it. CI runs the checks from `vp run prePush:all` on every package. A PR that fails CI will not get a detailed review.
 
 ## Questions
 

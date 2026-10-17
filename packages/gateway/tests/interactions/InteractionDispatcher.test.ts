@@ -15,8 +15,6 @@ import { it as base } from '#tests/utils/test-env';
 
 import type { SubscriptionData } from '@seedcord/core';
 
-import '#tests/utils/mock-env';
-
 interface PrivateInteractionDispatcher {
     maps: Record<InteractionKind, Map<string, unknown>>;
     init(): Promise<void>;
@@ -249,7 +247,7 @@ describe('InteractionDispatcher Integration', () => {
             () => null,
             (caught: unknown) => caught
         );
-        expect(error).toMatchObject({ code: SeedcordErrorCode.InteractionDuplicateRoute });
+        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreDuplicateName });
         const message = Error.isError(error) ? error.message : String(error);
         expect(message).toContain('slash:ping');
         expect(message).toContain('PingOne (');
@@ -303,7 +301,7 @@ describe('InteractionDispatcher Integration', () => {
             () => null,
             (caught: unknown) => caught
         );
-        expect(error).toMatchObject({ code: SeedcordErrorCode.DuplicateMiddleware });
+        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreDuplicateName });
         const message = Error.isError(error) ? error.message : String(error);
         expect(message).toContain('RateLimit');
     });

@@ -23,10 +23,8 @@ function projectFor(tsconfig?: string): Project {
     const config = {
         root: projectDir,
         configFile: join(projectDir, 'seedcord.config.ts'),
-        build:
-            tsconfig === undefined
-                ? { outDir: join(projectDir, 'dist') }
-                : { outDir: join(projectDir, 'dist'), tsconfig }
+        target: { kind: 'server', entry: join(projectDir, 'index.ts'), outDir: join(projectDir, 'dist') },
+        build: tsconfig === undefined ? {} : { tsconfig }
     } as ResolvedSeedcordConfig;
     const loader = {
         importModule: () => Promise.reject(new Error('the type checker loads no modules')),
@@ -38,13 +36,13 @@ function projectFor(tsconfig?: string): Project {
 describe('TypeChecker', () => {
     it('reports a build.tsconfig that points at a missing file', async () => {
         await expect(new TypeChecker().check(projectFor(join(projectDir, 'nope.json')))).rejects.toMatchObject({
-            code: SeedcordErrorCode.CliBuildTsconfigNotFound
+            code: SeedcordErrorCode.CliTsconfigNotFound
         });
     });
 
     it('reports a project with no tsconfig.json and no build.tsconfig', async () => {
         await expect(new TypeChecker().check(projectFor())).rejects.toMatchObject({
-            code: SeedcordErrorCode.CliBuildNoTsconfig
+            code: SeedcordErrorCode.CliTsconfigNotFound
         });
     });
 });

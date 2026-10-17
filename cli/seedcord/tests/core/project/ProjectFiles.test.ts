@@ -17,7 +17,7 @@ describe('ProjectFiles', () => {
     // the bot and its plugins run between the load checks and the bundle
     it('lists a folder created after the # check ran', async () => {
         const root = await projectRoot();
-        const files = new ProjectFiles(root, join(root, 'dist'), root);
+        const files = new ProjectFiles(root, root, join(root, 'dist'));
 
         await files.pathsWithHash();
         await mkdir(join(root, 'made-on-load'));
@@ -28,7 +28,7 @@ describe('ProjectFiles', () => {
     // root reads a folder whatever its mode.
     // windows ignores the posix mode bits.
     it.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
-        'throws CoreDirectoryUnreadable for a folder it cannot read',
+        'throws CorePathUnreadable for a folder it cannot read',
         async () => {
             const root = await projectRoot();
             const locked = join(root, 'locked');
@@ -36,8 +36,8 @@ describe('ProjectFiles', () => {
             await chmod(locked, 0o000);
             onTestFinished(() => chmod(locked, 0o700));
 
-            await expect(new ProjectFiles(root, join(root, 'dist'), root).pathsWithHash()).rejects.toMatchObject({
-                code: SeedcordErrorCode.CoreDirectoryUnreadable,
+            await expect(new ProjectFiles(root, root, join(root, 'dist')).pathsWithHash()).rejects.toMatchObject({
+                code: SeedcordErrorCode.CorePathUnreadable,
                 message: expect.stringContaining('locked') as string
             });
         }

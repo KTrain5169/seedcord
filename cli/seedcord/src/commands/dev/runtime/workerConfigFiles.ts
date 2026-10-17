@@ -13,14 +13,11 @@ export class WorkerConfigFiles {
     private readonly dir: string;
     private readonly localVars: Set<string>;
 
-    constructor(wranglerConfig: string, environment: string | undefined) {
+    constructor(cloudflareConfig: string, envFiles: readonly string[]) {
         // chokidar reports a mac temp dir by its resolved path
-        this.config = realpathSync(wranglerConfig);
+        this.config = realpathSync(cloudflareConfig);
         this.dir = dirname(this.config);
-        // wrangler's local development docs list these. CLOUDFLARE_ENV picks the environment
-        const files = ['.dev.vars', '.env', '.env.local'];
-        if (environment) files.push(`.dev.vars.${environment}`, `.env.${environment}`, `.env.${environment}.local`);
-        this.localVars = new Set(files);
+        this.localVars = new Set(envFiles);
     }
 
     public readonly includes = (path: string): boolean =>
@@ -34,7 +31,9 @@ export class WorkerConfigFiles {
         });
         // node throws process-wide without a listener here
         watcher.on('error', (error) => {
-            logger.warn(`Stopped watching ${paint.path(this.dir)} for wrangler config changes: ${error.message}`);
+            logger.warn(
+                `Stopped watching ${paint.path(this.dir)} for changes to cloudflare.config.ts and the env files: ${error.message}`
+            );
         });
         return watcher;
     }

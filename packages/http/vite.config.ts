@@ -3,7 +3,7 @@ import { createTsdownConfig } from '@seedcord/tsdown-config';
 import { createTestConfig } from '@seedcord/vitest-config';
 import { defineConfig } from 'vite-plus';
 
-// the project entries are separate configs and do not inherit the top-level resolve
+// the workerd project keeps its own config. extending the shared one breaks @discordjs/builders in the node project
 // const alias = aliasFromTsconfig(import.meta.url);
 
 export default defineConfig({
@@ -43,11 +43,10 @@ export default defineConfig({
             },
             {
                 // no node:http on workerd
-                // resolve: { alias },
+                extends: true,
                 test: {
                     name: 'node',
                     environment: 'node',
-                    testTimeout: 10_000,
                     setupFiles: ['./tests/setup.ts'],
                     include: ['tests/node/**/*.test.ts']
                 }

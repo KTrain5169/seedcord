@@ -5,6 +5,8 @@ import { pathToFileURL } from 'node:url';
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 
+import { asError } from '#src/misc/asError';
+
 import { isInside, resolveFromRoot } from './paths';
 
 import type * as fs from 'node:fs';
@@ -79,7 +81,9 @@ class DiskFiles implements FileSource {
         try {
             entries = await readdir(dir, { withFileTypes: true, recursive: true });
         } catch (err) {
-            throw new SeedcordError(SeedcordErrorCode.CoreDirectoryUnreadable, [dir], { cause: err });
+            throw new SeedcordError(SeedcordErrorCode.CorePathUnreadable, [dir, asError(err).message], {
+                cause: err
+            });
         }
 
         return entries
@@ -118,9 +122,10 @@ class BuiltFiles implements FileSource {
     private under<Loader>(loaders: Map<string, Loader>, dir: string): Loaders<Loader> {
         const resolved = path.resolve(dir);
         if (!isInside(this.root, resolved)) {
-            throw new SeedcordError(SeedcordErrorCode.CoreDirectoryOutsideRoot, [resolved, this.root]);
+            throw new SeedcordError(SeedcordErrorCode.CorePathOutsideRoot, [resolved, this.root]);
         }
-        if (!this.folders.has(resolved)) throw new SeedcordError(SeedcordErrorCode.CoreDirectoryUnreadable, [dir]);
+        if (!this.folders.has(resolved))
+            throw new SeedcordError(SeedcordErrorCode.CoreDirectoryNotBuilt, [dir, this.root]);
 
         const prefix = path.join(resolved, path.sep);
         return [...loaders].filter(([file]) => file.startsWith(prefix)).sort(([a], [b]) => (a < b ? -1 : 1));
@@ -198,7 +203,7 @@ interface TextFile {
  * It skips dotfiles and dot-folders. A `break` stops the walk before the next import.
  * A relative `dir` resolves against `root` from seedcord.config.ts, whichever file calls this.
  *
- * @throws A **SeedcordError** when the directory cannot be read or a file throws while importing, when `dir` is relative and the bot did not start through `seedcord dev` or its built output, or in a built bot when the directory is outside `root`.
+ * @throws A **SeedcordError** when the directory cannot be read or a file throws while importing, when `dir` is relative and the bot did not start through `seedcord dev` or its built output, or in a built bot when the directory is outside `root` or was missing when it was built.
  *
  * @example
  * ```ts
@@ -214,7 +219,9 @@ export async function* traverseDirectory(dir: string): AsyncGenerator<ImportedFi
         try {
             imported = await load();
         } catch (err) {
-            throw new SeedcordError(SeedcordErrorCode.CoreDirectoryImportFailed, [relativePath], { cause: err });
+            throw new SeedcordError(SeedcordErrorCode.CoreImportFailed, [relativePath, asError(err).message], {
+                cause: err
+            });
         }
         yield { fullPath, relativePath, imported };
     }
@@ -225,7 +232,7 @@ export async function* traverseDirectory(dir: string): AsyncGenerator<ImportedFi
  * It skips every .ts, .js, or .map file. Dotfiles and dot-folders are skipped too.
  * In a built bot the files come from the build output. A relative `dir` resolves against `root`, the same as {@link traverseDirectory}.
  *
- * @throws A **SeedcordError** when the directory or a file in it cannot be read, when `dir` is relative and the bot did not start through `seedcord dev` or its built output, or in a built bot when the directory is outside `root`.
+ * @throws A **SeedcordError** when the directory or a file in it cannot be read, when `dir` is relative and the bot did not start through `seedcord dev` or its built output, or in a built bot when the directory is outside `root` or was missing when it was built.
  *
  * @example
  * ```ts
@@ -241,7 +248,9 @@ export async function* readTextFiles(dir: string): AsyncGenerator<TextFile> {
         try {
             text = await load();
         } catch (err) {
-            throw new SeedcordError(SeedcordErrorCode.CoreFileUnreadable, [relativePath], { cause: err });
+            throw new SeedcordError(SeedcordErrorCode.CorePathUnreadable, [relativePath, asError(err).message], {
+                cause: err
+            });
         }
         yield { fullPath, relativePath, text };
     }

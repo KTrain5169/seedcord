@@ -1,29 +1,53 @@
+import { execFileSync } from 'node:child_process';
+import { stripVTControlCharacters } from 'node:util';
+
 import { describe, expect, it } from 'vite-plus/test';
 
-import { dashboardToggles, nextSteps, reproducingCommand } from '#cli/summary';
+import { dashboardToggles, nextSteps as paintedSteps, reproducingCommand } from '#cli/summary';
 import { version } from '#cli/version';
 import { STEPS } from '#interview/steps';
 
 import type { ScaffoldAnswers } from '#template/context';
+
+function shellWordsAfter(program: string, line: string): string[] {
+    expect(line.startsWith(`${program} `)).toBe(true);
+
+    const echo = String.raw`printf '%s\n' ${line.slice(program.length + 1)}`;
+    return execFileSync('sh', ['-c', echo], { encoding: 'utf8' }).trimEnd().split('\n');
+}
+
+function nextSteps(...args: Parameters<typeof paintedSteps>): string[] {
+    return paintedSteps(...args).map((step) => stripVTControlCharacters(step));
+}
 
 const GATEWAY: ScaffoldAnswers = {
     directory: 'my-bot',
     transport: 'gateway',
     capabilities: ['guild-messages'],
     token: 'aaa.bbb.ccc',
-    botColor: 'Blurple'
+    botColor: 'Blurple',
+    install: true,
+    git: true
 };
 
 const HTTP: ScaffoldAnswers = {
     directory: 'my-bot',
     transport: 'http',
     token: 'aaa.bbb.ccc',
-    botColor: 'Blurple'
+    botColor: 'Blurple',
+    install: true,
+    git: true
 };
 
 describe('nextSteps', () => {
     it('opens with the directory to change into', () => {
         expect(nextSteps(GATEWAY, { agent: 'pnpm', installed: true })[0]).toBe('cd my-bot');
+    });
+
+    it('keeps a spaced directory whole when a shell reads the cd line', () => {
+        const [cd = ''] = nextSteps({ ...GATEWAY, directory: 'my bots/bot' }, { agent: 'pnpm', installed: true });
+
+        expect(shellWordsAfter('cd', cd)).toEqual(['my bots/bot']);
     });
 
     it('uses the running package manager for the dev script', () => {
@@ -46,12 +70,11 @@ describe('nextSteps', () => {
         expect(nextSteps(HTTP, { agent: 'pnpm', installed: true }).join('\n')).not.toContain('.env');
     });
 
-    it('prints a step to add the token to .env before the dev script when you skipped it', () => {
+    it('lists a step to add the token to .env before the dev script when you skipped it', () => {
         const steps = nextSteps({ ...HTTP, token: null }, { agent: 'pnpm', installed: true });
-        const env = steps.findIndex((step) => step.includes('.env'));
 
-        expect(steps[env]).toContain('DISCORD_BOT_TOKEN');
-        expect(env).toBeLessThan(steps.indexOf('pnpm run dev'));
+        expect(steps).toContain('add DISCORD_BOT_TOKEN to .env');
+        expect(steps.indexOf('add DISCORD_BOT_TOKEN to .env')).toBeLessThan(steps.indexOf('pnpm run dev'));
     });
 });
 
@@ -111,8 +134,15 @@ describe('reproducingCommand', () => {
         const flagged = STEPS.filter((step) => step.flag.name !== 'dir' && step.skip?.(HTTP) !== true);
 
         for (const step of flagged) {
-            expect(command).toContain(`--${step.flag.name} `);
+            expect(command).toMatch(new RegExp(`--(no-)?${step.flag.name}( |$)`));
         }
+    });
+
+    it('carries a no to install or git as its --no- switch', () => {
+        const command = reproducingCommand({ ...HTTP, install: false, git: false }, 'pnpm');
+
+        expect(command).toContain('--no-install');
+        expect(command).toContain('--no-git');
     });
 
     it('adds --no-token to the rerun command when you skipped the token', () => {
@@ -120,6 +150,15 @@ describe('reproducingCommand', () => {
 
         expect(command).toContain('--no-token');
         expect(command).not.toContain('YOUR_TOKEN');
+    });
+
+    it('keeps a hex color and a spaced directory whole when a shell reads the line', () => {
+        const command = reproducingCommand({ ...HTTP, directory: 'my bots/bot', botColor: '#fe565a' }, 'pnpm');
+        const words = shellWordsAfter('pnpm create', command);
+
+        expect(words).toContain('my bots/bot');
+        expect(words[words.indexOf('--color') + 1]).toBe('#fe565a');
+        expect(words.at(-1)).toBe('--git');
     });
 
     it('leaves capabilities out on http', () => {

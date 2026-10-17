@@ -7,8 +7,6 @@ import { seedcordPath } from '#tests/utils/source-path';
 import { testConfig } from '#tests/utils/test-config';
 import { it } from '#tests/utils/test-env';
 
-import '#tests/utils/mock-env';
-
 interface PrivateEventDispatcher {
     init(): Promise<void>;
     onHmr(event: unknown): Promise<void>;
@@ -135,6 +133,6 @@ describe('the event middleware registry', () => {
                 (caught: unknown) => caught
             );
 
-        expect(error).toMatchObject({ code: SeedcordErrorCode.DuplicateMiddleware });
+        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreDuplicateName });
     });
 });

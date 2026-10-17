@@ -57,7 +57,7 @@
         "coverage": "vp test run --coverage"
     },
     "devDependencies": {
-        "@clack/prompts": "catalog:deps",
+        "@seedcord/cli-prompts": "workspace:^",
         "@seedcord/errors": "workspace:^",
         "@seedcord/eslint-config": "workspace:^",
         "@seedcord/tsconfig": "workspace:^",

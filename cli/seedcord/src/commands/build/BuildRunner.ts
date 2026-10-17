@@ -4,9 +4,9 @@ import { ProjectLoader } from '#core/config/ProjectLoader';
 import { importInstance } from '#core/modules/importInstance';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
 import { printResolvedConfig } from '#core/output/printResolvedConfig';
+import { startupShell } from '#core/viteMode';
 
 import { assertFoldersUnderRoot } from './builder/assertFoldersUnderRoot';
-import { assertOutDirSafe } from './builder/assertOutDirSafe';
 import { targetBuildFor } from './builder/targetBuildFor';
 import { TypeChecker } from './builder/TypeChecker';
 
@@ -35,10 +35,14 @@ interface BuildRunnerDeps {
 export class BuildRunner {
     constructor(private readonly deps: BuildRunnerDeps) {}
 
-    public static create(steps: Steps<BuildStep>): BuildRunner {
+    public static productionProjectLoader(shell = startupShell): ProjectLoader {
+        return new ProjectLoader(openModuleLoader, shell, 'production');
+    }
+
+    public static create(steps: Steps<BuildStep>, shell = startupShell): BuildRunner {
         return new BuildRunner({
             steps,
-            projectLoader: new ProjectLoader(openModuleLoader),
+            projectLoader: BuildRunner.productionProjectLoader(shell),
             typeChecker: new TypeChecker(),
             buildFor: targetBuildFor
         });
@@ -82,7 +86,6 @@ export class BuildRunner {
         const project = onFailure.use(await this.deps.projectLoader.open(projectDir));
         const build = this.deps.buildFor(project);
         build.check();
-        assertOutDirSafe(project.config.build.outDir, project.config.root);
 
         onFailure.move();
         return build;

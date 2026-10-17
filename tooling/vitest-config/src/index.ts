@@ -1,14 +1,23 @@
+import { extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { parseTsconfig } from 'get-tsconfig';
 import { configDefaults, defineConfig, mergeConfig } from 'vite-plus';
 import { deepMerge } from 'vite-plus/test/plugins/utils-helpers';
 
-import type { ViteUserConfig, AliasOptions  } from 'vite-plus';
+import type { ViteUserConfig, AliasOptions } from 'vite-plus';
 import type { InlineConfig } from 'vite-plus/test/node';
 
 const base = defineConfig({
     test: {
+        // isolating every file cost about 40% of the suite's CPU
+        isolate: false,
+        // on a dev machine with turbo.json's 2 tasks at once, 25% each leaves about half the cores free
+        ...(!process.env.CI && { maxWorkers: '25%' }),
+        // mergeConfig puts these before a package's own setupFiles
+        setupFiles: [fileURLToPath(new URL(`freshModules${extname(import.meta.url)}`, import.meta.url))],
+        // node_modules packages that keep state between test files
+        server: { deps: { inline: ['envapt', '@testing-library/react'] } },
         testTimeout: 10_000,
         passWithNoTests: true,
         exclude: [...configDefaults.exclude, '**/.claude/**'],

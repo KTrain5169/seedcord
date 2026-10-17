@@ -1,7 +1,6 @@
 import { once } from 'node:events';
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer as createHttpServer } from 'node:http';
-import { createServer as createNetServer } from 'node:net';
 import { join } from 'node:path';
 
 import { LoggerChannelRegistry } from '@seedcord/logger';
@@ -11,26 +10,40 @@ import { onTestFinished } from 'vite-plus/test';
 
 import { EdgeDevRuntime } from '#commands/dev/runtime/EdgeDevRuntime';
 import { toSeedcordInstance } from '#core/modules/importInstance';
-import { copyEdgeBotForTest } from '#tests/commands/build/edgeBot';
+import { StateFolder } from '#core/state/StateFolder';
+import { copyEdgeBot } from '#tests/commands/build/edgeBot';
 import { ED25519_KEY_BYTES, FAKE_TOKEN } from '#tests/commands/build/smoke';
+import { silentLogger } from '#tests/silentLogger';
 import { resolveDefaultExport } from '#utils/resolveDefaultExport';
 
 import type { DevEventHandler } from '#commands/dev/runtime/events';
-import type { ResolvedSeedcordConfig } from '#core/config/schema';
+import type { ResolvedEdgeTarget, ResolvedSeedcordConfig } from '#core/config/schema';
 import type { LogRecord } from '@seedcord/types';
 import type { SeedcordInstance } from '@seedcord/types/internal';
 import type { AddressInfo } from 'node:net';
 
-export function edgeConfig(projectDir: string): ResolvedSeedcordConfig {
+// a port probed up front can go to another worker before the runtime binds it
+const ANY_PORT = 0;
+
+function edgeTarget(projectDir: string, port: number): ResolvedEdgeTarget {
+    return { kind: 'edge', cloudflareConfig: join(projectDir, 'cloudflare.config.ts'), viteRoot: projectDir, port };
+}
+
+function configWith(projectDir: string, target: ResolvedEdgeTarget, viteMode: string): ResolvedSeedcordConfig {
     // justified: the runtime reads only these fields
     return {
         configFile: join(projectDir, 'seedcord.config.ts'),
         root: join(projectDir, 'src'),
         instance: join(projectDir, 'src/bot.ts'),
-        target: { kind: 'edge', wranglerConfig: join(projectDir, 'wrangler.jsonc') },
-        build: { outDir: join(projectDir, 'dist') },
+        target,
+        build: {},
+        viteMode,
         tunnel: { mode: 'quick' }
     } as ResolvedSeedcordConfig;
+}
+
+export function edgeConfig(projectDir: string, port = ANY_PORT): ResolvedSeedcordConfig {
+    return configWith(projectDir, edgeTarget(projectDir, port), 'development');
 }
 
 export const liveVars = { DISCORD_BOT_TOKEN: FAKE_TOKEN, DISCORD_PUBLIC_KEY: 'ab'.repeat(ED25519_KEY_BYTES) };
@@ -104,35 +117,23 @@ export async function editFile(path: string, edit: (text: string) => string): Pr
     await writeFile(path, edit(await readFile(path, 'utf8')));
 }
 
-async function freePort(): Promise<number> {
-    await using probe = createNetServer().listen(0);
-    await once(probe, 'listening');
-    // justified: address() is AddressInfo once a TCP server is listening
-    const { port } = probe.address() as AddressInfo;
-    return port;
-}
-
-async function setDevPort(projectDir: string, port: number): Promise<void> {
-    await editFile(join(projectDir, 'wrangler.jsonc'), (text) =>
-        text.replace('"compatibility_date"', `"dev": { "port": ${String(port)} },\n    "compatibility_date"`)
-    );
-}
-
-// wrangler reads .dev.vars beside the wrangler config into the worker's env
+// the plugin reads .dev.vars beside cloudflare.config.ts into the worker's env
 export async function writeDevVars(projectDir: string, vars: Record<string, string>): Promise<void> {
     const lines = Object.entries(vars).map(([key, value]) => `${key}=${value}\n`);
     await writeFile(join(projectDir, '.dev.vars'), lines.join(''));
 }
 
-// two edge dev runs on 8787 at once fail with EADDRINUSE
-export async function edgeProject(
-    vars: Record<string, string> = liveVars
-): Promise<{ projectDir: string; port: number }> {
-    const projectDir = await copyEdgeBotForTest();
+interface EdgeProject extends AsyncDisposable {
+    readonly projectDir: string;
+}
+
+export async function edgeProject(vars: Record<string, string> = liveVars): Promise<EdgeProject> {
+    await using cleanup = new AsyncDisposableStack();
+    const { projectDir, remove } = await copyEdgeBot();
+    cleanup.defer(remove);
     await writeDevVars(projectDir, vars);
-    const port = await freePort();
-    await setDevPort(projectDir, port);
-    return { projectDir, port };
+    const owned = cleanup.move();
+    return { projectDir, [Symbol.asyncDispose]: () => owned.disposeAsync() };
 }
 
 // the worker's records reach the CLI's logger the way a node bot's records do
@@ -176,14 +177,35 @@ export async function asDevelopment(): Promise<() => Promise<string>> {
 
 export const messagesOf = (records: LogRecord[]): string[] => records.map((record) => record.message);
 
+interface StartedRuntime extends AsyncDisposable {
+    readonly runtime: EdgeDevRuntime;
+    readonly instance: SeedcordInstance;
+    // the endpoint's port, once startBot has finished
+    port(): number;
+}
+
 export async function startedRuntime(
     projectDir: string,
-    onEvent?: DevEventHandler
-): Promise<{ runtime: EdgeDevRuntime; instance: SeedcordInstance }> {
-    const config = edgeConfig(projectDir);
-    const runtime = new EdgeDevRuntime({ kind: 'edge', wranglerConfig: join(projectDir, 'wrangler.jsonc') });
-    onTestFinished(() => runtime.stop());
-    await runtime.start(onEvent ? { config, onEvent } : { config });
+    onEvent?: DevEventHandler,
+    { devPort = ANY_PORT, viteMode = 'development' } = {}
+): Promise<StartedRuntime> {
+    const target = edgeTarget(projectDir, devPort);
+    const config = configWith(projectDir, target, viteMode);
+    const runtime = new EdgeDevRuntime(target);
+    let listening: number | undefined;
+    const recordPort: DevEventHandler = (event) => {
+        if (event.type === 'server-listening') listening = event.port;
+        onEvent?.(event);
+    };
+    await using cleanup = new AsyncDisposableStack();
+    cleanup.defer(() => runtime.stop());
+    await runtime.start({ config, state: new StateFolder(projectDir, silentLogger), onEvent: recordPort });
     const { module } = await runtime.loadEntry();
-    return { runtime, instance: toSeedcordInstance(await resolveDefaultExport(module), config.instance) };
+    const instance = toSeedcordInstance(await resolveDefaultExport(module), config.instance);
+    const port = (): number => {
+        if (listening === undefined) throw new Error('The endpoint is not listening yet. Await startBot first.');
+        return listening;
+    };
+    const owned = cleanup.move();
+    return { runtime, instance, port, [Symbol.asyncDispose]: () => owned.disposeAsync() };
 }

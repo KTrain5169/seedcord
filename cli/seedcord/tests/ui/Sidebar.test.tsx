@@ -1,3 +1,4 @@
+import { settled } from '@seedcord/cli-prompts/testing';
 import { Box, Text, measureElement } from 'ink';
 import { render } from 'ink-testing-library';
 import React, { useLayoutEffect, useRef, useState } from 'react';
@@ -9,8 +10,6 @@ import { INITIAL_CURSOR } from '#ui/filterCursor';
 import { DevStore } from '#ui/stores/DevStore';
 import { LogStore } from '#ui/stores/LogStore';
 import { COMPACT_ROWS, FULL_ROWS } from '#ui/tier';
-
-import { settled } from './settled';
 
 import type { TunnelStatus } from '#commands/dev/tunnel/TunnelCoordinator';
 import type { LogFilters } from '#ui/devPrefs';

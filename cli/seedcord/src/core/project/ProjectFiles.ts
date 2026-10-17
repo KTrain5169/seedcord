@@ -3,6 +3,7 @@ import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
+import { asError } from '@seedcord/utils/internal';
 import { isInside } from '@seedcord/utils/node/internal';
 
 // the bot writes its log files to logs/ in the folder it starts in
@@ -37,11 +38,11 @@ export class ProjectFiles {
 
     constructor(
         private readonly root: string,
-        outDir: string,
-        private readonly configDir: string
+        private readonly configDir: string,
+        outDir?: string
     ) {
         const projectFolders = this.rootIsConfigDir() ? PROJECT_FOLDERS.map((name) => join(root, name)) : [];
-        this.skippedFolders = [outDir, ...projectFolders];
+        this.skippedFolders = outDir === undefined ? projectFolders : [outDir, ...projectFolders];
     }
 
     // vite also passes virtual ids like \0seedcord:entry here
@@ -89,7 +90,9 @@ export class ProjectFiles {
 
     private async *entriesUnder(dir: string): AsyncGenerator<ProjectEntry> {
         const entries = await readdir(dir, { withFileTypes: true }).catch((error: unknown) => {
-            throw new SeedcordError(SeedcordErrorCode.CoreDirectoryUnreadable, [dir], { cause: error });
+            throw new SeedcordError(SeedcordErrorCode.CorePathUnreadable, [dir, asError(error).message], {
+                cause: error
+            });
         });
         for (const entry of entries) {
             const path = join(dir, entry.name);

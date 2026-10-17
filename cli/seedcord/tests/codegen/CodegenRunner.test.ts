@@ -3,9 +3,10 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 import { BuilderComponent, RegisterCommand } from '@seedcord/core';
+import { CommandMetadataKey } from '@seedcord/core/internal';
 import { SeedcordErrorCode, isSeedcordError } from '@seedcord/errors';
 import { HostAugmentTarget, HostPluginKeys, SeedcordBrand } from '@seedcord/types/internal';
-import { ApplicationCommandType } from 'discord.js';
+import { ApplicationCommandType, ButtonStyle } from 'discord.js';
 import { assert, describe, expect, it, onTestFinished } from 'vite-plus/test';
 
 import { AugmentationBuilder } from '#commands/codegen/AugmentationBuilder';
@@ -51,8 +52,8 @@ function configAt(root: string, instance: string): ResolvedSeedcordConfig {
         root,
         instance,
         configFile: resolve(root, 'seedcord.config.ts'),
-        target: { kind: 'server', entry: resolve(root, 'index.ts') },
-        build: { outDir: resolve(root, 'dist') }
+        target: { kind: 'server', entry: resolve(root, 'index.ts'), outDir: resolve(root, 'dist') },
+        build: {}
     } as ResolvedSeedcordConfig;
 }
 
@@ -287,7 +288,7 @@ describe('CodegenRunner', () => {
         expect(written).toContain("ban: { options: {}; cache: 'cached' }");
     });
 
-    it('throws CliCommandsDirUnreadable when the top-level commands dir is unreadable', async () => {
+    it('throws CorePathUnreadable when the top-level commands dir is unreadable', async () => {
         const root = await tempDir('codegen-');
         const missing = join(root, 'does-not-exist');
 
@@ -298,11 +299,12 @@ describe('CodegenRunner', () => {
             caught = error;
         }
 
-        expect(caught).toMatchObject({ code: SeedcordErrorCode.CliCommandsDirUnreadable });
+        expect(caught).toMatchObject({ code: SeedcordErrorCode.CorePathUnreadable });
         expect((caught as Error).message).toContain(missing);
     });
 
-    it('warns and skips a nested unreadable subdir instead of throwing', async () => {
+    // root reads a 0o000 folder anyway
+    it.skipIf(process.getuid?.() === 0)('throws CorePathUnreadable for a nested unreadable subdir', async () => {
         const root = await tempDir('codegen-');
         const cmdDir = await tempDir('cmds-');
         await writeFile(join(cmdDir, 'ban.ts'), 'export {};', 'utf8');
@@ -310,22 +312,32 @@ describe('CodegenRunner', () => {
         await mkdir(locked);
         await writeFile(join(locked, 'x.ts'), 'export {};', 'utf8');
         await chmod(locked, 0o000);
+        onTestFinished(() => chmod(locked, 0o755));
 
-        const warnings: string[] = [];
-        try {
-            await scanRunner(
-                root,
-                cmdDir,
-                () => ({ BanCommand }),
-                silentLogger({ warn: (message) => warnings.push(String(message)) })
-            ).run(false);
-        } finally {
-            await chmod(locked, 0o755);
+        const run = scanRunner(root, cmdDir, () => ({ BanCommand }), silentLogger()).run(false);
+
+        await expect(run).rejects.toMatchObject({ code: SeedcordErrorCode.CorePathUnreadable });
+        await expect(run).rejects.toThrow(locked);
+    });
+
+    it('throws CliCommandNotACommand for a registered class whose component is not a command', async () => {
+        const root = await tempDir('codegen-');
+        const cmdDir = await tempDir('cmds-');
+        await writeFile(join(cmdDir, 'confirm.ts'), 'export {};', 'utf8');
+
+        class ConfirmButton extends BuilderComponent<'button'> {
+            public constructor() {
+                super('button');
+                this.instance.setCustomId('confirm').setLabel('Confirm').setStyle(ButtonStyle.Primary);
+            }
         }
+        // a cast or plain JS gets past RegisterCommand's types
+        Reflect.defineMetadata(CommandMetadataKey, { scope: 'global' }, ConfirmButton);
 
-        const written = await readFile(resolve(root, OUTPUT), 'utf8');
-        expect(written).toContain("ban: { options: {}; cache: 'cached' }");
-        expect(warnings.some((warning) => warning.includes('locked'))).toBe(true);
+        const run = scanRunner(root, cmdDir, () => ({ ConfirmButton }), silentLogger()).run(false);
+
+        await expect(run).rejects.toMatchObject({ code: SeedcordErrorCode.CliCommandNotACommand });
+        await expect(run).rejects.toThrow('ConfirmButton');
     });
 
     it('resolves the commands path against root', async () => {
@@ -339,7 +351,7 @@ describe('CodegenRunner', () => {
             caught = error;
         }
 
-        expect(caught).toMatchObject({ code: SeedcordErrorCode.CliCommandsDirUnreadable });
+        expect(caught).toMatchObject({ code: SeedcordErrorCode.CorePathUnreadable });
         expect((caught as Error).message).toContain(resolve(root, relativePath));
     });
 
@@ -487,7 +499,7 @@ describe('CodegenRunner', () => {
             .run(false)
             .catch((error: unknown) => error);
 
-        assert(isSeedcordError(caught, 'SeedcordAggregateError', SeedcordErrorCode.CliCommandProblems));
+        assert(isSeedcordError(caught, 'SeedcordAggregateError', SeedcordErrorCode.CliProblems));
         expect(caught.errors).toMatchObject([
             {
                 code: SeedcordErrorCode.CliCommandConstructorThrew,
@@ -531,7 +543,7 @@ describe('CodegenRunner', () => {
             .run(false)
             .catch((error: unknown) => error);
 
-        assert(isSeedcordError(caught, 'SeedcordAggregateError', SeedcordErrorCode.CliCommandProblems));
+        assert(isSeedcordError(caught, 'SeedcordAggregateError', SeedcordErrorCode.CliProblems));
         expect(caught.errors).toMatchObject([
             { code: SeedcordErrorCode.CliCommandConstructorThrew },
             { code: SeedcordErrorCode.CliCommandConstructorThrew },

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-import { lowestTypescript } from '#src/lib/typescript-floor';
+import { errorsInside, lowestTypescript } from '#src/lib/typescript-floor';
 import { Workspace } from '#src/lib/Workspace';
 
 if (process.env.CI !== 'true') {
@@ -18,8 +18,8 @@ function pnpm(...args: string[]): void {
     execFileSync('pnpm', args, { cwd: root, stdio: 'inherit' });
 }
 
-// current @types/node no longer exports the InspectOptionsStylized that discord.js's @sapphire/shapeshift imports
-const SHAPESHIFT_ERROR = /@sapphire\/shapeshift\/.*error TS2305/;
+// cloudflare's runtime types and @types/node declare the same globals
+const builtTypes = workspace.published().map((one) => `${path.relative(root, one.dir)}/dist/`);
 
 const typesFloor = lowestTypescript(workspaceYaml, 'consumerTypes');
 for (const mock of ['gateway', 'http', 'edge']) {
@@ -31,7 +31,7 @@ for (const mock of ['gateway', 'http', 'edge']) {
     const errors = stdout.split('\n').filter((line) => line.includes('error TS'));
     if (status !== 0 && errors.length === 0) throw new Error(`tsc did not run for mocks/${mock}:\n${stderr}`);
 
-    const unexpected = errors.filter((line) => !SHAPESHIFT_ERROR.test(line));
+    const unexpected = errorsInside(errors, [...builtTypes, `mocks/${mock}/src/`]);
     if (unexpected.length > 0) {
         throw new Error(`mocks/${mock} fails on TypeScript ${typesFloor}:\n${unexpected.join('\n')}`);
     }

@@ -10,7 +10,7 @@ seedcord is pre-1.0. Breaking changes go in minor versions. Pick the cleanest de
 
 ## Load these skills first
 
-Before any work, load the four skills in [`.agents/skills`](.agents/skills): `code-quality` and `tdd` with every file in their folders, plus `code-commenting-guidelines` and `writing-voice`. Load `guide-voice`, `changeset-guidelines`, `envapt`, or `release-version` when the task touches what each covers. [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md) lists when.
+Before any work, load the four skills in [`.agents/skills`](.agents/skills): `code-quality` and `tdd` with every file in their folders, plus `code-commenting-guidelines` and `writing-voice`. Load `guide-voice`, `changeset-guidelines`, `envapt`, `release-version`, or `test-performance` when the task touches what each covers. [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md) lists when.
 
 ---
 
@@ -72,10 +72,23 @@ When someone asks how seedcord does something, answer for gateway and for http. 
 ## Other important rules
 
 - **Never throw a raw `Error`.** Framework code throws `SeedcordError`, `SeedcordTypeError`, `SeedcordRangeError`, or `SeedcordAggregateError` from `@seedcord/errors`, each with a registered code. Translate a third-party throw before it reaches a consumer if it makes sense to do so.
-    - **Write the message for whoever hit it.** Say what went wrong, and give them enough to act. Sometimes that means naming the likely cause, sometimes the env var to check, sometimes the one line that fixes it. Read it back as the developer who just got it at 2am, and cut anything they cannot use. Two throw sites that mean different things get different codes or better message arguments, because one message covering both tells the reader nothing.
+    - **Reuse a code before you add one.** Search all of `ErrorCodes.ts`, every package's range included, for a code that describes the same failure, and pass what differs as message arguments. Add a code only when no existing code describes the failure, or when the fix differs from what the look-alike asks for. Two codes for one failure means a reader who searches one code misses the other's answers.
+    - **Pick the class by what went wrong.** `SeedcordTypeError` when the caller passed a value of the wrong kind or a combination the API rejects, like a decorator on the wrong class or a color that doesn't parse. `SeedcordRangeError` when a number falls outside its limits. `SeedcordAggregateError`, through `throwSingleOrAggregate`, when one pass collects several separate problems and reports them together. `SeedcordError` for a failure at run time, like I/O, Discord, the environment, or state.
+    - **Write the message for whoever hit it.** A message can carry four parts. Give it every part the reader needs to fix the problem without opening the source:
+        - **What** went wrong, stated as the fact.
+        - **Where** it came from: the class, file, key, route, env var, or value, painted per the rule below.
+        - **Why** it happened, when the what alone doesn't explain it.
+        - **What to do**, the one step that fixes it. A vague step like "check your config" counts as missing.
+
+        Read it back as the developer who just got it at 2am, and cut anything they cannot use. Two throw sites that mean different things get different codes or better message arguments, because one message covering both tells the reader nothing.
 - **Routes, class names, ids, paths, and package names get a `paint` tone** from `@seedcord/errors`. A package name gets `bold`. `paint` also carries `bold`, `italic` and `underline` for the parts that use no color. Multi-line output goes through `logger.utils`.
 - **Derive types from their source.** A constructor shape is `TypedConstructor<typeof X>`. A member union comes from `keyof`, an indexed access, or `TypedExtract`. A hand-written copy drifts.
+- **Check what a dependency exports before you write it yourself.** [Check 9](.agents/skills/code-quality/PREVENT-REINVENTION.md#9-does-a-dependency-already-in-the-tree-export-it) has the steps.
 - **Write each rule once.** When two places have to compute the same answer, like a path, a cache key, a wire format, or a validity check, both call one function/method. A comment like "keep in sync with X" means the rule exists twice. Extract the function and delete the comment. When the two copies can't share code, like a value the build writes into generated source and the runtime reads back, add a test that fails once they disagree. Without one, nothing catches two copies drifting apart. Each side's tests still pass, and someone reading one copy has no way to find the other.
+- **Use what the language and the runtime already ship.** Before writing any helper, go looking for a built-in that does the job. Memory lags behind both, so search MDN and the Node docs, and read the `lib` declarations TypeScript ships. A hand-rolled copy of something the platform provides handles fewer cases and has no test suite behind it.
+    - **Suspect your own helper first.** Code that formats, parses, compares, or walks plain data, etc, is usually something the platform already does. Search for it before you write it, and look again when you read one that already exists.
+    - **Check that every runtime the code reaches has it.** A package runs on the oldest Node in its `engines` field, and anything the edge build imports also runs in workerd. Confirm the built-in exists in both before you use it.
+    - **Keep one copy.** When several packages need the same built-in wrapped, put the wrapper in `@seedcord/utils`. A package that can't import utils calls the built-in directly.
 - **Only implement what was asked.** Surface additions as a question first. Wait for the third use before extracting an abstraction.
 - **No dead code.** Before adding `export`, confirm something outside the file names the symbol. A symbol that exists only for a test belongs in the test folder.
 - **Grep every consuming surface before deleting anything.** That includes markdown and generated output. Show no callers or name the replacement.

@@ -1,28 +1,32 @@
-import { LEVEL_COLOR, LoggerChannelRegistry } from '@seedcord/logger';
+import { LoggerChannelRegistry } from '@seedcord/logger';
 import { formatBody } from '@seedcord/logger/node';
-import chalk from 'chalk';
+
+import { levelMark } from './levelMark';
 
 import type { Terminal } from './terminal';
 import type { LogLevel, LogRecord } from '@seedcord/types';
 
 export interface HeldOutput {
-    readonly writeToTerminal: (text: string) => void;
     readonly release: () => string[];
 }
 
-const LEVELS_SHOWN_WITHOUT_VERBOSE: ReadonlySet<LogLevel> = new Set(['error', 'warn', 'info']);
-
-const LEVEL_MARK: Record<LogLevel, string> = { error: '⬢', warn: '▲', info: '●', debug: '◆', trace: '·' };
+const LEVELS_SHOWN_RIGHT_AWAY: ReadonlySet<LogLevel> = new Set(['error', 'warn']);
+const LEVELS_SHOWN_WITHOUT_VERBOSE: ReadonlySet<LogLevel> = new Set(['info']);
 
 function stepLine(record: LogRecord): string {
-    return `${chalk.hex(LEVEL_COLOR[record.level])(LEVEL_MARK[record.level])} ${formatBody(record)}`;
+    return `${levelMark(record.level)} ${formatBody(record)}`;
 }
 
 function textOf(chunk: string | Uint8Array): string {
     return typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8');
 }
 
-export function holdOutput(stdout: Terminal, stderr: Terminal, verbose: boolean): HeldOutput {
+export function holdOutput(
+    stdout: Terminal,
+    stderr: Terminal,
+    verbose: boolean,
+    showNow: (line: string) => void
+): HeldOutput {
     const held: string[] = [];
     const writeStdout = stdout.write.bind(stdout);
     const writeStderr = stderr.write.bind(stderr);
@@ -39,16 +43,14 @@ export function holdOutput(stdout: Terminal, stderr: Terminal, verbose: boolean)
         {
             kind: 'capture',
             onLog: (record) => {
-                if (verbose || LEVELS_SHOWN_WITHOUT_VERBOSE.has(record.level)) held.push(`${stepLine(record)}\n`);
+                if (LEVELS_SHOWN_RIGHT_AWAY.has(record.level)) showNow(stepLine(record));
+                else if (verbose || LEVELS_SHOWN_WITHOUT_VERBOSE.has(record.level)) held.push(`${stepLine(record)}\n`);
             }
         },
         { muteConsole: true }
     );
 
     return {
-        writeToTerminal: (text) => {
-            writeStdout(text);
-        },
         release: () => {
             stdout.write = writeStdout;
             stderr.write = writeStderr;

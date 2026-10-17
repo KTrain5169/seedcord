@@ -69,6 +69,7 @@
             "ignoreDependencies": ["discord.js"]
         },
         "tooling/eslint-utils": {},
+        "tooling/cli-prompts": {},
         "packages/event-emitter": {
             "entry": ["**/*.types-test.ts"]
         },
@@ -103,8 +104,8 @@
             "entry": ["**/*.types-test.ts"]
         },
         "cli/seedcord": {
-            "entry": ["tests/fixtures/*/**/*.{ts,js}"],
-            "ignoreDependencies": ["cloudflare"]
+            "entry": ["**/*.types-test.ts", "tests/fixtures/*/**/*.{ts,js}"],
+            "ignoreDependencies": ["cloudflare", "@leeoniya/ufuzzy", "cli-spinners"]
         },
         "cli/create-seedcord": {
             "entry": ["**/*.types-test.ts"]

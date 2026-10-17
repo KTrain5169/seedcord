@@ -23,7 +23,7 @@
 
 ## About
 
-`seedcord` is the CLI a bot project runs during development and at build time. It reads `seedcord.config.ts` and gives you a dev server with hot reload, a production build, the codegen that types your commands, and a cleanup tool for stale guild commands.
+`seedcord` is the CLI a bot project runs during development and at build time. It reads `seedcord.config.ts` and gives you a dev server with hot reload, a production build, the codegen that types your commands, and a way to deploy those commands to Discord.
 
 Until v1.0.0, minor versions can break.
 
@@ -44,13 +44,31 @@ pnpm add -D seedcord
 | `seedcord dev` | runs the bot from the config file, reloading changed modules in place |
 | `seedcord build` | type checks the bot and bundles it into `outDir` with Vite. An edge bot builds into a Cloudflare worker |
 | `seedcord codegen` | writes the typed augmentations for your commands and config |
-| `seedcord commands` | inspects and cleans commands already deployed to Discord |
+| `seedcord commands` | deploys, lists and cleans up your commands on Discord |
 
 <!-- prettier-ignore-end -->
 
 `codegen --check` verifies the committed augmentations match your source. Run it in CI.
 
-`commands --clean` reports guild commands that duplicate a global one. It runs as a dry run until you pass `--apply`.
+`commands` reads `DISCORD_BOT_TOKEN` from your environment or `.env`:
+
+```sh
+seedcord commands                           # pick what to do from a menu
+seedcord commands deploy                    # show what changes, then ask before deploying
+seedcord commands deploy --yes              # deploy without asking
+seedcord commands deploy --force            # also deploy scopes that match the last deploy
+seedcord commands list                      # show the commands Discord has
+seedcord commands list --all-guilds         # include every guild the bot is in
+seedcord commands list --json               # print them as JSON
+seedcord commands clean                     # pick guilds, then delete commands that duplicate a global one
+seedcord commands clean --all-guilds        # list those duplicates in every guild
+seedcord commands clean --all-guilds --yes  # delete them
+seedcord commands purge                     # pick where, then delete every command there
+seedcord commands purge --guilds 111 222    # list every command in those guilds
+seedcord commands purge --global --yes      # delete every global command
+```
+
+In CI, or anywhere without a terminal, nothing changes on Discord unless you pass `--yes`.
 
 On the http transport, `dev` also opens a cloudflared tunnel and points Discord's interactions URL at it.
 
@@ -66,20 +84,42 @@ export default defineConfig({
 });
 ```
 
+`ENVIRONMENT`, `ENV`, `NODE_ENV` or `MODE` in your shell sets the Vite mode, as in `ENV=staging pnpm build`. The CLI loads the `.env.<mode>` files for it. It reads these variables from your shell only, because `.env` usually holds your dev environment. With none of them set, `seedcord build` runs in `production` and the other commands in `development`. The mode has to be one of envapt's four environments: `development`, `staging`, `production` or `test`. Any other value throws `ConfigInvalidEnv`.
+
 ## Edge bots
 
-A `wrangler.jsonc`, `wrangler.json` or `wrangler.toml` beside `seedcord.config.ts` makes the bot an edge bot, for Cloudflare Workers. An edge bot needs three things:
+A `cloudflare.config.ts` beside `seedcord.config.ts` makes the bot an edge bot, for Cloudflare Workers. An edge bot needs three things:
 
 - `"customConditions": ["workerd"]` in its tsconfig
 - a `root` in `seedcord.config.ts` that points at the bot's code, like `'./src'`, and no `entry`
-- `@cloudflare/vite-plugin` and `wrangler` as dev dependencies
+- `@cloudflare/vite-plugin` 2 and `cf` as dev dependencies
 
 ```sh
-pnpm add -D @cloudflare/vite-plugin wrangler
+pnpm add -D @cloudflare/vite-plugin@2.0.0-beta.v.0 cf@1.0.0-beta.17
 ```
 
-`seedcord dev` runs the bot in workerd through `@cloudflare/vite-plugin`. It listens on the `dev.port` in your wrangler config, or on 8787 if the config doesn't set one. The worker reads its secrets from `.dev.vars` or `.env` beside the wrangler config. A saved handler reloads in place. After you change `.dev.vars`, `.env` or the wrangler config, press `r` to restart.
+The worker's `env` holds only the bindings that `cloudflare.config.ts` declares, so declare every secret the bot reads. The CLI throws if `cloudflare.config.ts` sets `entrypoint`, because seedcord builds the worker's entry from `instance`.
 
-`seedcord build` bundles the worker into `outDir`, then starts it once in workerd to check that it loads. Run `wrangler deploy` from the project folder to deploy it.
+```ts
+import { bindings, defineConfig } from 'cf/config';
 
-Before it bundles, the build reads the public key, command ids and emoji ids from Discord with `DISCORD_BOT_TOKEN` from your environment or `.env`, and writes them into the worker. Every command in your code has to be deployed already, or the build stops and lists the ones that aren't.
+export default defineConfig({
+    worker: {
+        name: 'my-bot',
+        compatibilityDate: '2026-08-04',
+        env: { DISCORD_BOT_TOKEN: bindings.secret() }
+    }
+});
+```
+
+`bindings.secret()` declares `DISCORD_BOT_TOKEN` without a value, so the token stays out of the file. Its value comes from your local env files in dev and from the secrets you upload when you deploy.
+
+`seedcord dev` runs the bot in workerd through `@cloudflare/vite-plugin`. It listens on `port` from `seedcord.config.ts`, or on 3000 if you leave it out. The worker gets its secrets from `.dev.vars`, or from the `.env` files and your shell when there's no `.dev.vars`. A saved handler reloads in place. After you change `cloudflare.config.ts`, a `.dev.vars` file or a `.env` file, press `r` to restart.
+
+`seedcord build` writes the worker to `.cloudflare/output`, then starts it once in workerd to check that it loads. Deploy it with `cf deploy --prebuilt`. Cloudflare refuses to deploy a worker while one of its declared secrets has no value, so the first deploy of a new worker needs `--secrets-file` with a value for each one.
+
+A `cloudflare.config.ts` that exports a function gets the Vite mode as `mode`. Local env files never replace a `bindings.text()` value, so read `mode` for a value that differs per environment, as in `ENV: bindings.text(mode)`.
+
+Cloudflare's config loader throws on Bun, so run the CLI on Node for an edge bot. `bun run dev` runs it on Node. `bun --bun run dev` runs it on Bun.
+
+Before it bundles, the build reads the public key, command ids and emoji ids from Discord with `DISCORD_BOT_TOKEN` from your environment or `.env`, and writes them into the worker. Every command in your code has to be deployed already, or the build stops and lists the ones that aren't. Run `seedcord commands deploy` first.

@@ -1,3 +1,4 @@
+import { settled, stableFrame } from '@seedcord/cli-prompts/testing';
 import React from 'react';
 import { describe, expect, it, vi } from 'vite-plus/test';
 
@@ -10,12 +11,10 @@ import { COMPACT_ROWS } from '#ui/tier';
 
 import { renderAt } from './renderAt';
 import { renderOnScreen } from './renderOnScreen';
-import { settled, stableFrame } from './settled';
 
 import type { LogFilters } from '#ui/devPrefs';
 import type { LogRecord } from '@seedcord/types';
 import type { ComponentProps, ReactElement } from 'react';
-
 
 const FULL = { rows: 40, columns: 120 };
 const COMPACT = { rows: COMPACT_ROWS, columns: 120 };
@@ -129,16 +128,24 @@ describe('DevApp tiers', () => {
         unmount();
     });
 
+    // nothing animates while offline
     it('redraws the whole screen when the terminal gets wider', async () => {
+        const offlineStore = (): DevStore => {
+            const store = runningStore();
+            store.setPhase('disconnected');
+            return store;
+        };
         const app = (): ReactElement => (
-            <DevApp store={runningStore()} onReady={() => undefined} initialFilters={NO_FILTERS} />
+            <DevApp store={offlineStore()} onReady={() => undefined} initialFilters={NO_FILTERS} />
         );
         const widened = renderOnScreen(app(), { rows: 40, columns: 90 });
         await stableFrame(widened.screen);
         widened.resize(FULL);
 
         const fresh = renderOnScreen(app(), FULL);
-        expect(await stableFrame(widened.screen)).toBe(await stableFrame(fresh.screen));
+        const expected = await stableFrame(fresh.screen);
+        expect(expected).toContain('○ offline');
+        expect(await stableFrame(widened.screen)).toBe(expected);
 
         widened.unmount();
         fresh.unmount();

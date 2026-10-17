@@ -1,4 +1,5 @@
 import { Commands } from '@seedcord/core';
+import { GLOBAL_ID } from '@seedcord/core/internal';
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { HostStartup, HostVersion } from '@seedcord/types/internal';
 import { setBotRoot } from '@seedcord/utils/node/internal';
@@ -14,8 +15,6 @@ import { it } from '#tests/utils/test-env';
 
 import type { CommandInfo } from '@seedcord/core';
 import type { CommandRegistry } from '@seedcord/core/internal';
-
-import '#tests/utils/mock-env';
 
 function registryOf(instance: Seedcord): CommandRegistry {
     const registry = commandRegistryOf(instance.bot);
@@ -60,9 +59,9 @@ describe('CommandRegistry Integration', () => {
         expect(seedcord[HostVersion]).toBe('0.0.0');
         await registryOf(seedcord).init();
 
-        const globalCommands = registryOf(seedcord).globalCommands;
+        const globalCommands = registryOf(seedcord).scopedCommands.get(GLOBAL_ID);
         expect(globalCommands).toHaveLength(1);
-        expect(globalCommands[0]?.name).toBe('ping');
+        expect(globalCommands?.[0]?.name).toBe('ping');
     });
 
     it('resets the loading flag when the bulk load throws', async ({ testEnv }) => {
@@ -119,7 +118,7 @@ describe('CommandRegistry Integration', () => {
         await using seedcord = new Seedcord(config);
         await registryOf(seedcord).init();
 
-        expect(registryOf(seedcord).globalCommands[0]?.name).toBe('ping');
+        expect(registryOf(seedcord).scopedCommands.get(GLOBAL_ID)?.[0]?.name).toBe('ping');
 
         await testEnv.createFile(
             `${commandsDir}/PingCommand.ts`,
@@ -144,8 +143,8 @@ describe('CommandRegistry Integration', () => {
 
         await registryOf(seedcord).refresh();
 
-        expect(registryOf(seedcord).globalCommands).toHaveLength(1);
-        expect(registryOf(seedcord).globalCommands[0]?.name).toBe('pong');
+        expect(registryOf(seedcord).scopedCommands.get(GLOBAL_ID)).toHaveLength(1);
+        expect(registryOf(seedcord).scopedCommands.get(GLOBAL_ID)?.[0]?.name).toBe('pong');
     });
 
     it('cancels a deploy that is still waiting when startup is aborted', async ({ testEnv }) => {
@@ -350,8 +349,8 @@ describe('CommandRegistry Integration', () => {
         await testEnv.createFile('commands/PingCommand.ts', command('pong'));
         await registryOf(seedcord).onHmr({ file: filePath, type: 'update' });
 
-        expect(registryOf(seedcord).globalCommands[0]?.name).toBe('ping');
+        expect(registryOf(seedcord).scopedCommands.get(GLOBAL_ID)?.[0]?.name).toBe('ping');
         await registryOf(seedcord).refresh();
-        expect(registryOf(seedcord).globalCommands[0]?.name).toBe('pong');
+        expect(registryOf(seedcord).scopedCommands.get(GLOBAL_ID)?.[0]?.name).toBe('pong');
     });
 });

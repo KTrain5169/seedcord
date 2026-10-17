@@ -8,7 +8,10 @@ export function printResolvedConfig(steps: Steps<string>, config: ResolvedSeedco
     steps.detail('root', paint.path(config.root));
     steps.detail('instance', paint.path(config.instance));
     const { target } = config;
-    if (target.kind === 'server') steps.detail('entry', paint.path(target.entry));
-    else steps.detail('wrangler', paint.path(target.wranglerConfig));
-    steps.detail('outDir', paint.path(config.build.outDir));
+    if (target.kind === 'edge') {
+        steps.detail('cloudflare', paint.path(target.cloudflareConfig));
+        return;
+    }
+    steps.detail('entry', paint.path(target.entry));
+    steps.detail('outDir', paint.path(target.outDir));
 }

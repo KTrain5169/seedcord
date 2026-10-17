@@ -6,6 +6,9 @@ on:
       published:
         required: true
         type: string
+    secrets:
+      RELEASE_TOKEN:
+        required: true
   workflow_dispatch:
     inputs:
       published:
@@ -34,7 +37,7 @@ jobs:
           ref: ${{ inputs.sha || github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 0
       - name: Setup workspace
-        uses: ./.github/actions/setup
+        uses: $/.github/actions/setup
 
       - name: Build the release notes
         id: notes

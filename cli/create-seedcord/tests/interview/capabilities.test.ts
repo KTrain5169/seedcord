@@ -11,10 +11,6 @@ describe('CAPABILITIES', () => {
     it('never offers Guilds as a choice', () => {
         expect(CAPABILITIES.flatMap((c) => c.intents)).not.toContain('Guilds');
     });
-
-    it('keeps the marker out of the hints, which clack draws only under the cursor', () => {
-        expect(CAPABILITIES.filter((c) => c.hint.includes('privileged'))).toEqual([]);
-    });
 });
 
 describe('isPrivileged', () => {
