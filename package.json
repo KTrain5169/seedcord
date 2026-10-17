@@ -92,10 +92,16 @@
             "name": "pnpm",
             "version": "12.4.2"
         },
-        "runtime": {
-            "name": "node",
-            "version": "^26"
-        }
+        "runtime": [
+            {
+                "name": "node",
+                "version": "^26"
+            },
+            {
+                "name": "bun",
+                "version": "1.4.2"
+            }
+        ]
     },
     "engines": {
         "node": ">=26"
