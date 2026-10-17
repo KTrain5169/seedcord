@@ -67,7 +67,7 @@ If the helper would be reused across apps (`docs` + `guide` + `home`), it belong
 Before creating any file, look at sibling packages. The conventions are consistent across `packages/seedcord`, `packages/gateway`, `packages/core`, `packages/utils`, `packages/types`, `packages/docs-engine`, `packages/docs-generator`:
 
 - Tests live in `<package>/tests/` mirroring `src/`. Do not put tests in `src/**/*.test.ts`.
-- Vitest is the runner (`vitest run` / `vitest dev`). Coverage runs via `vitest run --coverage`.
+- Vitest is the runner (`vp test run` / `vp test dev`). Coverage runs via `vp test run --coverage`.
 - Lint and tc scripts cover both `src/**` and `tests/**`.
 - ESLint configs at the package root as `eslint.config.ts` (flat config), composed from `@seedcord/eslint-config`.
 - TypeScript configs extend `@seedcord/tsconfig` and never cross package source-path boundaries (no `paths` or `include` reaching into another package's `src`).

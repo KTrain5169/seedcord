@@ -63,7 +63,7 @@ jobs:
           turbo_token: ${{ secrets.TURBO_TOKEN }}
           turbo_team: ${{ vars.TURBO_TEAM }}
       - uses: ./.github/actions/setup
-      - run: vp run fmt:check
+      - run: vp fmt --check
 
   typecheck:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
@@ -180,7 +180,7 @@ jobs:
           bun run build
         working-directory: mocks/http
       - run: vp exec turbo build --filter='seedcord^...'
-      - run: vp exec vitest run tests/commands/build
+      - run: vp test run tests/commands/build
         working-directory: cli/seedcord
 
   audit:
@@ -194,3 +194,23 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup
       - run: pnpm audit --prod --audit-level=high
+
+  os-tests:
+    name: tests on ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows
+            runner: windows-latest
+          - name: mac
+            runner: macos-latest
+          - name: linux
+            runner: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: vp run test
