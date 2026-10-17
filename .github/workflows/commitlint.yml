@@ -23,7 +23,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - uses: ./.github/actions/setup
+      - uses: $/.github/actions/setup
         with:
           install: false
 
