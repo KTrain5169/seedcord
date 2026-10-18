@@ -5,7 +5,8 @@
         "rootDir": "./",
         "outDir": "./dist",
         "paths": {
-            "#src/*": ["./src/*"]
+            "#src/*": ["./src/*"],
+            "#tests/*": ["./tests/*"]
         }
     },
     "include": ["src/**/*.ts", "tests/**/*.ts", "eslint.config.ts", "tsdown.config.ts", "vitest.config.ts"],

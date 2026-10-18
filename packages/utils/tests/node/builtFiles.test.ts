@@ -4,6 +4,7 @@ import { SeedcordErrorCode } from '@seedcord/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BUILT_FILES_KEY, readTextFiles, traverseDirectory } from '#src/node/directory';
+import { clearBuiltFiles } from '#tests/builtFilesSlot';
 
 interface BuiltFileLoaders {
     root: string;
@@ -17,8 +18,15 @@ interface BuiltFileLoaders {
 const ROOT = '/bot';
 
 // writes the slot the way seedcord build's generated entry does
-function register({ root = ROOT, folders = [], modules = {}, text = {}, ...rest }: Partial<BuiltFileLoaders>): void {
+function register({
+    root = ROOT,
+    folders = [],
+    modules = {},
+    text = {},
+    ...rest
+}: Partial<BuiltFileLoaders>): Disposable {
     Reflect.set(globalThis, Symbol.for(BUILT_FILES_KEY), { root, folders, modules, text, ...rest });
+    return { [Symbol.dispose]: clearBuiltFiles };
 }
 
 function stub(name: string): () => Promise<Record<string, unknown>> {
@@ -42,7 +50,7 @@ async function rejection(iterable: AsyncIterable<unknown>): Promise<unknown> {
 
 describe('traverseDirectory in a built bot', () => {
     it('visits the registered modules under the folder as built js files', async () => {
-        register({
+        using _built = register({
             folders: ['/handlers', '/handlers/mod', '/commands'],
             modules: {
                 '/handlers/mod/Ban.ts': stub('Ban'),
@@ -58,13 +66,17 @@ describe('traverseDirectory in a built bot', () => {
     });
 
     it('keeps the ts path of a module when the table holds source files', async () => {
-        register({ folders: ['/handlers'], modules: { '/handlers/Roll.ts': stub('Roll') }, sourcePaths: true });
+        using _built = register({
+            folders: ['/handlers'],
+            modules: { '/handlers/Roll.ts': stub('Roll') },
+            sourcePaths: true
+        });
 
         await expect(walk('/bot/handlers')).resolves.toEqual([['/bot/handlers/Roll.ts', 'Roll']]);
     });
 
     it('skips registered type declarations, the same as the disk walk', async () => {
-        register({
+        using _built = register({
             folders: ['/handlers'],
             modules: { '/handlers/types.d.ts': stub('types'), '/handlers/A.ts': stub('A') }
         });
@@ -74,7 +86,10 @@ describe('traverseDirectory in a built bot', () => {
 
     it('loads nothing past the file the caller stopped at', async () => {
         const later = vi.fn(stub('Later'));
-        register({ folders: ['/handlers'], modules: { '/handlers/A.ts': stub('A'), '/handlers/B.ts': later } });
+        using _built = register({
+            folders: ['/handlers'],
+            modules: { '/handlers/A.ts': stub('A'), '/handlers/B.ts': later }
+        });
 
         for await (const { imported } of traverseDirectory('/bot/handlers')) {
             if (imported.name === 'A') break;
@@ -84,37 +99,40 @@ describe('traverseDirectory in a built bot', () => {
     });
 
     it('resolves a relative folder against root', async () => {
-        register({ folders: ['/handlers'], modules: { '/handlers/Roll.ts': stub('Roll') } });
+        using _built = register({ folders: ['/handlers'], modules: { '/handlers/Roll.ts': stub('Roll') } });
 
         await expect(walk('./handlers')).resolves.toEqual([['/bot/handlers/Roll.js', 'Roll']]);
     });
 
     it('treats a folder whose name starts with two dots as inside root', async () => {
-        register({ folders: ['/..cache'], modules: { '/..cache/Warm.ts': stub('Warm') } });
+        using _built = register({ folders: ['/..cache'], modules: { '/..cache/Warm.ts': stub('Warm') } });
 
         await expect(walk('/bot/..cache')).resolves.toEqual([['/bot/..cache/Warm.js', 'Warm']]);
     });
 
     it('visits every module when the folder is root itself', async () => {
-        register({ modules: { '/index.ts': stub('index') } });
+        using _built = register({ modules: { '/index.ts': stub('index') } });
 
         await expect(walk('/bot')).resolves.toEqual([['/bot/index.js', 'index']]);
     });
 
     it('visits every module when root is the filesystem root', async () => {
-        register({ root: '/', folders: ['/handlers'], modules: { '/handlers/Roll.ts': stub('Roll') } });
+        using _built = register({ root: '/', folders: ['/handlers'], modules: { '/handlers/Roll.ts': stub('Roll') } });
 
         await expect(walk('/')).resolves.toEqual([['/handlers/Roll.js', 'Roll']]);
     });
 
     it('yields nothing for an empty folder the build registered', async () => {
-        register({ folders: ['/handlers', '/subscribers'], modules: { '/handlers/Roll.ts': stub('Roll') } });
+        using _built = register({
+            folders: ['/handlers', '/subscribers'],
+            modules: { '/handlers/Roll.ts': stub('Roll') }
+        });
 
         await expect(walk('/bot/subscribers')).resolves.toEqual([]);
     });
 
     it('reports a folder the build never registered as missing from the build', async () => {
-        register({ folders: ['/handlers'], modules: { '/handlers/Roll.ts': stub('Roll') } });
+        using _built = register({ folders: ['/handlers'], modules: { '/handlers/Roll.ts': stub('Roll') } });
 
         const error = await rejection(traverseDirectory('/bot/handlerz'));
 
@@ -124,7 +142,7 @@ describe('traverseDirectory in a built bot', () => {
 
     it('reports the file whose module failed to load, keeping the original as the cause', async () => {
         const broken = (): Promise<Record<string, unknown>> => Promise.reject(new Error('boom'));
-        register({ folders: ['/handlers'], modules: { '/handlers/Broken.ts': broken } });
+        using _built = register({ folders: ['/handlers'], modules: { '/handlers/Broken.ts': broken } });
 
         const error = await rejection(traverseDirectory('/bot/handlers'));
 
@@ -134,7 +152,7 @@ describe('traverseDirectory in a built bot', () => {
     });
 
     it('throws with the folder and the root when the folder sits outside root', async () => {
-        register({ folders: ['/handlers'], modules: { '/handlers/Roll.ts': stub('Roll') } });
+        using _built = register({ folders: ['/handlers'], modules: { '/handlers/Roll.ts': stub('Roll') } });
 
         const error = await rejection(traverseDirectory('/elsewhere/handlers'));
 
@@ -145,7 +163,7 @@ describe('traverseDirectory in a built bot', () => {
 
 describe('readTextFiles in a built bot', () => {
     it('reads the registered text under the folder with its own extension', async () => {
-        register({
+        using _built = register({
             folders: ['/locales', '/tags'],
             text: {
                 '/locales/fr.json': () => Promise.resolve('{"hi":"salut"}'),
@@ -165,7 +183,7 @@ describe('readTextFiles in a built bot', () => {
 
     it('skips the same files the disk walk skips', async () => {
         const text = (): Promise<string> => Promise.resolve('{}');
-        register({
+        using _built = register({
             folders: ['/locales', '/locales/.cache'],
             text: {
                 '/locales/Skipped.ts': text,
@@ -184,7 +202,7 @@ describe('readTextFiles in a built bot', () => {
 
     it('reports the file whose text failed to load by its relative path, keeping the original as the cause', async () => {
         const broken = (): Promise<string> => Promise.reject(new Error('boom'));
-        register({ folders: ['/locales'], text: { '/locales/en.json': broken } });
+        using _built = register({ folders: ['/locales'], text: { '/locales/en.json': broken } });
 
         const error = await rejection(readTextFiles('/bot/locales'));
 
@@ -196,7 +214,7 @@ describe('readTextFiles in a built bot', () => {
     });
 
     it('throws with the folder and the root when the folder sits outside root', async () => {
-        register({ folders: ['/locales'], text: { '/locales/en.json': () => Promise.resolve('{}') } });
+        using _built = register({ folders: ['/locales'], text: { '/locales/en.json': () => Promise.resolve('{}') } });
 
         const error = await rejection(readTextFiles('/elsewhere/locales'));
 
