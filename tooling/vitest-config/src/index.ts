@@ -41,10 +41,11 @@ export function aliasFromTsconfig(configUrl: string): Alias[] {
     );
     return byMatchOrder.flatMap(([key, targets]) =>
         targets.slice(0, 1).map((target) => {
-            const replacement = fileURLToPath(new URL(target.replace('*', ''), configUrl));
-            if (key.includes('*')) return { find: key.replace('*', ''), replacement };
-            // vite also matches a string find as a prefix. '#flat' would catch '#flat/sub'
-            return { find: new RegExp(`^${RegExp.escape(key)}$`), replacement };
+            // String.replace reads $ in a replacement as a pattern
+            const replacement = fileURLToPath(new URL(target.replace('*', ''), configUrl)).replaceAll('$', '$$$$');
+            // vite strips a string find's trailing slash only when the replacement ends in '/'. a Windows path ends in '\'
+            const pattern = key.includes('*') ? RegExp.escape(key.replace('*', '')) : `${RegExp.escape(key)}$`;
+            return { find: new RegExp(`^${pattern}`), replacement };
         })
     );
 }
