@@ -69,13 +69,13 @@ jobs:
         run: vp exec turbo build --filter="@seedcord/docs^..."
 
       - name: Render every page
-        run: vp -C apps/docs build
+        run: vp -C apps/docs run build
         env:
           NEXT_PUBLIC_SITE_URL: https://seedcord.org/docs
           DOCS_BUILD_CPUS: 4
 
       - name: Check every docs link
-        run: vp -C apps/docs check:links
+        run: vp -C apps/docs run check:links
 
       - name: Upload to R2
         if: github.event_name == 'push' || inputs.deploy

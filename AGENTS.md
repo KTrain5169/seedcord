@@ -99,19 +99,19 @@ When someone asks how seedcord does something, answer for gateway and for http. 
 
 ## Commands and gates
 
-Run from the repo root. `vp -C <package> <script>` targets one package.
+Run from the repo root. `vp -C <package> run <script>` targets one package.
 
 ```sh
-vp -C <pkg> lint:fix   # always lint:fix, never plain lint
-vp -C <pkg> tc
-vp -C <pkg> test       # after lint and tc pass
+vp -C <pkg> run lint:fix   # always lint:fix, never plain lint
+vp -C <pkg> run tc
+vp -C <pkg> test           # after lint and tc pass
 ```
 
 Rebuild a shared package before you check its dependents:
 
 ```sh
-vp -C packages/<name> build
-vp -C packages/<dependent> tc
+vp -C packages/<name> run build
+vp -C packages/<dependent> run tc
 ```
 
 Two whole-workspace gates exist and they differ:

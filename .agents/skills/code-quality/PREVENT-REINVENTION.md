@@ -187,7 +187,7 @@ If no existing surface fits and there is no clean shared extension path, stop an
     - CLI command / Ink component for the CLI: `@seedcord/cli`
     - Doc-extraction or doc-rendering logic: `@seedcord/docs-generator` / `@seedcord/docs-engine`
 2. **Add the export** to the relevant `src/index.ts` (and `internal.index.ts` if it's an internal-only surface). Update the package.json `exports` field and the tsup config entry if the package uses tsup.
-3. **Rebuild the package** (`vp -C packages/<name> build`) so consumers see the new export.
+3. **Rebuild the package** (`vp -C packages/<name> run build`) so consumers see the new export.
 4. **Use it from the call site.** Inline duplication of the new helper defeats the point.
 5. **Document the rationale inline** only if the addition exists for a non-obvious reason (a specific Discord.js quirk, a runtime constraint, a license requirement). Otherwise the name is the documentation.
 
@@ -208,6 +208,6 @@ Before opening a PR, ask:
 7. For every version pin I left untouched citing "compatibility," did I cite the upstream peer-dep range?
 8. Did I delete the comments that just restate the code below them?
 9. If the change is public-API-affecting, did I add a `changeset`?
-10. Does `vp -C <pkg> lint:fix && vp -C <pkg> tc && vp -C <pkg> test` exit cleanly?
+10. Does `vp -C <pkg> run lint:fix && vp -C <pkg> run tc && vp -C <pkg> test` exit cleanly?
 
 If any answer is "no" or "I didn't check," the PR is not ready.
