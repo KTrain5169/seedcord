@@ -54,6 +54,10 @@ export class TscRunner {
             } else {
                 this.logger.debug('tsc exited.');
             }
+        });
+
+        // a failed spawn emits close without exit
+        this.process.on('close', () => {
             this.process = null;
         });
     }
@@ -65,19 +69,21 @@ export class TscRunner {
         });
     }
 
-    public stop(): void {
+    // windows can't delete tsc's cwd until tsc exits
+    public async stop(): Promise<void> {
         const child = this.process;
         if (!child) return;
 
         this.logger.debug('Stopping tsc...');
+        // events.once rejects when the child emits error
+        const closed = new Promise<void>((resolve) => child.once('close', () => resolve()));
         child.kill('SIGTERM');
 
         // justified: tsc --watch can ignore SIGTERM when stdin is detached (Windows/some Node builds), so escalate to SIGKILL after a grace window. unref so the timer never holds the event loop open.
         const killTimer = setTimeout(() => child.kill('SIGKILL'), TSC_GRACEFUL_EXIT_MS);
         killTimer.unref();
-        child.once('exit', () => {
-            clearTimeout(killTimer);
-        });
-        // start()'s 'exit' listener is what nulls the handle, so it stays set until then and blocks a second tsc spawning over the dying one
+        await closed;
+        clearTimeout(killTimer);
+        // start() refuses a second tsc until its close listener clears the handle
     }
 }

@@ -1,18 +1,19 @@
-import { dirname, relative } from 'node:path';
+import { dirname } from 'node:path';
 
 import { fromWireError, wrapHot } from '@seedcord/core/internal';
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { SeedcordError } from '@seedcord/errors/internal';
+import { displayPath, SeedcordError } from '@seedcord/errors/internal';
 import { LoggerChannelRegistry } from '@seedcord/logger';
 import { installNodeDefaults } from '@seedcord/logger/node';
 import chalk from 'chalk';
-import { createServer, createServerModuleRunner } from 'vite';
+import { createServerModuleRunner } from 'vite';
 
 import { CloudflareWorker } from '#commands/build/builder/CloudflareWorker';
 import { workerEntry } from '#commands/build/builder/workerEntry';
 import { listenHostFor } from '#commands/dev/tunnel/listenHost';
 import { reportWorkerExports, WORKER_ENVIRONMENT } from '#core/modules/cloudflarePlugin';
 import { edgeStandIns } from '#core/modules/edgeStandIns';
+import { openViteServer } from '#core/modules/openViteServer';
 import { RunnerModuleLoader } from '#core/modules/RunnerModuleLoader';
 import { mergeViteConfig } from '#core/modules/userCodeConfig';
 import { WorkerEnv } from '#core/modules/workerEnv';
@@ -99,7 +100,8 @@ export class EdgeDevRuntime extends BaseDevRuntime<EdgeStarted> {
         const modulesReady = Promise.withResolvers<RunnerModuleLoader>();
         const workerConfig = new WorkerConfigFiles(this.target.cloudflareConfig, workerEnv.files);
         const hmr = this.openHmr(context, WORKER_ENVIRONMENT, resources, workerConfig);
-        const server = await createServer(
+        const server = await openViteServer(
+            resources,
             mergeViteConfig(edgeViteConfig(config, viteRoot, process.cwd()), {
                 mode: config.viteMode,
                 plugins: [
@@ -109,8 +111,10 @@ export class EdgeDevRuntime extends BaseDevRuntime<EdgeStarted> {
                         instanceKey: viteKey(viteRoot, config.instance),
                         rootKey: viteKey(viteRoot, config.root),
                         functionExports: async () => {
-                            const instance = relative(process.cwd(), config.instance);
-                            this.emit(context, { type: 'progress', status: `Importing ${instance}…` });
+                            this.emit(context, {
+                                type: 'progress',
+                                status: `Importing ${displayPath(config.instance)}…`
+                            });
                             const names = await functionExportsOf(await modulesReady.promise, config.instance);
                             reportWorkerExports(names);
                             this.emit(context, { type: 'progress', status: 'Starting workerd…' });
@@ -126,7 +130,6 @@ export class EdgeDevRuntime extends BaseDevRuntime<EdgeStarted> {
                 ]
             })
         );
-        resources.defer(() => server.close());
         await loadWorkerEntry(server.middlewares, config.instance);
         const modules = await modulesReady.promise;
         const endpoint = await listenForInteractions(server.middlewares, {

@@ -3,7 +3,9 @@ import { stripVTControlCharacters } from 'node:util';
 import { paint, SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 import { asError } from '@seedcord/utils/internal';
-import { createLogger, preview } from 'vite';
+import { createLogger } from 'vite';
+
+import { openVitePreview } from '#core/modules/openViteServer';
 
 import { probeWorker } from './probeWorker';
 
@@ -59,12 +61,18 @@ function failedProbe({ reason, cause }: ProbeFailure, errors: string[]): Seedcor
 
 export async function bootWorker(config: InlineConfig): Promise<void> {
     const errors: string[] = [];
-    const server = await preview({
+    const onFailure = new AsyncDisposableStack();
+    // on windows, preview() rejects with workerd's startup error
+    const server = await openVitePreview(onFailure, {
         ...config,
         configFile: false,
         customLogger: errorCollector(errors),
         plugins: [...(config.plugins ?? []), answerErrorsQuietly()],
         preview: { port: 0 }
+    }).catch(async (error: unknown) => {
+        // the throw below reports the startup error that close can rethrow
+        await onFailure.disposeAsync().catch(() => undefined);
+        throw bootFailed(errors, asError(error).message, error);
     });
 
     let loaded = false;

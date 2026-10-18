@@ -1,7 +1,8 @@
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
+import { posixRelative } from '@seedcord/utils/node/internal';
 import { bindings, exports } from 'cf/config';
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
@@ -33,6 +34,11 @@ import type { DevEvent } from '#commands/dev/runtime/events';
 import type { TunnelRouter } from '#commands/dev/tunnel/TunnelRouter';
 import type { ProjectLoader } from '#core/config/ProjectLoader';
 import type { ResolvedEdgeTarget, ResolvedSeedcordConfig } from '#core/config/schema';
+
+// node lists a ProcessWrap for each child process until it closes
+function runningChildren(): number {
+    return process.getActiveResourcesInfo().filter((resource) => resource === 'ProcessWrap').length;
+}
 
 async function nodeCopyApiToken(projectDir: string, viteMode = 'development'): Promise<unknown> {
     await writeCloudflareConfig(projectDir, { env: { API_TOKEN: bindings.secret() } });
@@ -80,7 +86,9 @@ describe('EdgeDevRuntime lifecycle', () => {
         const types = events.map((event) => event.type);
         const steps = events.flatMap((event) => (event.type === 'progress' ? [event.status] : []));
         expect(types.lastIndexOf('progress')).toBeLessThan(types.indexOf('server-listening'));
-        expect(steps).toContainEqual(expect.stringContaining(relative(process.cwd(), join(projectDir, 'src/bot.ts'))));
+        expect(steps).toContainEqual(
+            expect.stringContaining(posixRelative(process.cwd(), join(projectDir, 'src/bot.ts')))
+        );
     }, 120_000);
 
     it('runs the startup sequence once in a seedcord dev session', async () => {
@@ -156,6 +164,20 @@ describe('EdgeDevRuntime lifecycle', () => {
         );
 
         await expect(startedRuntime(projectDir)).rejects.toThrow('bot.ts threw in workerd');
+    }, 60_000);
+
+    it('stops workerd when the bot throws while workerd loads it', async () => {
+        await using project = await edgeProject();
+        const { projectDir } = project;
+        await appendFile(
+            join(projectDir, 'src/bot.ts'),
+            "\nif (navigator.userAgent === 'Cloudflare-Workers') throw new Error('bot.ts threw in workerd');\n"
+        );
+        const before = runningChildren();
+
+        await expect(startedRuntime(projectDir)).rejects.toThrow('bot.ts threw in workerd');
+
+        await vi.waitFor(() => expect(runningChildren()).toBe(before), { timeout: 10_000 });
     }, 60_000);
 
     it('settles a start that is still running when the session stops', async () => {
