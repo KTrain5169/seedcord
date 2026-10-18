@@ -1,9 +1,11 @@
+import { mkdtempDisposableSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { describe, expect, it, vi } from 'vitest';
 
-import { BUILT_FILES_KEY, readTextFiles, traverseDirectory } from '#src/node/directory';
+import { BUILT_FILES_KEY, builtConfigDir, readTextFiles, traverseDirectory } from '#src/node/directory';
 import { posixRelative } from '#src/node/paths';
 import { clearBuiltFiles } from '#tests/builtFilesSlot';
 
@@ -13,6 +15,7 @@ interface BuiltFileLoaders {
     modules: Record<string, () => Promise<Record<string, unknown>>>;
     text: Record<string, () => Promise<string>>;
     sourcePaths?: boolean;
+    configFile?: string;
 }
 
 // not on disk. path.resolve adds the drive letter on windows
@@ -52,6 +55,23 @@ async function rejection(iterable: AsyncIterable<unknown>): Promise<unknown> {
         return caught;
     }
 }
+
+describe('builtConfigDir', () => {
+    it('returns the folder holding seedcord.config.ts', () => {
+        using project = mkdtempDisposableSync(path.join(tmpdir(), 'seedcord-built-'));
+        writeFileSync(path.join(project.path, 'seedcord.config.ts'), '');
+        using _built = register({ root: path.join(project.path, 'dist'), configFile: '../seedcord.config.ts' });
+
+        expect(builtConfigDir()).toBe(project.path);
+    });
+
+    it('returns nothing for a build copied away from its project', () => {
+        using elsewhere = mkdtempDisposableSync(path.join(tmpdir(), 'seedcord-built-'));
+        using _built = register({ root: path.join(elsewhere.path, 'app'), configFile: '../seedcord.config.ts' });
+
+        expect(builtConfigDir()).toBeUndefined();
+    });
+});
 
 describe('traverseDirectory in a built bot', () => {
     it('visits the registered modules under the folder as built js files', async () => {

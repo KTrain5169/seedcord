@@ -10,9 +10,17 @@ interface BuiltFilesOptions {
     rootExpression: string;
     rootKey: string;
     sourcePaths: boolean;
+    configFile?: string;
 }
 
-export function builtFilesSource({ files, folders, rootExpression, rootKey, sourcePaths }: BuiltFilesOptions): string {
+export function builtFilesSource({
+    files,
+    folders,
+    rootExpression,
+    rootKey,
+    sourcePaths,
+    configFile
+}: BuiltFilesOptions): string {
     const excludes = files.globExcludes();
     const modules = [...moduleGlobs('.'), ...excludes];
     const text = [...textGlobs('.'), ...excludes];
@@ -25,7 +33,8 @@ export function builtFilesSource({ files, folders, rootExpression, rootKey, sour
         `    folders: ${JSON.stringify(folders)},`,
         `    modules: import.meta.glob(${JSON.stringify(modules)}, ${JSON.stringify(moduleOptions)}),`,
         `    text: import.meta.glob(${JSON.stringify(text)}, ${JSON.stringify(textOptions)}),`,
-        `    sourcePaths: ${String(sourcePaths)}`,
+        `    sourcePaths: ${String(sourcePaths)},`,
+        ...(configFile === undefined ? [] : [`    configFile: ${JSON.stringify(configFile)},`]),
         '};',
         ''
     ].join('\n');
