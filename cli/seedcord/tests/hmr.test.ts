@@ -18,6 +18,7 @@ import {
 } from 'vitest';
 
 import { HmrPlugin } from '#commands/dev/runtime/HmrPlugin';
+import { ViteRestartFiles } from '#commands/dev/runtime/ViteRestartFiles';
 import { StateFolder } from '#core/state/StateFolder';
 import { silentLogger } from '#tests/silentLogger';
 
@@ -100,8 +101,11 @@ interface ConfiguredPlugin {
 // the last-deploy tests below write to their own folder
 const STATE = new StateFolder(process.cwd(), silentLogger);
 
+const NO_RESTART_FILES = new ViteRestartFiles(projectRoot, []);
+
 function configuredPlugin(config: ConstructorParameters<typeof HmrPlugin>[0], state = STATE): ConfiguredPlugin {
-    const plugin = new HmrPlugin(config, state, 'ssr');
+    const plugin = new HmrPlugin(config, state, 'ssr', NO_RESTART_FILES);
+    onTestFinished(() => plugin.close());
     const listeners = new Map<string, (data: unknown) => void>();
     // justified: spy on the private `hot` getter
     const hotHost = plugin as unknown as { hot: { send: Mock; on: Mock } };
@@ -135,7 +139,8 @@ describe('HmrPlugin', () => {
         idleAnimation: true,
         tunnel: { mode: 'quick' } as const,
         build: {},
-        viteMode: 'development'
+        viteMode: 'development',
+        vitePlugins: []
     };
 
     const srcRoot = join(projectRoot, 'src');
@@ -146,7 +151,7 @@ describe('HmrPlugin', () => {
             vi.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
         }
         trace = vi.spyOn(Logger.prototype, 'trace').mockImplementation(() => undefined);
-        hmrPlugin = new HmrPlugin(mockConfig, STATE, 'ssr');
+        hmrPlugin = new HmrPlugin(mockConfig, STATE, 'ssr', NO_RESTART_FILES);
     });
 
     afterEach(() => {
@@ -154,7 +159,7 @@ describe('HmrPlugin', () => {
     });
 
     it('carries the config rollback flag onto the hmr payload', () => {
-        const plugin = new HmrPlugin({ ...mockConfig, hmr: { rollback: false } }, STATE, 'ssr');
+        const plugin = new HmrPlugin({ ...mockConfig, hmr: { rollback: false } }, STATE, 'ssr', NO_RESTART_FILES);
         const hotSend = vi.fn();
         // justified: spy on the private `hot` getter
         const hotHost = plugin as unknown as { hot: { send: typeof hotSend; on: ReturnType<typeof vi.fn> } };
@@ -164,25 +169,6 @@ describe('HmrPlugin', () => {
         viteHotUpdate(plugin, 'create', file);
 
         expect(hotSend).toHaveBeenCalledWith(HMR_EVENT_NAME, expect.objectContaining({ file, rollback: false }));
-    });
-
-    it('asks for a restart when the config file above the vite root changes', () => {
-        const configFile = join(projectRoot, 'seedcord.config.ts');
-        const { watcher, events } = configuredPlugin({ ...mockConfig, root: srcRoot, configFile });
-
-        watcher.emit('change', configFile);
-
-        expect(events).toContainEqual({ type: 'restart-required' });
-    });
-
-    // on windows chokidar reports C:\bot\package.json and vite reports C:/bot/package.json
-    it('asks once for a restart when chokidar and vite spell the saved path differently', () => {
-        const { plugin, watcher, events } = configuredPlugin({ ...mockConfig, root: srcRoot });
-
-        watcher.emit('change', `${srcRoot}//package.json`);
-        viteHotUpdate(plugin, 'update', join(srcRoot, 'package.json'));
-
-        expect(events.filter((event) => event.type === 'restart-required')).toHaveLength(1);
     });
 
     it('relays the bound port the framework reports', () => {

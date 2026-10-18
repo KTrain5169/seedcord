@@ -12,7 +12,9 @@ import { assertNoHashPaths } from './assertNoHashPaths';
 import { assertTargetMatchesTsconfig } from './assertTargetMatchesTsconfig';
 import { ConfigValidator } from './ConfigValidator';
 import { detectTarget } from './detectTarget';
+import { LoadedConfig } from './LoadedConfig';
 import { locateConfig } from './locateConfig';
+import { readVitePlugins, rethrowVitePluginError, wrapVitePlugins } from './vitePlugins';
 
 import type { ModuleLoader, OpenModules } from '#core/modules/ModuleLoader';
 import type { DefaultMode, ShellMode } from '#core/viteMode';
@@ -52,28 +54,40 @@ export class ProjectLoader {
         private readonly defaultMode: DefaultMode = 'development'
     ) {}
 
-    public async open(projectDir = process.cwd()): Promise<Project> {
+    public async readConfig(
+        projectDir = process.cwd(),
+        check?: (config: ResolvedSeedcordConfig) => void
+    ): Promise<LoadedConfig> {
         const mode = this.shell.viteMode(this.defaultMode);
         Envapter.environment = mode;
         const configPath = locateConfig(projectDir);
         const configDir = dirname(configPath);
         const target = detectTarget(configDir);
-        await using configLoader = new AsyncDisposableStack();
-        const configModules = configLoader.use(await this.openModules(configDir, target, mode, 'config'));
-        const project = new Project(await this.readConfig(configModules, configPath, target, mode), configModules);
+        await using stack = new AsyncDisposableStack();
+        const configModules = stack.use(await this.openModules(configDir, target, mode, 'config'));
+        const project = new Project(await this.resolveConfig(configModules, configPath, target, mode), configModules);
         await assertNoHashPaths(project);
         await assertTargetMatchesTsconfig(project);
-        // a server bot runs its code under the same node conditions
-        if (target.kind === 'server') {
-            configLoader.move();
-            return project;
-        }
-
-        // the checks above go first because opening this runs cloudflare.config.ts
-        return new Project(project.config, await this.openModules(configDir, target, mode));
+        check?.(project.config);
+        const loaded = new LoadedConfig(project.config);
+        return loaded.hasVitePlugins ? new LoadedConfig(project.config, stack.move()) : loaded;
     }
 
-    private async readConfig(
+    // starts the config's vite plugins. on an edge bot it also runs cloudflare.config.ts
+    public async openProject(loaded: LoadedConfig): Promise<Project> {
+        await using stack = new AsyncDisposableStack();
+        stack.use(loaded);
+        const { config } = loaded;
+        const botModules = await this.openModules(
+            dirname(config.configFile),
+            config.target,
+            config.viteMode,
+            config
+        ).catch(rethrowVitePluginError);
+        return new Project(config, botModules, stack.move());
+    }
+
+    private async resolveConfig(
         modules: ModuleLoader,
         configPath: string,
         target: BuildTarget,
@@ -81,8 +95,9 @@ export class ProjectLoader {
     ): Promise<ResolvedSeedcordConfig> {
         const loadedModule = await modules.importModule(configPath);
         const config: unknown = await Promise.resolve(resolveDefaultExport(loadedModule));
+        const vitePlugins = await readVitePlugins(config, configPath);
         const validator: ConfigValidator = new ConfigValidator(target, configPath);
-        validator.validate(config);
+        validator.validate(config, vitePlugins.problems);
 
         const configDir = dirname(configPath);
         const root = resolve(configDir, config.root ?? '.');
@@ -100,7 +115,8 @@ export class ProjectLoader {
             idleAnimation: config.idleAnimation ?? true,
             viteMode: mode,
             tunnel: resolveTunnel(config.tunnel),
-            hmr: config.hmr
+            hmr: config.hmr,
+            vitePlugins: wrapVitePlugins(vitePlugins.plugins, configPath)
         } satisfies ResolvedSeedcordConfig;
     }
 

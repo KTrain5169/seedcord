@@ -1,6 +1,8 @@
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { stripVTControlCharacters } from 'node:util';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -67,6 +69,46 @@ describe('traverseDirectory', () => {
         expect(error).toMatchObject({ code: SeedcordErrorCode.CorePathUnreadable });
         expect(Error.isError(error) ? error.message : '').toMatch(/not-a-real-dir/);
         expect(Error.isError(error) ? error.cause : undefined).toBeInstanceOf(Error);
+    });
+});
+
+describe('a module that fails to load through a Vite plugin', () => {
+    const IMPORT_FAILED = pathToFileURL(path.join(import.meta.dirname, '../../src/node/importFailed.ts')).href;
+
+    async function folderThrowing(name: string, thrown: string): Promise<string> {
+        const dir = path.join(scratch, name);
+        await mkdir(dir, { recursive: true });
+        await writeFile(
+            path.join(dir, 'Shop.ts'),
+            `import { recordThrownBy } from ${JSON.stringify(IMPORT_FAILED)};\nthrow ${thrown};\n`
+        );
+        return dir;
+    }
+
+    it('throws CoreVitePluginThrew for an error a plugin from vitePlugins threw', async () => {
+        const thrownBy = {
+            plugin: 'shop-loader',
+            hook: 'load',
+            configFile: '/bot/seedcord.config.ts',
+            moduleId: '/bot/shop.yaml'
+        };
+        const thrown = `recordThrownBy(new Error('bad yaml on line 3'), ${JSON.stringify(thrownBy)})`;
+
+        const error = await rejection(traverseDirectory(await folderThrowing('from-plugin', thrown)));
+
+        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreVitePluginThrew });
+        const message = stripVTControlCharacters(Error.isError(error) ? error.message : '');
+        expect(message).toContain('shop-loader');
+        expect(message).toContain('its load hook while loading');
+        expect(message).toContain('bad yaml on line 3');
+    });
+
+    it("keeps CoreImportFailed for an error from the bot's own code", async () => {
+        const thrown = `new Error('Unexpected token')`;
+
+        const error = await rejection(traverseDirectory(await folderThrowing('from-vite', thrown)));
+
+        expect(error).toMatchObject({ code: SeedcordErrorCode.CoreImportFailed });
     });
 });
 

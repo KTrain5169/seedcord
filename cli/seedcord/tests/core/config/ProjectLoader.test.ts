@@ -1,5 +1,4 @@
-import { mkdirSync, mkdtempDisposableSync, realpathSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { SeedcordErrorCode, isSeedcordError } from '@seedcord/errors';
@@ -12,48 +11,11 @@ import { ShellMode } from '#core/viteMode';
 import { copyEdgeBotForTest } from '#tests/commands/build/edgeBot';
 import { cloudflareConfigSource } from '#tests/edgeFolder';
 
+import { MINIMAL, openProject, projectWith, stubModulesExporting, tempProject } from './projectLoaderFixtures';
+
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { OpenModules } from '#core/modules/ModuleLoader';
 
-function tempProject(): string {
-    const projectDir = mkdtempDisposableSync(join(tmpdir(), 'seedcord-config-'));
-    onTestFinished(() => projectDir.remove());
-    // the loader resolves against the real path of a mac temp dir
-    return realpathSync(projectDir.path);
-}
-
-interface StubModules {
-    open: OpenModules;
-    closed: () => boolean;
-}
-
-function stubModulesExporting(config: unknown): StubModules {
-    let closed = false;
-    const modules = {
-        importModule: <TModule = unknown>(): Promise<TModule> => Promise.resolve({ default: config } as TModule),
-        [Symbol.asyncDispose]: () => {
-            closed = true;
-            return Promise.resolve();
-        }
-    };
-
-    return { open: () => Promise.resolve(modules), closed: () => closed };
-}
-
-function projectWith(config: unknown): { projectDir: string; load: () => Promise<ResolvedSeedcordConfig> } {
-    const projectDir = tempProject();
-    writeFileSync(join(projectDir, 'seedcord.config.ts'), '');
-    const { open } = stubModulesExporting(config);
-
-    const load = async (): Promise<ResolvedSeedcordConfig> => {
-        const { config: resolved } = await new ProjectLoader(open, new ShellMode()).open(projectDir);
-        return resolved;
-    };
-
-    return { projectDir, load };
-}
-
-const MINIMAL = { instance: './bot.ts', entry: './index.ts' };
 const EDGE_MINIMAL = { instance: './bot.ts' };
 const CLOUDFLARE_CONFIG = 'cloudflare.config.ts';
 
@@ -101,7 +63,7 @@ describe('ProjectLoader', () => {
         ]);
         const { open } = stubModulesExporting(MINIMAL);
 
-        await using _project = await new FreshLoader(open, shell, 'production').open(projectDir);
+        await using _project = await openProject(new FreshLoader(open, shell, 'production'), projectDir);
 
         expect(Envapter.get('PROBE')).toBe(mode);
     });
@@ -158,7 +120,9 @@ describe('ProjectLoader target', () => {
         writeFileSync(join(projectDir, CLOUDFLARE_CONFIG), cloudflareConfigSource());
         writeTsconfig(projectDir, {});
 
-        await expect(new ProjectLoader(openModuleLoader, new ShellMode()).open(projectDir)).rejects.toMatchObject({
+        await expect(
+            openProject(new ProjectLoader(openModuleLoader, new ShellMode()), projectDir)
+        ).rejects.toMatchObject({
             code: SeedcordErrorCode.CliConfigFieldUnused,
             message: expect.stringContaining(toPosixPath(join(projectDir, CLOUDFLARE_CONFIG))) as string
         });
@@ -247,7 +211,7 @@ describe('ProjectLoader entry on an edge bot', () => {
             "import { env } from 'cloudflare:workers';\n\nexport default { root: './src', instance: './bot.ts', port: Number(env.DEV_PORT) };\n"
         );
 
-        await using project = await new ProjectLoader(openModuleLoader, new ShellMode()).open(projectDir);
+        await using project = await openProject(new ProjectLoader(openModuleLoader, new ShellMode()), projectDir);
 
         expect(project.config.target).toMatchObject({ kind: 'edge', port: 4321 });
     });
@@ -332,7 +296,7 @@ describe('ProjectLoader validation', () => {
     it('throws CliConfigNotFound for a folder with no seedcord config', async () => {
         const open: OpenModules = () => Promise.reject(new Error('never opened'));
 
-        await expect(new ProjectLoader(open, new ShellMode()).open(tempProject())).rejects.toMatchObject({
+        await expect(new ProjectLoader(open, new ShellMode()).readConfig(tempProject())).rejects.toMatchObject({
             code: SeedcordErrorCode.CliConfigNotFound
         });
     });
@@ -342,24 +306,30 @@ describe('ProjectLoader validation', () => {
         writeFileSync(join(projectDir, 'seedcord.config.ts'), '');
         const modules = stubModulesExporting({ entry: './index.ts' });
 
-        await expect(new ProjectLoader(modules.open, new ShellMode()).open(projectDir)).rejects.toMatchObject({
+        await expect(new ProjectLoader(modules.open, new ShellMode()).readConfig(projectDir)).rejects.toMatchObject({
             code: SeedcordErrorCode.CliConfigInvalidField
         });
-        expect(modules.closed()).toBe(true);
+        expect(modules.loaders).toEqual([{ loads: 'config', closed: true }]);
     });
 
-    it('closes the module loader with the project it returned', async () => {
+    it('closes the config loader once the project opens, and the bot loader with the project', async () => {
         const projectDir = tempProject();
         writeFileSync(join(projectDir, 'seedcord.config.ts'), '');
         const modules = stubModulesExporting(MINIMAL);
 
         {
-            await using project = await new ProjectLoader(modules.open, new ShellMode()).open(projectDir);
-            expect(modules.closed()).toBe(false);
+            await using project = await openProject(new ProjectLoader(modules.open, new ShellMode()), projectDir);
+            expect(modules.loaders).toEqual([
+                { loads: 'config', closed: true },
+                { loads: 'bot', closed: false }
+            ]);
             expect(project.config.instance).toBe(resolve(projectDir, 'bot.ts'));
         }
 
-        expect(modules.closed()).toBe(true);
+        expect(modules.loaders).toEqual([
+            { loads: 'config', closed: true },
+            { loads: 'bot', closed: true }
+        ]);
     });
 
     it('resolves each tunnel shape into a mode', async () => {
@@ -458,6 +428,13 @@ describe('ProjectLoader validation', () => {
         await expect(projectWith({ ...MINIMAL, idleAnimation: 'nope' }).load()).rejects.toMatchObject({
             code: SeedcordErrorCode.CliConfigInvalidField,
             message: 'idleAnimation in the seedcord config must be a boolean.'
+        });
+    });
+
+    it('rejects vitePlugins that is not an array', async () => {
+        await expect(projectWith({ ...MINIMAL, vitePlugins: { name: 'yaml' } }).load()).rejects.toMatchObject({
+            code: SeedcordErrorCode.CliConfigInvalidField,
+            message: expect.stringContaining('vitePlugins') as string
         });
     });
 

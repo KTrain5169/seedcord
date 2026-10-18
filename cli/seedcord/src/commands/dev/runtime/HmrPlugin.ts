@@ -14,7 +14,7 @@ import { deployedCommandsFile, lastDeployOf } from '#core/state/deployedCommands
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { StateFolder } from '#core/state/StateFolder';
 import type { DevEvent } from './events';
-import type { WorkerConfigFiles } from './workerConfigFiles';
+import type { ViteRestartFiles } from './ViteRestartFiles';
 import type { HmrEventType, HmrUpdateEvent } from '@seedcord/types';
 import type { DevChannel, SeedcordCliEvents, SeedcordFrameworkEvents } from '@seedcord/types/internal';
 import type { FSWatcher } from 'node:fs';
@@ -42,7 +42,7 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
     private readonly lastUpdate = new Map<string, number>();
     private server: ViteDevServer | null = null;
     private readonly restartPatterns: Set<string>;
-    private workerConfigWatcher?: FSWatcher | undefined;
+    private restartFilesWatcher?: FSWatcher | undefined;
 
     private get hot(): NormalizedHotChannel | undefined {
         return this.server?.environments[this.botEnvironment]?.hot;
@@ -56,7 +56,7 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
         private readonly config: ResolvedSeedcordConfig,
         private readonly state: StateFolder,
         private readonly botEnvironment: string,
-        private readonly workerConfig?: WorkerConfigFiles
+        private readonly restartFiles: ViteRestartFiles
     ) {
         super();
         this.logger = new Logger('HMR', { channel: 'hmr' });
@@ -65,11 +65,12 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
 
     public get plugin(): Plugin {
         const onHotUpdate = this.hotUpdate.bind(this);
-        const { workerConfig } = this;
+        const { restartFiles } = this;
         return {
             name: 'seedcord:hmr',
-            // the cloudflare plugin restarts vite on its own when vite's watcher reports one of these
-            config: () => (workerConfig ? { server: { watch: { ignored: [workerConfig.includes] } } } : undefined),
+            // vite restarts itself when its watcher reports an env file. the cloudflare plugin does the same for its config.
+            // either restart leaves the bot's module runner on the closed server
+            config: () => ({ server: { watch: { ignored: [restartFiles.includes] } } }),
             configureServer: this.configureServer.bind(this),
             hotUpdate(ctx) {
                 return onHotUpdate(this.environment, ctx);
@@ -82,7 +83,7 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
     }
 
     public close(): void {
-        this.workerConfigWatcher?.close();
+        this.restartFilesWatcher?.close();
         this.removeAllListeners('event');
     }
 
@@ -93,16 +94,12 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
 
     private configureServer(server: ViteDevServer): void {
         this.server = server;
-        this.workerConfigWatcher = this.workerConfig?.watch((file) => {
+        this.restartFilesWatcher = this.restartFiles.watch((file) => {
             this.reportChangeNeedingRestart(resolve(file));
         });
         // vite calls hotUpdate for files only
         server.watcher.on('addDir', (dir) => this.handleDirEvent(resolve(dir), 'createDir'));
         server.watcher.on('unlinkDir', (dir) => this.handleDirEvent(resolve(dir), 'deleteDir'));
-
-        // vite watches config.root only
-        server.watcher.add(this.config.configFile);
-        server.watcher.on('change', (file) => this.handleChange(resolve(file)));
 
         this.dev?.on('seedcord:commands-update-prompt', (data) => {
             this.emit('event', { type: 'command-update-prompt', files: data.files });
@@ -134,11 +131,6 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
 
         this.lastUpdate.set(key, Date.now());
         return false;
-    }
-
-    // hotUpdate covers a critical file inside the root
-    private handleChange(file: string): void {
-        if (this.isCriticalFile(file)) this.reportChangeNeedingRestart(file);
     }
 
     private reportRestartRequired(file: string): void {
@@ -192,15 +184,13 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
     }
 
     private isCriticalFile(file: string): boolean {
-        const { root, configFile, instance, target } = this.config;
+        const { root, instance, target } = this.config;
         const relPath = posixRelative(root, file);
 
         return (
             [...this.restartPatterns].some((pattern) => minimatch(relPath, pattern)) ||
-            file === configFile ||
             file.endsWith('package.json') ||
             file.endsWith('tsconfig.json') ||
-            file.endsWith('.env') ||
             (target.kind === 'server' && file === resolve(root, target.entry)) ||
             file === resolve(root, instance)
         );

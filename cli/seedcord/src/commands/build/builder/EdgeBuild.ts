@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 import { warnLinks } from '@seedcord/core/internal';
 import { SeedcordErrorCode } from '@seedcord/errors';
@@ -8,7 +8,7 @@ import { createBuilder } from 'vite';
 
 import { cliLogger } from '#core/cliLogger';
 import { restFromEnv } from '#core/discord/restFromEnv';
-import { importCloudflare, WORKER_ENVIRONMENT } from '#core/modules/cloudflarePlugin';
+import { importCloudflare, importCloudflareCopy, WORKER_ENVIRONMENT } from '#core/modules/cloudflarePlugin';
 import { CommandScanner } from '#core/modules/CommandScanner';
 import { functionExportsOf } from '#core/modules/workerExports';
 import { viteKey } from '#core/project/ProjectFiles';
@@ -23,6 +23,7 @@ import { TargetBuild } from './TargetBuild';
 import { workerEntry } from './workerEntry';
 
 import type { EdgeTarget } from '#core/config/detectTarget';
+import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { ImportCloudflare } from '#core/modules/cloudflarePlugin';
 import type { Project } from '#core/project/Project';
 import type { BundleStats } from './output';
@@ -85,10 +86,9 @@ export class EdgeBuild extends TargetBuild {
         this.deps = { ...DEFAULT_DEPS, ...deps };
     }
 
-    public check(): void {
-        const { config, configDir } = this.project;
-        if (isInside(config.root, configDir)) {
-            throw new SeedcordError(SeedcordErrorCode.CliEdgeRootHoldsConfig, [config.configFile, config.root]);
+    public static check({ root, configFile }: ResolvedSeedcordConfig): void {
+        if (isInside(root, dirname(configFile))) {
+            throw new SeedcordError(SeedcordErrorCode.CliEdgeRootHoldsConfig, [configFile, root]);
         }
     }
 
@@ -104,9 +104,24 @@ export class EdgeBuild extends TargetBuild {
     }
 
     public async bundle(ids: BakedIds): Promise<BundleStats> {
-        const { config, files, modules } = this.project;
-        const { viteRoot, cloudflareConfig } = this.target;
+        const { files } = this.project;
         const [folders, cloudflare] = await Promise.all([files.foldersIncludingEmpty(), this.worker()]);
+
+        const captured = await this.bundleWorker(ids, folders, cloudflare).catch(bundleFailed);
+        const chunks = captured ?? bundleFailed(`the ${WORKER_ENVIRONMENT} environment didn't write a bundle`);
+        const built = await cloudflare.built().catch(bundleFailed);
+        assertNodeCompat(built, this.target.cloudflareConfig);
+
+        return bundleStats(chunks, files, join(built.bundleDir, ENTRY_FILE_NAME));
+    }
+
+    private async bundleWorker(
+        ids: BakedIds,
+        folders: string[],
+        cloudflare: CloudflareWorker
+    ): Promise<Rolldown.OutputChunk[] | undefined> {
+        const { config, files, modules } = this.project;
+        const { viteRoot } = this.target;
 
         let chunks: Rolldown.OutputChunk[] | undefined;
         const builder = await createBuilder({
@@ -129,21 +144,18 @@ export class EdgeBuild extends TargetBuild {
                 captureChunks((captured) => {
                     chunks = captured;
                 }),
-                cloudflare.plugins({ persistState: false })
+                cloudflare.plugins({ persistState: false }),
+                ...config.vitePlugins
             ],
             resolve: { tsconfigPaths: true },
             environments: workerEnvironment()
-        }).catch(bundleFailed);
-        await builder.buildApp().catch(bundleFailed);
-        chunks ??= bundleFailed(`the ${WORKER_ENVIRONMENT} environment wrote no bundle`);
-        const built = await cloudflare.built().catch(bundleFailed);
-        assertNodeCompat(built, cloudflareConfig);
-
-        return bundleStats(chunks, files, join(built.bundleDir, ENTRY_FILE_NAME));
+        });
+        await builder.buildApp();
+        return chunks;
     }
 
     public override async boot(): Promise<void> {
-        const cloudflare = await this.worker();
+        const cloudflare = await CloudflareWorker.load(this.target, importCloudflareCopy);
         await bootWorker({
             root: this.target.viteRoot,
             mode: this.project.config.viteMode,

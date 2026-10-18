@@ -4,27 +4,38 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { paint } from '@seedcord/errors';
 import { Logger } from '@seedcord/logger';
 
+import { viteEnvFiles } from '#core/modules/viteEnvFiles';
 import { watchedPath } from '#core/project/watchedPath';
 
+import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { FSWatcher } from 'node:fs';
 
 const logger = new Logger('HMR', { channel: 'hmr' });
 
-export class WorkerConfigFiles {
-    private readonly config: string;
+export class ViteRestartFiles {
     private readonly dir: string;
-    private readonly localVars: Set<string>;
+    private readonly names: Set<string>;
 
-    constructor(cloudflareConfig: string, envFiles: readonly string[]) {
-        this.config = watchedPath(cloudflareConfig);
-        this.dir = dirname(this.config);
-        this.localVars = new Set(envFiles);
+    constructor(dir: string, names: readonly string[]) {
+        this.dir = watchedPath(dir);
+        this.names = new Set(names);
+    }
+
+    public static forConfig(
+        { configFile, viteMode }: Pick<ResolvedSeedcordConfig, 'configFile' | 'viteMode'>,
+        targetFiles: readonly string[]
+    ): ViteRestartFiles {
+        return new ViteRestartFiles(dirname(configFile), [
+            basename(configFile),
+            ...viteEnvFiles(viteMode),
+            ...targetFiles
+        ]);
     }
 
     // chokidar passes forward slashes to vite's ignored matchers on windows
     public readonly includes = (path: string): boolean => {
         const file = resolve(path);
-        return file === this.config || (dirname(file) === this.dir && this.localVars.has(basename(file)));
+        return dirname(file) === this.dir && this.names.has(basename(file));
     };
 
     // fs.watch on a file stops once an atomic save replaces it
@@ -35,9 +46,7 @@ export class WorkerConfigFiles {
         });
         // node throws process-wide without a listener here
         watcher.on('error', (error) => {
-            logger.warn(
-                `Stopped watching ${paint.path(this.dir)} for changes to cloudflare.config.ts and the env files: ${error.message}`
-            );
+            logger.warn(`Stopped watching ${paint.path(this.dir)} for changes that need a restart: ${error.message}`);
         });
         return watcher;
     }

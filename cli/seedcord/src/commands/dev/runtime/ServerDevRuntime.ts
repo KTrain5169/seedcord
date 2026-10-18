@@ -2,6 +2,7 @@ import { HostListenHost } from '@seedcord/types/internal';
 import { createServerModuleRunner } from 'vite';
 
 import { listenHostFor } from '#commands/dev/tunnel/listenHost';
+import { rethrowVitePluginError } from '#core/config/vitePlugins';
 import { openViteServer } from '#core/modules/openViteServer';
 import { RunnerModuleLoader } from '#core/modules/RunnerModuleLoader';
 import { mergeViteConfig } from '#core/modules/userCodeConfig';
@@ -23,9 +24,9 @@ export class ServerDevRuntime extends BaseDevRuntime {
             resources,
             mergeViteConfig(serverViteConfig(context.config, process.cwd()), {
                 mode: context.config.viteMode,
-                plugins: [hmr.plugin]
+                plugins: [hmr.plugin, ...context.config.vitePlugins]
             })
-        );
+        ).catch(rethrowVitePluginError);
         const modules = new RunnerModuleLoader(createServerModuleRunner(server.environments.ssr));
         return { context, modules, hmr, resources };
     }

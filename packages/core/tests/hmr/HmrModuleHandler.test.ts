@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { SeedcordErrorCode } from '@seedcord/errors';
 import { setBotRoot } from '@seedcord/utils/node/internal';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -288,5 +289,30 @@ describe('HmrModuleHandler', () => {
 
         expect(unregisterHandler).toHaveBeenCalledWith(FixtureHandler, undefined);
         expect(registerHandler).not.toHaveBeenCalled();
+    });
+
+    it('logs CoreVitePluginThrew when a plugin from vitePlugins throws during a reload', async () => {
+        const { logger, spies } = fakeLogger();
+        const withSpies = new HmrModuleHandler<TestHandler>({
+            handlersDir,
+            isHandler,
+            registerHandler,
+            unregisterHandler,
+            logger
+        });
+        const file = join(handlersDir, 'Shop.mjs');
+        const utils = import.meta.resolve('@seedcord/utils/node/internal');
+        const thrownBy = { plugin: 'shop-loader', hook: 'load', configFile: join(dir, 'seedcord.config.ts') };
+        writeFileSync(
+            file,
+            `import { recordThrownBy } from ${JSON.stringify(utils)};\nthrow recordThrownBy(new Error('bad yaml'), ${JSON.stringify(thrownBy)});\n`
+        );
+
+        await withSpies.handle({ file, type: 'update' });
+
+        expect(spies.error.mock.calls[0]?.[1]).toMatchObject({
+            code: SeedcordErrorCode.CoreVitePluginThrew,
+            message: expect.stringContaining('shop-loader') as string
+        });
     });
 });

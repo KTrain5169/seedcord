@@ -4,6 +4,7 @@ import { isPlainObject, isStringArray } from '@seedcord/utils/internal';
 
 import type { BuildTarget } from './detectTarget';
 import type { SeedcordConfig } from './schema';
+import type { VitePluginProblem } from './vitePlugins';
 
 type ConfigProblem = SeedcordTypeError | SeedcordRangeError;
 
@@ -60,9 +61,9 @@ export class ConfigValidator {
         private readonly configFile: string
     ) {}
 
-    public validate(raw: unknown): asserts raw is SeedcordConfig {
+    public validate(raw: unknown, vitePluginProblems: readonly VitePluginProblem[]): asserts raw is SeedcordConfig {
         if (!isPlainObject(raw)) throw new SeedcordTypeError(SeedcordErrorCode.CliConfigInvalidExport);
-        throwSingleOrAggregate([...this.problems(raw)], SeedcordErrorCode.CliProblems);
+        throwSingleOrAggregate([...this.problems(raw), ...vitePluginProblems], SeedcordErrorCode.CliProblems);
     }
 
     private *problems(raw: Record<string, unknown>): Generator<ConfigProblem> {

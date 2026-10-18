@@ -21,6 +21,7 @@ import type { ResolvedEdgeTarget, ResolvedSeedcordConfig } from '#core/config/sc
 import type { LogRecord } from '@seedcord/types';
 import type { SeedcordInstance } from '@seedcord/types/internal';
 import type { AddressInfo } from 'node:net';
+import type { Plugin } from 'vite';
 
 // a port probed up front can go to another worker before the runtime binds it
 const ANY_PORT = 0;
@@ -29,17 +30,24 @@ function edgeTarget(projectDir: string, port: number): ResolvedEdgeTarget {
     return { kind: 'edge', cloudflareConfig: join(projectDir, 'cloudflare.config.ts'), viteRoot: projectDir, port };
 }
 
-function configWith(projectDir: string, target: ResolvedEdgeTarget, viteMode: string): ResolvedSeedcordConfig {
-    // justified: the runtime reads only these fields
+function configWith(
+    projectDir: string,
+    target: ResolvedEdgeTarget,
+    viteMode: string,
+    vitePlugins: Plugin[] = []
+): ResolvedSeedcordConfig {
     return {
         configFile: join(projectDir, 'seedcord.config.ts'),
         root: join(projectDir, 'src'),
         instance: join(projectDir, 'src/bot.ts'),
         target,
         build: {},
+        typecheck: { enabled: false },
+        idleAnimation: true,
         viteMode,
-        tunnel: { mode: 'quick' }
-    } as ResolvedSeedcordConfig;
+        tunnel: { mode: 'quick' },
+        vitePlugins
+    };
 }
 
 export function edgeConfig(projectDir: string, port = ANY_PORT): ResolvedSeedcordConfig {
@@ -136,15 +144,24 @@ export async function edgeProject(vars: Record<string, string> = liveVars): Prom
     return { projectDir, [Symbol.asyncDispose]: () => owned.disposeAsync() };
 }
 
+interface LogCapture extends Disposable {
+    readonly records: LogRecord[];
+}
+
 // the worker's records reach the CLI's logger the way a node bot's records do
-export function captureLogs(): LogRecord[] {
+export function logCapture(): LogCapture {
     const records: LogRecord[] = [];
     const handle = LoggerChannelRegistry.instance.installSink({
         kind: 'capture',
         onLog: (record) => records.push(record)
     });
-    onTestFinished(() => handle.dispose());
-    return records;
+    return { records, [Symbol.dispose]: () => handle.dispose() };
+}
+
+export function captureLogs(): LogRecord[] {
+    const capture = logCapture();
+    onTestFinished(() => capture[Symbol.dispose]());
+    return capture.records;
 }
 
 const LOGS_DIR = join(process.cwd(), 'logs');
@@ -153,9 +170,14 @@ async function logFiles(): Promise<string[]> {
     return readdir(LOGS_DIR).catch(() => []);
 }
 
+interface DevelopmentMode extends AsyncDisposable {
+    // the text of every log file written after developmentMode() ran
+    createdLogs(): Promise<string>;
+}
+
 // node defaults log at trace and add a combined file only in development
 // keep every caller in one test file. parallel files would delete each other's logs here
-export async function asDevelopment(): Promise<() => Promise<string>> {
+export async function developmentMode(): Promise<DevelopmentMode> {
     const environment = Envapter.environment;
     Envapter.environment = Environment.Development;
     const before = new Set(await logFiles());
@@ -163,16 +185,24 @@ export async function asDevelopment(): Promise<() => Promise<string>> {
         const files = await logFiles();
         return files.filter((file) => !before.has(file));
     };
-    onTestFinished(async () => {
-        Envapter.environment = environment;
-        installNodeDefaults();
-        for (const file of await created()) await rm(join(LOGS_DIR, file));
-    });
-    return async () => {
-        const files = await created();
-        const texts = await Promise.all(files.map((file) => readFile(join(LOGS_DIR, file), 'utf8')));
-        return texts.join('');
+    return {
+        createdLogs: async () => {
+            const files = await created();
+            const texts = await Promise.all(files.map((file) => readFile(join(LOGS_DIR, file), 'utf8')));
+            return texts.join('');
+        },
+        [Symbol.asyncDispose]: async () => {
+            Envapter.environment = environment;
+            installNodeDefaults();
+            for (const file of await created()) await rm(join(LOGS_DIR, file));
+        }
     };
+}
+
+export async function asDevelopment(): Promise<() => Promise<string>> {
+    const mode = await developmentMode();
+    onTestFinished(() => mode[Symbol.asyncDispose]());
+    return () => mode.createdLogs();
 }
 
 export const messagesOf = (records: LogRecord[]): string[] => records.map((record) => record.message);
@@ -187,10 +217,10 @@ interface StartedRuntime extends AsyncDisposable {
 export async function startedRuntime(
     projectDir: string,
     onEvent?: DevEventHandler,
-    { devPort = ANY_PORT, viteMode = 'development' } = {}
+    { devPort = ANY_PORT, viteMode = 'development', vitePlugins = [] as Plugin[] } = {}
 ): Promise<StartedRuntime> {
     const target = edgeTarget(projectDir, devPort);
-    const config = configWith(projectDir, target, viteMode);
+    const config = configWith(projectDir, target, viteMode, vitePlugins);
     const runtime = new EdgeDevRuntime(target);
     let listening: number | undefined;
     const recordPort: DevEventHandler = (event) => {
