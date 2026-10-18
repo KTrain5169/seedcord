@@ -44,13 +44,21 @@ const DEV_PACKAGES = [
     'prettier',
     'seedcord',
     // typescript-eslint 8 caps typescript below 6.1
-    'typescript@~6.0'
+    'typescript@~6.0',
+    // seedcord's peer range
+    'vite@^8.3.4'
 ];
+// both are betas, pinned to the versions seedcord's own edge tests run on
+const EDGE_DEV_PACKAGES = ['cf@1.0.0-beta.17', '@cloudflare/vite-plugin@2.0.0-beta.v.0'];
 const SHARED_PACKAGES = ['@discordjs/builders', 'envapt'];
 
-function runtimePackages(isGateway: boolean): string[] {
+function runtimePackages({ isGateway }: TemplateContext): string[] {
     const transport = isGateway ? ['@seedcord/gateway', 'discord.js'] : ['@seedcord/http'];
     return [...transport, ...SHARED_PACKAGES];
+}
+
+function devPackages({ isEdge }: TemplateContext): string[] {
+    return isEdge ? [...DEV_PACKAGES, ...EDGE_DEV_PACKAGES] : DEV_PACKAGES;
 }
 
 async function writeTree(target: string, files: { path: string; contents: string }[]): Promise<void> {
@@ -99,11 +107,15 @@ function skipInstallSteps(steps: StepUi): InstallOutcome {
     return { installed: false, notices: [], failed: false };
 }
 
-async function runInstallSteps(input: ScaffoldInput, run: CommandRunner, isGateway: boolean): Promise<InstallOutcome> {
+async function runInstallSteps(
+    input: ScaffoldInput,
+    run: CommandRunner,
+    context: TemplateContext
+): Promise<InstallOutcome> {
     const { agent, steps, target } = input;
 
-    const deps = addCommand(agent, runtimePackages(isGateway), false);
-    const dev = addCommand(agent, DEV_PACKAGES, true);
+    const deps = addCommand(agent, runtimePackages(context), false);
+    const dev = addCommand(agent, devPackages(context), true);
     const format = execCommand(agent, ['prettier', '--write', '.']);
     const codegen = execCommand(agent, ['seedcord', 'codegen']);
 
@@ -112,9 +124,10 @@ async function runInstallSteps(input: ScaffoldInput, run: CommandRunner, isGatew
         if (warning !== null) warnings.push(warning);
     };
 
+    // cf goes in the first add, since bun runs the project's postinstall after every one
     const installed = await succeeded(steps, 'install', async () => {
-        collect(await run(deps.command, deps.args, target));
         collect(await run(dev.command, dev.args, target));
+        collect(await run(deps.command, deps.args, target));
     });
 
     // npx and bun x fetch a missing binary from the registry
@@ -126,7 +139,14 @@ async function runInstallSteps(input: ScaffoldInput, run: CommandRunner, isGatew
     }
 
     const formatted = await succeeded(steps, 'format', () => run(format.command, format.args, target));
-    const generated = await succeeded(steps, 'types', () => run(codegen.command, codegen.args, target));
+    const generated = await succeeded(steps, 'types', async () => {
+        await run(codegen.command, codegen.args, target);
+        if (!context.isEdge) return;
+
+        // pnpm and npm skip the project's postinstall on an add
+        const bindingTypes = execCommand(agent, ['cf', 'workers', 'types']);
+        await run(bindingTypes.command, bindingTypes.args, target);
+    });
 
     return { installed: true, notices: warnings, failed: !formatted || !generated };
 }
@@ -158,9 +178,7 @@ export async function scaffold(input: ScaffoldInput, run: CommandRunner): Promis
     const context = buildContext(input.answers, { developerUsername: plan.developerUsername, agent: input.agent });
     if (!(await writeProject(input, context, existed))) return { created: false };
 
-    const outcome = input.answers.install
-        ? await runInstallSteps(input, run, context.isGateway)
-        : skipInstallSteps(input.steps);
+    const outcome = input.answers.install ? await runInstallSteps(input, run, context) : skipInstallSteps(input.steps);
 
     const gitNotice = await gitNoticeFor(input, run, plan);
 

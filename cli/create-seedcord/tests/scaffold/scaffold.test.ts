@@ -24,7 +24,8 @@ const PACKAGE_OF: Record<string, string> = {
     eslint: 'eslint',
     prettier: 'prettier',
     seedcord: 'seedcord',
-    tsc: 'typescript'
+    tsc: 'typescript',
+    cf: 'cf'
 };
 
 const GATEWAY: ScaffoldAnswers = {
@@ -32,6 +33,7 @@ const GATEWAY: ScaffoldAnswers = {
     transport: 'gateway',
     capabilities: ['guild-messages'],
     token: 'aaa.bbb.ccc',
+    testingGuilds: [],
     botColor: 'Blurple',
     install: true,
     git: true
@@ -40,11 +42,37 @@ const GATEWAY: ScaffoldAnswers = {
 const HTTP: ScaffoldAnswers = {
     directory: 'my-bot',
     transport: 'http',
+    runtime: 'server',
     token: 'aaa.bbb.ccc',
+    testingGuilds: [],
     botColor: 'Blurple',
     install: true,
     git: true
 };
+
+const EDGE: ScaffoldAnswers = { ...HTTP, runtime: 'edge' };
+
+const SEEDCORD_CLI = resolve(import.meta.dirname, '../../../seedcord');
+
+async function seedcordTestedVersion(name: string): Promise<string> {
+    const manifest = await readFile(join(SEEDCORD_CLI, 'node_modules', name, 'package.json'), 'utf8');
+    // justified: a package manifest carries its version
+    return (JSON.parse(manifest) as { version: string }).version;
+}
+
+// pnpm swaps catalog:peer for the real range only when it publishes
+async function seedcordPeerRange(name: string): Promise<string> {
+    const workspace = await readFile(join(SEEDCORD_CLI, '../../pnpm-workspace.yaml'), 'utf8');
+    const lines = workspace.split('\n');
+    const catalog = lines.slice(lines.indexOf('  peer:') + 1);
+    const entries = catalog.slice(
+        0,
+        catalog.findIndex((line) => !line.startsWith('    '))
+    );
+    const entry = entries.find((line) => line.trim().replaceAll("'", '').startsWith(`${name}: `));
+    if (entry === undefined) throw new Error(`${name} is missing from the peer catalog`);
+    return entry.split(': ')[1] ?? '';
+}
 
 interface Recorded {
     command: string;
@@ -69,6 +97,14 @@ function recorder(failOn?: string, warnOn?: string): { runner: CommandRunner; ca
     };
 
     return { runner, calls };
+}
+
+function installs(calls: readonly Recorded[]): { runtime: string[]; dev: string[] } {
+    const adds = calls.filter(({ args }) => args[0] === 'add');
+    return {
+        runtime: adds.find(({ args }) => !args.includes('-D'))?.args ?? [],
+        dev: adds.find(({ args }) => args.includes('-D'))?.args ?? []
+    };
 }
 
 async function scratchTarget(): Promise<string> {
@@ -134,38 +170,90 @@ describe('scaffold', () => {
         expect(order).toEqual(['pnpm add', 'pnpm add', 'pnpm exec', 'pnpm exec', 'git init', 'git add', 'git commit']);
     });
 
+    it('writes the binding types of an edge bot in the types step', async () => {
+        const target = await scratchTarget();
+        const { runner, calls } = recorder();
+
+        await scaffold({ ...baseInput(target), answers: EDGE }, runner);
+
+        const spoken = calls.map((call) => `${call.command} ${call.args.join(' ')}`);
+        expect(spoken.slice(2, 5)).toEqual([
+            'pnpm exec prettier --write .',
+            'pnpm exec seedcord codegen',
+            'pnpm exec cf workers types'
+        ]);
+    });
+
     it('installs the gateway packages and the shared dev ones', async () => {
         const target = await scratchTarget();
         const { runner, calls } = recorder();
 
         await scaffold(baseInput(target), runner);
 
-        const [deps, dev] = calls;
-        expect(deps?.args).toContain('@seedcord/gateway');
-        expect(deps?.args).toContain('discord.js');
-        expect(dev?.args).toContain('-D');
-        expect(dev?.args).toContain('@types/node');
+        const { runtime, dev } = installs(calls);
+        expect(runtime).toContain('@seedcord/gateway');
+        expect(runtime).toContain('discord.js');
+        expect(dev).toContain('@types/node');
     });
 
-    it('installs every tool the generated scripts call', async () => {
+    it('installs the dev packages before the runtime ones', async () => {
         const target = await scratchTarget();
         const { runner, calls } = recorder();
 
-        await scaffold(baseInput(target), runner);
+        await scaffold({ ...baseInput(target), answers: EDGE }, runner);
+
+        expect(calls[0]?.args).toContain('-D');
+        expect(calls[1]?.args).not.toContain('-D');
+    });
+
+    it.each([
+        ['gateway', GATEWAY],
+        ['http', HTTP],
+        ['edge', EDGE]
+    ])('installs every tool the scripts call, for a %s bot', async (_kind, answers) => {
+        const target = await scratchTarget();
+        const { runner, calls } = recorder();
+        const input = { ...baseInput(target), answers };
+
+        await scaffold(input, runner);
 
         const manifest = JSON.parse(await readFile(join(target, 'package.json'), 'utf8')) as {
             scripts: Record<string, string>;
         };
-        const installed = [...(calls[0]?.args ?? []), ...(calls[1]?.args ?? [])];
+        const { runtime, dev } = installs(calls);
+        const installed = [...runtime, ...dev];
+        const commands = Object.values(manifest.scripts).flatMap((script) => script.split('&&'));
 
-        for (const command of Object.values(manifest.scripts)) {
-            const binary = command.split(' ')[0] ?? '';
-            if (BUILT_IN.has(binary)) continue;
+        for (const command of commands) {
+            const binary = command.trim().split(' ')[0] ?? '';
+            if (BUILT_IN.has(binary) || binary === input.agent) continue;
 
             const pkg = PACKAGE_OF[binary];
             expect(pkg, `${binary} maps to no package`).toBeDefined();
             expect(installed.some((arg) => arg === pkg || arg.startsWith(`${pkg}@`))).toBe(true);
         }
+    });
+
+    it.each(['cf', '@cloudflare/vite-plugin'])(
+        'installs the %s version that seedcord tests its edge build on',
+        async (name) => {
+            const target = await scratchTarget();
+            const { runner, calls } = recorder();
+
+            await scaffold({ ...baseInput(target), answers: EDGE }, runner);
+
+            const pinned = installs(calls).dev.find((arg) => arg.startsWith(`${name}@`));
+            expect(pinned).toBe(`${name}@${await seedcordTestedVersion(name)}`);
+        }
+    );
+
+    it.each([GATEWAY, HTTP, EDGE])('installs vite at the range seedcord takes as a peer', async (answers) => {
+        const target = await scratchTarget();
+        const { runner, calls } = recorder();
+
+        await scaffold({ ...baseInput(target), answers }, runner);
+
+        expect(installs(calls).dev).toContain(`vite@${await seedcordPeerRange('vite')}`);
     });
 
     it('pins typescript to the last major typescript-eslint supports', async () => {
@@ -174,7 +262,7 @@ describe('scaffold', () => {
 
         await scaffold(baseInput(target), runner);
 
-        expect(calls[1]?.args).toContain('typescript@~6.0');
+        expect(installs(calls).dev).toContain('typescript@~6.0');
     });
 
     it('swaps the transport package on http', async () => {
@@ -183,8 +271,9 @@ describe('scaffold', () => {
 
         await scaffold({ ...baseInput(target), answers: HTTP }, runner);
 
-        expect(calls[0]?.args).toContain('@seedcord/http');
-        expect(calls[0]?.args).not.toContain('discord.js');
+        const { runtime } = installs(calls);
+        expect(runtime).toContain('@seedcord/http');
+        expect(runtime).not.toContain('discord.js');
     });
 
     it('skips install, format, and codegen when install is off', async () => {

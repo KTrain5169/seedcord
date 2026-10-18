@@ -16,6 +16,7 @@ const GATEWAY: ScaffoldAnswers = {
     transport: 'gateway',
     capabilities: ['reactions'],
     token: 'aaa.bbb.ccc',
+    testingGuilds: [],
     botColor: 'Blurple',
     install: true,
     git: true
@@ -24,11 +25,15 @@ const GATEWAY: ScaffoldAnswers = {
 const HTTP: ScaffoldAnswers = {
     directory: 'my-bot',
     transport: 'http',
+    runtime: 'server',
     token: 'aaa.bbb.ccc',
+    testingGuilds: [],
     botColor: 'Blurple',
     install: true,
     git: true
 };
+
+const EDGE: ScaffoldAnswers = { ...HTTP, runtime: 'edge' };
 
 async function render(answers: ScaffoldAnswers): Promise<Map<string, string>> {
     const files = await renderTemplates(TEMPLATES, buildContext(answers, EXTRAS));
@@ -42,6 +47,11 @@ async function renderOne(answers: ScaffoldAnswers, path: string): Promise<string
     if (contents === undefined) throw new Error(`${path} was never rendered`);
 
     return contents;
+}
+
+async function scriptsOf(answers: ScaffoldAnswers): Promise<Record<string, string | undefined>> {
+    const manifest = JSON.parse(await renderOne(answers, 'package.json')) as { scripts: Record<string, string> };
+    return manifest.scripts;
 }
 
 describe('renderTemplates', () => {
@@ -72,6 +82,15 @@ describe('renderTemplates', () => {
 
         expect(await engines('bun')).toEqual({ bun: own.engines.bun });
         expect(await engines('pnpm')).toEqual({ node: own.engines.node });
+    });
+
+    it('runs the cli of an edge bot on Node in a Bun project', async () => {
+        const own = createRequire(import.meta.url)('../../package.json') as { engines: { node: string } };
+        const files = await renderTemplates(TEMPLATES, buildContext(EDGE, { ...EXTRAS, agent: 'bun' }));
+        const manifest = files.find((file) => file.path === 'package.json')?.contents ?? '{}';
+
+        expect(files.find((file) => file.path === 'bunfig.toml')).toBeUndefined();
+        expect((JSON.parse(manifest) as { engines?: unknown }).engines).toEqual({ node: own.engines.node });
     });
 
     it.each(['npm', 'yarn', 'pnpm'] as const)('writes no bunfig.toml for %s projects', async (agent) => {
@@ -216,10 +235,83 @@ describe('the rendered http config', () => {
         expect(bot).not.toContain('clientOptions');
     });
 
+    it('writes the test servers you gave into .env', async () => {
+        const env = await renderOne({ ...HTTP, testingGuilds: ['613425648685547541', '1100000000000000000'] }, '.env');
+
+        expect(env).toMatch(/^TESTING_GUILD_IDS=613425648685547541,1100000000000000000$/m);
+    });
+
     it('writes an empty DISCORD_BOT_TOKEN when you skipped the token', async () => {
         const env = await renderOne({ ...HTTP, token: null }, '.env');
 
         expect(env).toMatch(/^DISCORD_BOT_TOKEN=$/m);
+    });
+});
+
+describe('the rendered edge project', () => {
+    it('writes a cloudflare.config.ts and no entry file', async () => {
+        const files = await render(EDGE);
+
+        expect(files.has('cloudflare.config.ts')).toBe(true);
+        expect(files.has('src/index.ts')).toBe(false);
+    });
+
+    it('writes no cloudflare.config.ts for a server bot', async () => {
+        const files = await render(HTTP);
+
+        expect(files.has('cloudflare.config.ts')).toBe(false);
+    });
+
+    it('leaves entry out of seedcord.config.ts, which the cli refuses on edge', async () => {
+        expect(await renderOne(EDGE, 'seedcord.config.ts')).not.toMatch(/\bentry\b/);
+        expect(await renderOne(HTTP, 'seedcord.config.ts')).toContain("entry: './index.ts'");
+    });
+
+    it("points TypeScript at the worker's build condition and the types cf writes", async () => {
+        const tsconfig = JSON.parse(await renderOne(EDGE, 'tsconfig.json')) as {
+            compilerOptions: { customConditions?: string[] };
+            include: string[];
+        };
+
+        expect(tsconfig.compilerOptions.customConditions).toEqual(['workerd']);
+        expect(tsconfig.include).toContain('cloudflare.config.ts');
+        expect(tsconfig.include).toContain('.cloudflare/types/index.d.ts');
+    });
+
+    it.each([GATEWAY, HTTP, EDGE])("types import.meta.env and keeps node's types", async (answers) => {
+        const tsconfig = JSON.parse(await renderOne(answers, 'tsconfig.json')) as {
+            compilerOptions: { types?: string[] };
+        };
+
+        expect(tsconfig.compilerOptions.types).toEqual(['node', 'vite/client']);
+    });
+
+    it("lets pnpm run workerd's install script", async () => {
+        expect(await renderOne(EDGE, 'pnpm-workspace.yaml')).toBe(
+            'allowBuilds:\n    unrs-resolver: false\n    workerd: true\n'
+        );
+    });
+
+    it('gives an edge bot deploy and types scripts and nothing to start', async () => {
+        const scripts = await scriptsOf(EDGE);
+
+        expect(Object.keys(scripts)).toEqual(expect.arrayContaining(['deploy', 'types', 'postinstall']));
+        expect(scripts.start).toBeUndefined();
+    });
+});
+
+describe('the rendered scripts', () => {
+    it.each([
+        ['gateway', GATEWAY],
+        ['http', HTTP],
+        ['edge', EDGE]
+    ])('give the %s bot commands scripts and a check that runs only scripts it has', async (_kind, answers) => {
+        const scripts = await scriptsOf(answers);
+        const checked = (scripts.check ?? '').split('&&').map((step) => step.trim().replace(/^pnpm run /, ''));
+
+        expect(Object.keys(scripts)).toEqual(expect.arrayContaining(['commands', 'commands:deploy']));
+        expect(checked.length).toBeGreaterThan(1);
+        for (const name of checked) expect(scripts[name], name).toBeDefined();
     });
 });
 
