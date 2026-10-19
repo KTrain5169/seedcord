@@ -1,10 +1,12 @@
 export {
     BUILT_FILES_KEY,
+    BUILT_FILES_READY_KEY,
     builtConfigDir,
     builtModulePath,
     moduleGlobs,
     resolveFolder,
     setBotRoot,
+    setBuiltFilesHook,
     textGlobs
 } from './node/directory';
 export { importFailed, recordThrownBy, vitePluginThrew } from './node/importFailed';

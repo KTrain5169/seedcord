@@ -2,8 +2,8 @@ import { paint, SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordRangeError, SeedcordTypeError, throwSingleOrAggregate } from '@seedcord/errors/internal';
 import { isPlainObject, isStringArray } from '@seedcord/utils/internal';
 
-import type { BuildTarget } from './detectTarget';
-import type { SeedcordConfig } from './schema';
+import type { BuildTarget, EdgeTarget, ServerTarget } from './detectTarget';
+import type { SeedcordConfig, SeedcordServerConfig } from './schema';
 
 type ConfigProblem = SeedcordTypeError | SeedcordRangeError;
 
@@ -54,13 +54,27 @@ function* tunnelProblems(value: unknown): Generator<SeedcordTypeError> {
     }
 }
 
-export class ConfigValidator {
-    constructor(
-        private readonly target: BuildTarget,
-        private readonly configFile: string
-    ) {}
+export type CheckedConfig =
+    | { readonly target: ServerTarget; readonly config: SeedcordServerConfig }
+    | { readonly target: EdgeTarget; readonly config: SeedcordConfig };
 
-    public validate(raw: unknown): asserts raw is SeedcordConfig {
+type CheckedEdgeConfig = Extract<CheckedConfig, { target: EdgeTarget }>;
+
+export function isEdgeConfig(checked: CheckedConfig): checked is CheckedEdgeConfig {
+    return checked.target.kind === 'edge';
+}
+
+export class ConfigValidator {
+    constructor(private readonly target: BuildTarget) {}
+
+    public validate(raw: unknown): CheckedConfig {
+        this.assertValid(raw);
+        // justified: problems() checked build.outDir and build.start on a server target
+        // a valid port on a server is accepted and ignored
+        return { target: this.target, config: raw } as CheckedConfig;
+    }
+
+    private assertValid(raw: unknown): asserts raw is SeedcordConfig {
         if (!isPlainObject(raw)) throw new SeedcordTypeError(SeedcordErrorCode.CliConfigInvalidExport);
         throwSingleOrAggregate([...this.problems(raw)], SeedcordErrorCode.CliProblems);
     }
@@ -68,7 +82,6 @@ export class ConfigValidator {
     private *problems(raw: Record<string, unknown>): Generator<ConfigProblem> {
         if (!isNonEmptyString(raw.instance))
             yield invalidField('instance', 'a string that points to the file that default exports your bot');
-        yield* this.entryProblems(raw.entry);
         yield* this.portProblems(raw.port);
         if (!isOptionalString(raw.root)) yield invalidField('root', 'a string');
         if (raw.idleAnimation !== undefined && typeof raw.idleAnimation !== 'boolean') {
@@ -85,26 +98,9 @@ export class ConfigValidator {
         }
     }
 
-    private unusedField(field: string, why: string): SeedcordTypeError {
-        return new SeedcordTypeError(SeedcordErrorCode.CliConfigFieldUnused, [field, this.configFile, why]);
-    }
-
-    private *entryProblems(entry: unknown): Generator<SeedcordTypeError> {
-        const { target } = this;
-        if (target.kind === 'server') {
-            if (!isNonEmptyString(entry)) yield invalidField('entry', 'a string that points to your startup script');
-        } else if (entry !== undefined) {
-            const why = `${paint.path(target.cloudflareConfig)} makes this an edge bot, which has no entry because Cloudflare calls the default export of ${paint.bold('instance')}.`;
-            yield this.unusedField('entry', why);
-        }
-    }
-
     private *portProblems(port: unknown): Generator<ConfigProblem> {
         if (port === undefined) return;
-        if (this.target.kind === 'server') {
-            const why = `Only an edge bot reads it. A node http bot sets ${paint.bold('port')} in ${paint.bold('new Seedcord({ ... })')}, and a gateway bot listens on no port.`;
-            yield this.unusedField('port', why);
-        } else if (typeof port !== 'number' || !Number.isSafeInteger(port)) {
+        if (typeof port !== 'number' || !Number.isSafeInteger(port)) {
             yield invalidField('port', PORT_RANGE);
         } else if (port < 0 || port > MAX_PORT) {
             yield new SeedcordRangeError(SeedcordErrorCode.CliConfigInvalidField, ['port', PORT_RANGE]);
@@ -117,11 +113,11 @@ export class ConfigValidator {
             yield invalidField('build', 'an object');
             return;
         }
-        if (this.target.kind === 'edge' && build.outDir !== undefined) {
-            const why = `An edge bot can't set it, because ${paint.bold('@cloudflare/vite-plugin')} writes the worker to ${paint.path('.cloudflare/output')}, where ${paint.bold('cf deploy --prebuilt')} reads it.`;
-            yield this.unusedField('build.outDir', why);
-        } else if (!isOptionalString(build.outDir)) {
-            yield invalidField('build.outDir', 'a string');
+        if (this.target.kind === 'server') {
+            if (!isOptionalString(build.outDir)) yield invalidField('build.outDir', 'a string');
+            if (build.start !== undefined && !isNonEmptyString(build.start)) {
+                yield invalidField('build.start', 'a string that points to your startup script');
+            }
         }
         if (!isOptionalString(build.tsconfig)) yield invalidField('build.tsconfig', 'a string');
     }

@@ -76,7 +76,7 @@ export enum SeedcordErrorCode {
     CorePluginKeyMalformed = 1217,
     /** An attached plugin extends the `Plugin` class of a different copy of `@seedcord/core`. */
     CorePluginFromOtherCore = 1218,
-    /** A folder or the entry file is outside `root`. */
+    /** A folder or the `build.start` file is outside `root`. */
     CorePathOutsideRoot = 1219,
     /** A plugin declares a transport or runtime the bot doesn't use. */
     CorePluginScopeMismatch = 1220,
@@ -94,7 +94,7 @@ export enum SeedcordErrorCode {
     CoreWebhookUrlInvalid = 1226,
     /** Reading from Discord with `DISCORD_BOT_TOKEN` failed, like the application, its public key, or its commands. */
     CoreDiscordReadFailed = 1227,
-    /** Two routes, commands, middleware classes, migrations, or customId fields have the same name. */
+    /** Two routes, commands, migrations, or customId fields have the same name. */
     CoreDuplicateName = 1228,
     /** A Vite plugin from `vitePlugins` threw while Vite started or loaded a file, or failed when seedcord called `vitePlugins`. */
     CoreVitePluginThrew = 1229,
@@ -216,8 +216,8 @@ export enum SeedcordErrorCode {
     CliConfigInvalidExport = 3101,
     /** No seedcord config file exists in the folder the CLI searched. */
     CliConfigNotFound = 3102,
-    /** The entry file does not exist. */
-    CliEntryNotFound = 3103,
+    /** The file that `instance` or `build.start` in the seedcord config points at does not exist. */
+    CliFileNotFound = 3103,
     /** The instance file's default export is not a constructed `Seedcord`. */
     CliInstanceInvalid = 3104,
     /** The bot threw during startup. */
@@ -260,7 +260,7 @@ export enum SeedcordErrorCode {
     CliConfigFileUnreadable = 3123,
     /** The CLI could not start the TypeScript compiler. */
     CliTypescriptNotStarted = 3124,
-    /** A config file sets a field this bot can't set, like `entry` on an edge bot or `port` on a server bot. */
+    /** A config file sets a field this bot can't set, like `entrypoint` in an edge bot's `cloudflare.config.ts`. */
     CliConfigFieldUnused = 3125,
     /** An edge bot's `compatibilityDate` is older than Cloudflare's Node compat default, and no flag turns it on. */
     CliEdgeCompatDateTooOld = 3126,

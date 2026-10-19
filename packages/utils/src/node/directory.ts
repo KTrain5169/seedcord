@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { SeedcordError } from '@seedcord/errors/internal';
+import { displayPath, SeedcordError } from '@seedcord/errors/internal';
 
 import { asError } from '#src/misc/asError';
 
@@ -148,6 +148,8 @@ interface BuiltFileLoaders {
 
 // seedcord build writes a BuiltFileLoaders object here from the entry it generates
 export const BUILT_FILES_KEY = 'seedcord:utils:built-files';
+// the generated entry calls the function here right after it writes the built files
+export const BUILT_FILES_READY_KEY = 'seedcord:utils:built-files-ready';
 
 // a built bot reports each module by the path of the file it became
 export function builtModulePath(key: string): string {
@@ -161,6 +163,12 @@ const builtSources = new WeakMap<BuiltFileLoaders, BuiltFiles>();
 
 function builtFiles(): BuiltFileLoaders | undefined {
     return Reflect.get(globalThis, Symbol.for(BUILT_FILES_KEY)) as BuiltFileLoaders | undefined;
+}
+
+// an app can import seedcord before the built bot it embeds
+export function setBuiltFilesHook(callback: () => void): void {
+    if (builtFiles()) callback();
+    else Reflect.set(globalThis, Symbol.for(BUILT_FILES_READY_KEY), callback);
 }
 
 export function builtConfigDir(): string | undefined {
@@ -199,15 +207,19 @@ function fileSource(): FileSource {
     return source;
 }
 
-interface ImportedFile {
+interface FoundFile {
     fullPath: string;
+    /**
+     * The path to show in logs. A file under the working directory gets a relative path. Any other file gets its absolute path.
+     */
     relativePath: string;
+}
+
+interface ImportedFile extends FoundFile {
     imported: Record<string, unknown>;
 }
 
-interface TextFile {
-    fullPath: string;
-    relativePath: string;
+interface TextFile extends FoundFile {
     text: string;
 }
 
@@ -227,7 +239,7 @@ interface TextFile {
  */
 export async function* traverseDirectory(dir: string): AsyncGenerator<ImportedFile> {
     for (const [fullPath, load] of await fileSource().modules(resolveFolder(dir))) {
-        const relativePath = path.relative(process.cwd(), fullPath);
+        const relativePath = displayPath(fullPath);
         let imported: Record<string, unknown>;
         try {
             imported = await load();
@@ -254,7 +266,7 @@ export async function* traverseDirectory(dir: string): AsyncGenerator<ImportedFi
  */
 export async function* readTextFiles(dir: string): AsyncGenerator<TextFile> {
     for (const [fullPath, load] of await fileSource().texts(resolveFolder(dir))) {
-        const relativePath = path.relative(process.cwd(), fullPath);
+        const relativePath = displayPath(fullPath);
         let text: string;
         try {
             text = await load();

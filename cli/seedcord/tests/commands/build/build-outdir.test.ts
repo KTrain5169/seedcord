@@ -22,7 +22,7 @@ beforeEach(async () => {
 });
 
 async function buildWithOutDir(outDir: string): Promise<unknown> {
-    const config = { root: './src', instance: './bot.ts', entry: './index.ts', build: { outDir } };
+    const config = { root: './src', instance: './bot.ts', build: { start: './index.ts', outDir } };
     await writeFile(join(projectDir, 'seedcord.config.ts'), `export default ${JSON.stringify(config)};\n`);
     return quickBuildRunner()
         .run(projectDir)
@@ -72,17 +72,17 @@ describe('seedcord build checks outDir before it empties it', () => {
 describe('seedcord build checks the server entry', () => {
     const STARTED = 'seedcordTestPluginStarted';
 
-    it('throws CliEntryNotFound before any plugin from vitePlugins starts', async () => {
+    it('throws CliFileNotFound before any plugin from vitePlugins starts', async () => {
         onTestFinished(() => {
             Reflect.deleteProperty(globalThis, STARTED);
         });
         await writeFile(
             join(projectDir, 'seedcord.config.ts'),
-            `export default { root: './src', instance: './bot.ts', entry: './missing.ts', vitePlugins: () => [{ name: 'marks-start', config: () => { globalThis.${STARTED} = true; } }] };\n`
+            `export default { root: './src', instance: './bot.ts', build: { start: './missing.ts' }, vitePlugins: () => [{ name: 'marks-start', config: () => { globalThis.${STARTED} = true; } }] };\n`
         );
 
         await expect(quickBuildRunner().run(projectDir)).rejects.toMatchObject({
-            code: SeedcordErrorCode.CliEntryNotFound
+            code: SeedcordErrorCode.CliFileNotFound
         });
         expect(Reflect.get(globalThis, STARTED)).toBeUndefined();
     });
