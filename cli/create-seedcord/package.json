@@ -37,7 +37,8 @@
         "#cli/*": "./src/cli/*",
         "#interview/*": "./src/interview/*",
         "#scaffold/*": "./src/scaffold/*",
-        "#template/*": "./src/template/*"
+        "#template/*": "./src/template/*",
+        "#tests/*": "./tests/*"
     },
     "publishConfig": {
         "access": "public",
