@@ -1,46 +1,51 @@
 ---
 name: envapt
-description: Reads typed, validated config from process.env, .env files, or any bound source for TypeScript and JavaScript with the envapt library, on Node, Bun, Deno, Cloudflare Workers, and the browser. Use when the project imports from 'envapt' or 'envapt/config', when the user mentions envapt, Envapter, @Envapt, or the @EnvNum/@EnvStr/@EnvBool/@EnvUrl/@EnvTime sugar decorators, or when the task involves reading typed environment variables, loading .env files, validating env with zod/valibot/arktype, binding config on Cloudflare Workers or in the browser, or migrating off dotenv or the removed 'envapt/workerd' / 'envapt/browser' subpaths.
+description: Reads typed, validated config from process.env, .env files, or any bound source for TypeScript and JavaScript with the envapt library, on Node, Bun, Deno, Cloudflare Workers, and the browser. Use when the project imports from 'envapt' or 'envapt/config', when the user mentions envapt, Envapter, or @Envapt, or when the task involves reading typed environment variables, loading .env files, validating env with zod/valibot/arktype, binding config on Cloudflare Workers or in the browser, or migrating off dotenv or the removed 'envapt/workerd' / 'envapt/browser' subpaths.
 ---
 
 # envapt
 
-envapt reads environment variables, or any config, as typed, validated values, with an optional `.env` cascade layered on top of `process.env`, and nothing in `dependencies` or `peerDependencies`. Available as `envapt` on npm and `@materwelon/envapt` on JSR. Minimum versions are Node >=20, Bun >=1.3, Deno >=2.5. Ships ESM and CJS. It also runs on Cloudflare Workers and in the browser, where you bind a source yourself and read with the same typed API (see the Runtimes and sources section below). Import from `envapt` everywhere; the package export conditions select the right build automatically.
+envapt reads environment variables, or any config, as typed, validated values, with an optional `.env` cascade layered on top of `process.env`, and nothing in `dependencies` or `peerDependencies`. Available as `envapt` on npm and `@materwelon/envapt` on JSR. Minimum versions are Node >=22.23.3, Bun >=1.3.11, Deno >=2.5. Ships ESM only. It also runs on Cloudflare Workers and in the browser, where you bind a source yourself and read with the same typed API (see the Runtimes and sources section below). Import from `envapt` everywhere, because the package export conditions select the right build automatically.
 
 ## Choosing the API: functional vs decorators
 
-envapt has two surfaces. They read the same values through the same cache; pick by the project, not by preference.
+envapt has two surfaces. They read the same values through the same cache. Pick by the project.
 
 - **Default to the functional `Envapter` readers.** They work in JS and TS with no build step and no compiler flags, on every runtime envapt supports (Node, Bun, Deno, Cloudflare Workers, the browser). Off Node you bind a source first (see the Runtimes and sources section below).
-- **The `@Envapt` decorators are TypeScript-only.** The default import is a TC39 Stage 3 accessor decorator, so it needs no `experimentalDecorators` flag and runs on any runtime that handles Stage 3 decorators, including Bun and Deno executing a `.ts` file directly. Reach for it on a TS project that wants config on typed fields.
-- **Legacy decorators live at `envapt/legacy`.** Use them only when the project already runs on `experimentalDecorators`. They keep the old `static readonly` / `declare readonly` form and do NOT work on a `.ts` entry run directly on Bun ([bun#27575](https://github.com/oven-sh/bun/issues/27575)), so prefer the default accessor form or the functional readers there.
+- **The `@Envapt` decorators are TypeScript-only.** The default import is a TC39 Stage 3 accessor decorator, so it needs no `experimentalDecorators` flag and runs on any runtime that supports Stage 3 decorators, including Bun and Deno executing a `.ts` file directly. Use it on a TS project that wants config on typed fields.
+- **Legacy decorators live at `envapt/legacy`.** Use them when the project already runs on `experimentalDecorators`. They keep the old `static readonly` / `declare readonly` form and need that flag set in `tsconfig.json`.
 
 ## Functional API (the portable default)
 
-`Envapter` exposes the readers as both static methods and instance methods with identical signatures. Every key argument accepts a single string or an ordered array (first key that has a value wins).
+`Envapter` exposes the readers as static methods. Every key argument accepts a single string or an ordered array (first key that has a value wins).
 
 ```ts
 import { Envapter, Converters } from 'envapt';
+import { z } from 'zod/v4';
 
 Envapter.get('API_KEY'); // string | undefined
 Envapter.get('API_KEY', 'dev-key'); // string
-Envapter.getNumber('MAX_RETRIES', 3); // number
-Envapter.getBoolean('DEBUG', false); // boolean; true set: 1/yes/true/on, false set: 0/no/false/off
-Envapter.getBigInt('MAX', 0n); // bigint
+Envapter.getAs('MAX_RETRIES', Converters.Integer, 3); // number
+Envapter.getAs('DEBUG', Converters.Boolean, false); // boolean. true set: 1/yes/true/on, false set: 0/no/false/off
+Envapter.getAs('MAX', Converters.BigInt, 0n); // bigint
 Envapter.get(['CANARY_URL', 'APP_URL']); // ordered fallback
 
 // Presence check, true exactly when a required read of the same key finds a value
 Envapter.has('SENTRY_DSN'); // boolean
 
 // Built-in or array converter:
-Envapter.getUsing('ORIGINS', Converters.array({ of: Converters.String }), []); // string[]
-// Custom function converter (raw is the string, or undefined when unset):
-Envapter.getWith('FLAGS', (raw) => (raw ? raw.split(',') : [])); // string[]
+Envapter.getAs('ORIGINS', Converters.array({ of: Converters.String }), []); // string[]
+// Custom function converter, called only when the variable is set:
+Envapter.getAs('FLAGS', (raw) => raw.split(','), []); // string[]
+// Standard Schema (zod, valibot, arktype):
+Envapter.getAs('LOG_LEVEL', z.enum(['debug', 'info', 'warn']), 'info'); // 'debug' | 'info' | 'warn'
 
-// Throw instead of returning a fallback:
+// Throw when a key is missing:
 Envapter.require('DATABASE_URL', 'JWT_SECRET'); // throws EnvaptError listing every missing key
-Envapter.getRequired('PORT', Converters.Port); // throws if unset
-// throws if any key is unset (aggregates all missing keys so only one error), returns a typed object if all are present
+Envapter.require(['READONLY_URL', 'DATABASE_URL']); // an ordered key list passes when any key has a value
+Envapter.getRequired('PORT', Converters.Port); // MissingEnvValue if unset, InvalidEnvValue if it can't convert
+// throws if any key is unset (aggregates all missing keys so only one error), returns a typed object if all are present.
+// a field can also be a Standard Schema, see "Validation with Standard Schema"
 Envapter.getRequiredAll(
     {
         PORT: Converters.Port,
@@ -52,11 +57,11 @@ Envapter.getRequiredAll(
 );
 ```
 
-`Envapter.resolve` is a tagged template that interpolates env values: ``Envapter.resolve`postgres://${'DB_HOST'}:${'DB_PORT'}` ``. `Envapter.getRaw('KEY')` returns the raw string with no parsing.
+`Envapter.resolve` is a tagged template that interpolates env values: ``Envapter.resolve`postgres://${'DB_HOST'}:${'DB_PORT'}` ``. A slot can also take an ordered key list, as in `${['READONLY_HOST', 'DB_HOST']}`. `Envapter.getRaw('KEY')` returns the raw string with no parsing.
 
 ## Decorators
 
-`@Envapt` binds a class property to a variable. The default import is a TC39 Stage 3 accessor decorator, declared with the `accessor` keyword. The class does **not** need to extend anything, extend `Envapter` only to also get the reader methods on the same class.
+`@Envapt` binds a class property to a variable. The default import is a TC39 Stage 3 accessor decorator, declared with the `accessor` keyword. The class does **not** need to extend anything. Extend `Envapter` only to also get the reader methods on the same class.
 
 ```ts
 import { Envapt, Converters } from 'envapt';
@@ -72,52 +77,34 @@ class Config {
 
 ### Field declaration
 
-Declare the field with the `accessor` keyword. Static fields use `static accessor x: T`, instance fields use `accessor x!: T` with the definite-assignment `!`. No `readonly`, no `declare`, no initializer, and no `experimentalDecorators` flag. The accessor is read-only, assigning to it throws `EnvaptError`.
+Declare the field with the `accessor` keyword. Static fields use `static accessor x: T`, instance fields use `accessor x!: T` with the definite-assignment `!`. No `readonly`, no `declare`, no initializer, and no `experimentalDecorators` flag. The accessor is read-only, so assigning to it throws `EnvaptError`.
 
 The legacy form (`envapt/legacy`) differs. Static fields use a plain `static readonly x: T` and instance fields use `declare readonly x: T` (both no initializer), and `experimentalDecorators` must be on in `tsconfig.json` (and `deno.json` on Deno). A module that imports decorators only from `envapt/legacy` must also `import 'envapt'` once so the runtime source binds.
 
 ### Options object
 
-`@Envapt(key, options)` accepts: `{ fallback }`, `{ converter, fallback }`, `{ converter }`, `{ converter, required: true }`, `{ required: true }` (raw string, throws on missing), and `{ schema }` / `{ schema, fallback }`. `required` and `fallback` are mutually exclusive; `schema` and `converter` are mutually exclusive. A bad combination throws `EnvaptError` when the decorator is applied, before any access.
-
-### Shorthand decorators
-
-`@EnvNum`, `@EnvStr`, `@EnvBool`, `@EnvUrl`, `@EnvTime` wrap `@Envapt` with a fixed converter. The call site is the key plus an optional fallback (typed to the converter). They take a fallback only: for `required`, a `schema`, an array, or a custom function, use `@Envapt` with the options object.
-
-```ts
-import { EnvNum, EnvBool, EnvUrl, EnvTime } from 'envapt';
-
-class Config {
-    @EnvNum('MAX_RETRIES', 3) static accessor maxRetries: number;
-    @EnvBool('DEBUG', false) static accessor debug: boolean;
-    @EnvUrl('APP_URL', new URL('http://localhost:3000')) static accessor url: URL; // fallback is a URL, not a string
-    @EnvTime('CACHE_TTL', '15m') static accessor cacheTtl: number; // resolves to milliseconds
-}
-```
+`@Envapt(key, options)` accepts: `{ fallback }`, `{ converter, fallback }`, `{ converter }`, `{ converter, required: true }`, `{ required: true }` (raw string, throws on missing), `{ schema }` (`undefined` on missing), `{ schema, fallback }`, and `{ schema, required: true }`. `required` and `fallback` are mutually exclusive, and so are `schema` and `converter`. Passing a Standard Schema as `converter` throws `InvalidUserDefinedConfig`, so give it to `schema`. With `required: true`, a present value the converter can't convert throws `InvalidEnvValue`. A bad combination throws `EnvaptError` when the decorator is applied, before any access.
 
 ## Converters
 
-`Converters` carries the scalar tokens `String`, `Number`, `Integer`, `Float`, `Boolean`, `Bigint`, `Symbol`, `Json`, `Url`, `Regexp`, `Date`, `Time`, `Port`, `Email`. Four carry semantics the token name alone does not give.
+`Converters` carries the scalar tokens `String`, `Number`, `Integer`, `Float`, `Boolean`, `BigInt`, `Json`, `Url`, `RegExp`, `Date`, `Time`, `Port`, `Email`. Four carry semantics the token name alone does not give.
 
 - `Time` resolves to **milliseconds**. Its fallback is a ms number or a time string like `'10s'`/`'15m'`.
 - `Url` resolves to a **`URL` instance**. Its fallback must be a `URL`, and a string fails to compile.
 - `Port` resolves to a `number` and returns the fallback for anything outside the `0-65535` integer range. Use it for every port variable.
 - `Email` resolves to the raw `string` and returns the fallback for an address that fails the WHATWG email pattern.
 
-Arrays use the builder. `of` defaults to `Converters.String`, `delimiter` to `','`; `of` accepts any scalar token except `json` and `regexp`, or a custom element function.
+Arrays use the builder. `of` defaults to `Converters.String` and `delimiter` to `','`. `of` accepts any scalar token except `json` and `regexp`, or a custom element function.
 
 ```ts
 Converters.array({ of: Converters.Number, delimiter: ';' }); // "1;2;3" -> number[]
 ```
 
-Custom converters have **two different shapes**:
-
-- **Top-level** (`@Envapt({ converter })`, `getWith`) with signature `(raw: string | undefined, fallback) => T`. Gets the raw value (possibly `undefined`) and the fallback.
-- **Array element** (`Converters.array({ of })`) with signature `(raw: string) => T`. Gets one trimmed, non-empty slot; no `undefined`, no fallback.
+A custom converter is a `(raw: string) => T` function everywhere: `getAs`, `@Envapt({ converter })`, `getRequired`, `getRequiredAll`, and `Converters.array({ of })`. envapt calls it only with a present value and applies the fallback itself. Returning `undefined` or `null` means the value can't be converted. A top-level read then uses the fallback, and an array element throws `ArrayElementConversionFailed`. An error the converter throws reaches the caller unchanged from `getAs` and an optional `@Envapt`. A required read reports it as an `InvalidEnvValue` issue carrying its message.
 
 ## Runtimes and sources
 
-envapt reads through a pluggable `Source`, and the build you import binds the right one. Import from `envapt` everywhere; the `exports` conditions select the build automatically.
+envapt reads through a pluggable `Source`, and the build you import binds the right one. Import from `envapt` everywhere, because the `exports` conditions select the build automatically.
 
 - **Node, Bun, and Deno** (`import ... from 'envapt'`): a `FileSource` is bound automatically (a `process.env` snapshot plus the `.env` cascade). Nothing to wire up.
 - **Cloudflare Workers** (`import ... from 'envapt'`): bind the `env` binding yourself, once, before any read.
@@ -134,7 +121,7 @@ envapt reads through a pluggable `Source`, and the build you import binds the ri
     ```ts
     import { Envapter, PortableSource } from 'envapt';
 
-    Envapter.useSource(new PortableSource(import.meta.env)); // Vite; or a webpack DefinePlugin object
+    Envapter.useSource(new PortableSource(import.meta.env)); // Vite, or a webpack DefinePlugin object
     ```
 
 `PortableSource` snapshots the object and JSON-stringifies non-string values, so you pass the runtime's object straight through. Any object with a `readVars(): Record<string, string>` method is a valid `Source`.
@@ -143,21 +130,21 @@ For a source that reads one key at a time and cannot list its keys, pass a `(key
 
 `merge(...members)` composes several sources, last-wins across their `readVars()` snapshots. A member may be a `(key) => string | undefined` reader, which fills a key missing from every snapshot. At most one member is filesystem-backed, and the `.env` cascade and file APIs route to it. `merge` throws `EnvaptError` `InvalidMergedSource` with no members or more than one file-backed member.
 
-On the portable build (Workers, the browser, edge runtimes) there is no filesystem: the file-only config APIs (`envPaths`, `baseDir`, `envFileOptions`, `configureProfiles`, `resetProfiles`) warn once and no-op by default. Set `Envapter.fileApiMode = 'throw'` to make them throw `EnvaptError` `FileApiUnsupported` instead. A read before `useSource` throws `NoSourceBound` regardless of `fileApiMode`.
+The portable build (Workers, the browser, edge runtimes) has no filesystem. The file-only config APIs (`envPaths`, `baseDir`, `envFileOptions`, `configureProfiles`, `resetPaths`) warn once and no-op by default. Set `Envapter.fileApiMode = 'throw'` to make them throw `EnvaptError` `FileApiUnsupported`. A read before `useSource` throws `NoSourceBound` regardless of `fileApiMode`.
 
 ## Loading .env files
 
-By default envapt loads a per-environment cascade. Precedence is **most-specific-wins**: `.env.<environment>.local` > `.env.<environment>` > `.env.local` > `.env`. (This is deliberately the reverse of dotenv-flow / Next.js order.) Configure through statics on `Envapter`:
+By default envapt loads a per-environment cascade. Precedence is **most-specific-wins**: `.env.<environment>.local` > `.env.<environment>` > `.env.local` > `.env`, the same order dotenv-flow uses. Next.js loads `.env.local` above `.env.<environment>`. Configure through statics on `Envapter`:
 
 ```ts
-Envapter.baseDir = import.meta.dirname; // anchor relative .env resolution to this dir, not process.cwd()
-Envapter.envPaths = ['.env', '.env.local']; // explicit paths; disables the auto-cascade. Set baseDir first.
+Envapter.baseDir = import.meta.dirname; // anchor relative .env resolution to this dir
+Envapter.envPaths = ['.env', '.env.local']; // explicit paths, which disables the auto-cascade. Set baseDir first.
 Envapter.strict = true; // whitespace-only values count as missing
 Envapter.syncProcessEnv = true; // mirror loaded keys into process.env
-Envapter.environment; // Environment.Development | Staging | Production | Test; also isProduction / isStaging / isDevelopment / isTest
+Envapter.environment; // 'development' | 'staging' | 'production' | 'test'. also isProduction / isStaging / isDevelopment / isTest
 ```
 
-The environment is detected from the first set of `ENVIRONMENT` -> `ENV` -> `NODE_ENV` -> `MODE` (case-insensitive; `MODE` covers Vite browser builds), defaulting to development. `Envapter.configureProfiles({ ... })` sets per-environment path lists (node build only, like `baseDir` / `envPaths`); `Envapter.debug` (or the `ENVAPT_DEBUG` env var) turns on logging.
+The environment is detected from the first set of `ENVIRONMENT` -> `ENV` -> `NODE_ENV` -> `MODE` (case-insensitive, and `MODE` covers Vite browser builds), defaulting to development. `ENVIRONMENT_KEYS` exports that list in order, for code that has to read the mode before envapt loads. `Envapter.configureProfiles({ ... })` sets per-environment path lists (node build only, like `baseDir` / `envPaths`). `Envapter.debug` (or the `ENVAPT_DEBUG` env var) turns on logging.
 
 ### Drop-in for dotenv
 
@@ -166,23 +153,36 @@ The environment is detected from the first set of `ENVIRONMENT` -> `ENV` -> `NOD
 ```ts
 import 'envapt/config'; // ESM, top of entry
 // node --import envapt/config app.js   (preload)
-// node -r envapt/config app.cjs        (CJS preload)
 ```
 
 ## Validation with Standard Schema
 
-`Envapter.parse` (and `@Envapt({ schema })`) validates through any Standard Schema validator: zod, valibot, arktype, or a hand-rolled `StandardSchemaV1`. The result type is the schema's output.
+`Envapter.getAs`, `Envapter.getRequired`, and `@Envapt({ schema })` validate through any Standard Schema validator: zod, valibot, arktype, or a hand-rolled `StandardSchemaV1`. The result type is the schema's output. A missing value returns the fallback, or `undefined` without one. `getRequired` and `required: true` throw `MissingEnvValue` for it instead.
 
 ```ts
 import { z } from 'zod/v4';
-Envapter.parse('PORT', z.coerce.number().int().min(1024).max(65535)); // number
+Envapter.getAs('PORT', z.coerce.number().int().min(1024).max(65535), 3000); // number
+Envapter.getRequired('PORT', z.coerce.number().int().min(1024).max(65535)); // number, throws when unset
 ```
 
-Two constraints: validation is **sync-only** (an async `validate` throws), and a **fallback is returned as-is and is NOT passed through the schema**, only a present env value is validated.
+Two constraints: validation is **sync-only** (an async `validate` throws), and a **fallback is returned as-is and is NOT passed through the schema**. Only a present env value is validated.
+
+`getRequiredAll` takes a schema for any field, mixed with converters. A bad converter in the spec throws first. Missing keys then throw one `MissingEnvValue`, before any schema runs. A schema `.default()` never applies there. After that envapt reads every field and throws one `InvalidEnvValue` for all the bad values: a schema or converter that rejects its value, a bad array element, or a custom parser or schema that throws. Each issue's `path` starts with its env key. The error message lists only the keys, since an issue message can quote a secret value.
+
+```ts
+const db = Envapter.getRequiredAll(
+    {
+        DATABASE_URL: Converters.Url,
+        DATABASE_POOL_SIZE: z.coerce.number().int().min(1).max(100),
+        DATABASE_SSL_MODE: z.enum(['disable', 'require', 'verify-full'])
+    },
+    'camelCase'
+); // { databaseUrl: URL; databasePoolSize: number; databaseSslMode: 'disable' | 'require' | 'verify-full' }
+```
 
 ## Errors
 
-Reader and decorator failures throw `EnvaptError` with a numeric `code` (`EnvaptErrorCodes`). The common error codes are `MissingEnvValue` (a `required` value is absent), `InvalidUserDefinedConfig` (bad options, e.g. `required` + `fallback`), `SchemaValidationFailed` (carries an `issues` array), `MalformedTimeFallback`, `FileApiUnsupported` (a file-only API called with `fileApiMode = 'throw'`, or on the node build with a non-filesystem source), `NoSourceBound` (a read before `useSource` on the portable build).
+Reader and decorator failures throw `EnvaptError` with a numeric `code` (`EnvaptErrorCodes`). The common error codes are `MissingEnvValue` (a required value is absent), `SchemaValidationFailed` (`getAs` or a `schema` decorator without `required` gets a value its schema rejects), `InvalidEnvValue` (a required read gets a value it can't convert, a bad array element, or an error from a custom parser or schema). Both carry an `issues` array whose paths start with the env key, and both messages list only the keys. In a required read, an issue from a parser or schema that threw keeps the thrown value as `cause`, and the error's own `cause` is that value when exactly one issue has one. Other common codes are `InvalidUserDefinedConfig` (bad options, e.g. `required` + `fallback`), `MalformedTimeFallback`, `FileApiUnsupported` (a file-only API called with `fileApiMode = 'throw'`, or on the node build with a non-filesystem source), `NoSourceBound` (a read before `useSource` on the portable build).
 
 ```ts
 import { EnvaptError, EnvaptErrorCodes } from 'envapt';
@@ -190,7 +190,7 @@ try {
     Envapter.require('DATABASE_URL');
 } catch (err) {
     if (err instanceof EnvaptError && err.code === EnvaptErrorCodes.MissingEnvValue) {
-        /* handle */
+        /* recover */
     }
 }
 ```
@@ -204,10 +204,10 @@ envapt loads `.env` **and** returns typed, validated values from one API, with n
 | dotenv | envapt |
 | --- | --- |
 | `require('dotenv').config()` | `import 'envapt/config'` |
-| `-r dotenv/config` | `-r envapt/config` (CJS) / `--import envapt/config` (ESM) |
+| `-r dotenv/config` | `--import envapt/config` |
 | `process.env.API_KEY` | `Envapter.get('API_KEY')` / `Envapter.require('API_KEY')` |
-| `Number(process.env.PORT) \|\| 3000` | `Envapter.getUsing('PORT', Converters.Port, 3000)` |
-| `process.env.DEBUG === 'true'` | `Envapter.getBoolean('DEBUG', false)` |
+| `Number(process.env.PORT) \|\| 3000` | `Envapter.getAs('PORT', Converters.Port, 3000)` |
+| `process.env.DEBUG === 'true'` | `Envapter.getAs('DEBUG', Converters.Boolean, false)` |
 
 <!--prettier-ignore-end-->
 
@@ -218,14 +218,13 @@ envapt loads `.env` **and** returns typed, validated values from one API, with n
 | Gotcha | Rule |
 | --- | --- |
 | Wrong decorator field form | Modern uses `static accessor x: T` / `accessor x!: T`. Legacy (`envapt/legacy`) uses `static readonly x: T` / `declare readonly x: T`, both no initializer |
-| Legacy decorator on Bun | The `envapt/legacy` form reads `undefined` on Bun-direct `.ts` (bun#27575). The default accessor decorators on `envapt` work there |
-| `@EnvUrl` fallback | It's a `URL` instance, not a string: `new URL('...')` |
-| Reading a port | Use `Converters.Port`, which range-checks `0-65535`. `getNumber` accepts `-1` and `99999` |
-| `Time` / `@EnvTime` | Resolves to milliseconds; fallback is a ms number or a time string (`'15m'`) |
-| Schema fallback | A fallback is returned as-is; only present env values pass through the schema |
-| `required` + `fallback` | Mutually exclusive; so are `schema` + `converter` |
+| `Converters.Url` fallback | Pass a `URL` instance: `new URL('...')` |
+| Reading a port | Use `Converters.Port`, which range-checks `0-65535`. `Converters.Number` accepts `-1` and `99999` |
+| `Converters.Time` | Resolves to milliseconds. Fallback is a ms number or a time string (`'15m'`) |
+| Schema fallback | A fallback is returned as-is. Only present env values pass through the schema |
+| `required` + `fallback` | Mutually exclusive, and so are `schema` + `converter` |
 | Cascade order | Most-specific-wins: `.env.<env>.local` > `.env.<env>` > `.env.local` > `.env` |
-| Off Node (Workers/browser) | Import from `envapt`; call `Envapter.useSource(...)` before reading (else `NoSourceBound`); file APIs warn once and no-op by default (`fileApiMode = 'throw'` to throw `FileApiUnsupported`) |
+| Off Node (Workers/browser) | Import from `envapt`. Call `Envapter.useSource(...)` before reading (else `NoSourceBound`). File APIs warn once and no-op by default (`fileApiMode = 'throw'` to throw `FileApiUnsupported`) |
 
 <!--prettier-ignore-end-->
 
@@ -262,7 +261,7 @@ Pre-v7 code imports `@Envapt` from `envapt` and declares fields with `static rea
 <details>
 <summary>Removed in v8: <code>envapt/workerd</code> and <code>envapt/browser</code> subpaths</summary>
 
-In v8 these subpaths were removed. Import from `envapt` directly; the package `exports` conditions resolve the portable build on Workers, edge runtimes, the browser, and react-native automatically. No type-only subpath is needed: the portable types now include the file-only APIs, which warn once and no-op by default (set `Envapter.fileApiMode = 'throw'` for a hard `FileApiUnsupported` error).
+In v8 these subpaths were removed. Import from `envapt` directly, because the package `exports` conditions resolve the portable build on Workers, edge runtimes, the browser, and react-native automatically. The portable types now include the file-only APIs, which warn once and no-op by default (set `Envapter.fileApiMode = 'throw'` for a hard `FileApiUnsupported` error). No type-only subpath is needed.
 
 ```ts
 // v7 and earlier
@@ -276,7 +275,5 @@ import { Envapter, PortableSource } from 'envapt';
 </details>
 
 ---
-
-**Guardrail:** on a `.ts` entry run directly on Bun with no precompile, the legacy `envapt/legacy` decorators read `undefined` at runtime (bun#27575). The default accessor decorators on `envapt` work there, or use the functional `Envapter` readers.
 
 Full reference (every converter, method, and option): <https://envapt.materwelon.dev>

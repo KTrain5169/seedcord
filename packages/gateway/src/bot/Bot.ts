@@ -4,7 +4,7 @@ import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { SeedcordError, validateDiscordToken } from '@seedcord/errors/internal';
 import { Logger } from '@seedcord/logger';
 import { Client, Events } from 'discord.js';
-import { Envapt } from 'envapt/legacy';
+import { Envapter } from 'envapt';
 
 import { EventDispatcher } from '#bControllers/EventDispatcher';
 import { InteractionDispatcher } from '#bControllers/InteractionDispatcher';
@@ -32,10 +32,9 @@ interface Controllers {
  * The Discord client and its controllers. Access it through `core.bot`.
  */
 export class Bot implements HmrAware {
-    @Envapt<string>('DISCORD_BOT_TOKEN', {
-        converter: (raw) => validateDiscordToken(raw)
-    })
-    declare public readonly botToken: string;
+    public get botToken(): string {
+        return validateDiscordToken(Envapter.get('DISCORD_BOT_TOKEN'));
+    }
 
     readonly #logger = new Logger('Bot', { channel: 'bot' });
 

@@ -25,7 +25,7 @@ export const seedcord = new Seedcord({
         },
         commands: {
             path: './commands',
-            guilds: Envapter.getUsing('TESTING_GUILD_IDS', Converters.array(), [])
+            guilds: Envapter.getAs('TESTING_GUILD_IDS', Converters.array(), [])
         }{{#if isGateway}},
         events: {
             path: './events'

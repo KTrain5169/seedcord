@@ -48,9 +48,9 @@ describe('ShellMode', () => {
     ])('picks the same mode as envapt for the shell %j', async (vars) => {
         const shell = readShell(vars);
         vi.resetModules();
-        const { Envapter, Environment } = await import('envapt');
+        const { Envapter } = await import('envapt');
 
-        expect(shell.applyMode('production', await configDir())).toBe(Environment[Envapter.environment].toLowerCase());
+        expect(shell.applyMode('production', await configDir())).toBe(Envapter.environment);
     });
 
     it("throws ConfigInvalidEnv for a name outside envapt's four", async () => {

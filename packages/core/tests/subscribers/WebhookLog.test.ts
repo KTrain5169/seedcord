@@ -1,6 +1,7 @@
 import { REST } from '@discordjs/rest';
 import { Logger } from '@seedcord/logger';
 import { ComponentType } from 'discord-api-types/v10';
+import { Envapter, FileSource, PortableSource } from 'envapt';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 
 import { PublishDefault } from '#src/subscribers/publishDefault';
@@ -274,5 +275,22 @@ describe('WebhookLog', () => {
         }
 
         await expect(new UndeclaredReporter(data, core).execute()).rejects.toThrow();
+    });
+});
+
+describe('WebhookLog.urlOf', () => {
+    afterEach(() => Envapter.useSource(new FileSource()));
+
+    const urlFor = (value: string): string | null => {
+        Envapter.useSource(new PortableSource({ URL_UNDER_TEST: value }));
+        return WebhookLog.urlOf('URL_UNDER_TEST');
+    };
+
+    it.each(['', '   '])('returns null for %j', (value) => {
+        expect(urlFor(value)).toBeNull();
+    });
+
+    it('returns the trimmed url', () => {
+        expect(urlFor('  https://discord.com/api/webhooks/1/aaa  ')).toBe('https://discord.com/api/webhooks/1/aaa');
     });
 });

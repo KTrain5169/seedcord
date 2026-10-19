@@ -99,7 +99,7 @@ export const seedcord = new Seedcord({
         },
         commands: {
             path: resolve(import.meta.dirname, './commands'),
-            guilds: Envapter.getUsing(
+            guilds: Envapter.getAs(
                 'TESTING_GUILD_IDS',
                 Converters.array(),
                 []

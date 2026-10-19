@@ -2,9 +2,9 @@ import { cpus, totalmem } from 'node:os';
 import process from 'node:process';
 
 import { WORDMARK } from '@seedcord/errors/internal';
-import { Envapter } from 'envapt';
+import { Converters, Envapter } from 'envapt';
 
-const enabled = Envapter.getBoolean('SEEDCORD_DEV_PROFILE', false);
+const enabled = Envapter.getAs('SEEDCORD_DEV_PROFILE', Converters.Boolean, false);
 
 const MEDIAN = 0.5;
 const NEAR_WORST = 0.99;

@@ -1,14 +1,9 @@
 import { paint, SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
-import { Envapter, Environment } from 'envapt';
+import { ENVIRONMENT_KEYS, Envapter, Environment } from 'envapt';
 import { loadEnv } from 'vite';
 
-// envapt reads these in this order
-const ENVIRONMENT_KEYS = ['ENVIRONMENT', 'ENV', 'NODE_ENV', 'MODE'] as const;
-
-const MODES = Object.keys(Environment)
-    .filter((name) => Number.isNaN(Number(name)))
-    .map((name) => name.toLowerCase());
+const MODES: readonly string[] = Object.values(Environment);
 
 const MODE_LIST = new Intl.ListFormat('en', { type: 'disjunction' }).format(MODES);
 
