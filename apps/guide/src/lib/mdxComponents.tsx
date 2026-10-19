@@ -1,5 +1,7 @@
-import { Card, CodeBlock, CopyAnchorButton, GUIDE, cn, tw } from '@seedcord/ui';
-import { highlightInlineToHtml, isHighlightable } from '@seedcord/ui/shiki';
+import { Card, CodeBlock, GUIDE, cn, isSitePath, tw } from '@seedcord/ui';
+import { AnchoredHeading } from '@seedcord/ui/AnchoredHeading';
+import { readFenceElement } from '@seedcord/ui/fence';
+import { highlightInlineToHtml } from '@seedcord/ui/shiki';
 import { ArrowUpRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -8,12 +10,12 @@ import { HoverHint } from '#components/HoverHint';
 import { Shell } from '#components/Shell';
 import { LINK, Ref } from '#components/Ref';
 import { TypeHover } from '#components/TypeHover';
-import { FENCE_ATTR, LANGUAGE_PREFIX } from '#lib/rehypeFenceMeta';
+import { FENCE_ATTR } from '#lib/rehypeFenceMeta';
 import { twoslashBlock } from '#lib/twoslash';
 
 import type { FenceMode } from '#lib/twoslash';
 import type { MDXComponents } from 'mdx/types';
-import type { BundledLanguage } from 'shiki';
+import type { HighlightLanguage } from '@seedcord/ui/shiki';
 import type { ComponentProps, ReactElement, ReactNode } from 'react';
 
 interface FenceProps {
@@ -48,7 +50,7 @@ function pick<Options extends Record<string, string>>(options: Options, key: key
 }
 
 function underBasePath(src: ImageProps['src']): ImageProps['src'] {
-    return typeof src === 'string' && src.startsWith('/') && !src.startsWith('//') ? GUIDE.path + src : src;
+    return typeof src === 'string' && isSitePath(src) ? GUIDE.path + src : src;
 }
 
 function GuideImage({ alt, src, frame = false, align = 'left', className, ...props }: ImageProps): ReactElement {
@@ -90,7 +92,7 @@ function GuideTable({ children, ...props }: ComponentProps<'table'>): ReactEleme
 
 interface Fenced {
     code: string;
-    lang: BundledLanguage;
+    lang: HighlightLanguage;
     title: string | undefined;
     output: boolean;
     mode: FenceMode;
@@ -102,27 +104,16 @@ function modeOf(props: Record<string, unknown>): FenceMode {
     return FENCE_ATTR.hovers in props ? 'hovers' : 'check';
 }
 
-// mdx renders a fence as <pre><code className="language-x">
 function readFence(children: ReactNode): Fenced | null {
-    if (typeof children !== 'object' || children === null || !('props' in children)) return null;
-
-    const props = children.props as Record<string, unknown>;
-    const code = props.children;
-    if (typeof code !== 'string') return null;
-
-    const className = typeof props.className === 'string' ? props.className : '';
-    const named = className
-        .split(/\s+/)
-        .find((name) => name.startsWith(LANGUAGE_PREFIX))
-        ?.slice(LANGUAGE_PREFIX.length);
-    const title = props[FENCE_ATTR.title];
+    const fence = readFenceElement(children);
+    if (!fence) return null;
 
     return {
-        code: code.replace(/\n$/, ''),
-        lang: named && isHighlightable(named) ? named : 'ts',
-        title: typeof title === 'string' ? title : undefined,
-        output: FENCE_ATTR.output in props,
-        mode: modeOf(props)
+        code: fence.code.replace(/\n$/, ''),
+        lang: fence.language ?? 'ts',
+        title: fence.title,
+        output: FENCE_ATTR.output in fence.props,
+        mode: modeOf(fence.props)
     };
 }
 
@@ -142,27 +133,17 @@ const HEADINGS = {
     h4: { className: tw`mt-3 text-lg/snug`, anchorSize: ANCHOR_SIZE.h4, anchorDrop: ANCHOR_DROP.h4 }
 } as const;
 
-export const ANCHOR = tw`shrink-0 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-has-focus-visible:opacity-100 md:data-[copied=true]:opacity-100`;
-
 function headingFor(tag: keyof typeof HEADINGS): (props: ComponentProps<'h2'>) => ReactElement {
-    // the button stays a sibling, since a labelled control inside a heading joins the heading's own name
-    return function Heading({ id, children, ...props }: ComponentProps<'h2'>): ReactElement {
-        const Tag = tag;
-
+    return function Heading(props: ComponentProps<'h2'>): ReactElement {
         return (
-            <div className={cn('group', HEADINGS[tag].className)}>
-                <Tag {...props} id={id} className={cn('font-display inline font-semibold text-(--text)')}>
-                    {children}
-                </Tag>
-                {id === undefined ? null : (
-                    <CopyAnchorButton
-                        anchorId={id}
-                        label={typeof children === 'string' ? children : id}
-                        iconSize={HEADINGS[tag].anchorSize}
-                        className={cn(ANCHOR, HEADINGS[tag].anchorDrop)}
-                    />
-                )}
-            </div>
+            <AnchoredHeading
+                {...props}
+                as={tag}
+                wrapperClassName={HEADINGS[tag].className}
+                className={cn('font-display inline font-semibold text-(--text)')}
+                anchorSize={HEADINGS[tag].anchorSize}
+                anchorClassName={HEADINGS[tag].anchorDrop}
+            />
         );
     };
 }
