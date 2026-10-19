@@ -3,14 +3,15 @@ import { stripVTControlCharacters } from 'node:util';
 import { isSeedcordError, SeedcordErrorCode } from '@seedcord/errors';
 import { assert, describe, expect, it } from 'vitest';
 
-import { rethrowVitePluginError, wrapVitePlugins } from '#core/config/vitePlugins';
+import { rethrowVitePluginError } from '#core/config/vitePlugins';
+import { vitePluginsOf } from '#tests/vitePluginsOf';
 
 import type { Plugin } from 'vite';
 
 const CONFIG_FILE = '/bot/seedcord.config.ts';
 
-function onlyPlugin(plugin: Plugin): Plugin {
-    const [resolved] = wrapVitePlugins([plugin], CONFIG_FILE);
+async function onlyPlugin(plugin: Plugin): Promise<Plugin> {
+    const [resolved] = await vitePluginsOf(() => [plugin], CONFIG_FILE).create();
     assert(resolved);
     return resolved;
 }
@@ -43,7 +44,7 @@ function messageOf(error: unknown): string {
 describe('a plugin from vitePlugins that throws', () => {
     it('becomes CoreVitePluginThrew with the plugin, the hook and the config file', async () => {
         const thrown = new Error('no db');
-        const plugin = onlyPlugin({ name: 'shop-loader', buildStart: () => Promise.reject(thrown) });
+        const plugin = await onlyPlugin({ name: 'shop-loader', buildStart: () => Promise.reject(thrown) });
 
         const caught = await rethrownFrom(() => callHook(plugin.buildStart));
 
@@ -59,7 +60,7 @@ describe('a plugin from vitePlugins that throws', () => {
         ['load', [`${process.cwd()}/src/shop.yaml`]],
         ['transform', ['a: 1', `${process.cwd()}/src/shop.yaml?raw`]]
     ] as const)('adds the file it was loading for a throw in %s', async (hook, args) => {
-        const plugin = onlyPlugin({
+        const plugin = await onlyPlugin({
             name: 'shop-loader',
             [hook]: () => {
                 throw new Error('bad yaml on line 3');
@@ -72,7 +73,7 @@ describe('a plugin from vitePlugins that throws', () => {
     });
 
     it('reports the plugin that threw when the plugin object is frozen', async () => {
-        const plugin = onlyPlugin(
+        const plugin = await onlyPlugin(
             Object.freeze({
                 name: 'frozen-loader',
                 load: () => {
@@ -87,7 +88,7 @@ describe('a plugin from vitePlugins that throws', () => {
     });
 
     it('wraps a thrown value that is not an Error', async () => {
-        const plugin = onlyPlugin({
+        const plugin = await onlyPlugin({
             name: 'shop-loader',
             config: () => {
                 // eslint-disable-next-line no-throw-literal, @typescript-eslint/only-throw-error -- a plugin can throw anything
@@ -101,7 +102,7 @@ describe('a plugin from vitePlugins that throws', () => {
     });
 
     it('wraps a hook written as an object with a handler and keeps its order', async () => {
-        const plugin = onlyPlugin({
+        const plugin = await onlyPlugin({
             name: 'shop-loader',
             configResolved: {
                 order: 'pre',
@@ -118,7 +119,7 @@ describe('a plugin from vitePlugins that throws', () => {
     });
 
     it('is found among the errors rolldown collects for a build', async () => {
-        const plugin = onlyPlugin({
+        const plugin = await onlyPlugin({
             name: 'shop-loader',
             transform: () => {
                 throw new Error('bad yaml');
@@ -144,9 +145,9 @@ describe('rethrowVitePluginError', () => {
     });
 });
 
-describe('wrapVitePlugins', () => {
+describe('VitePlugins.create', () => {
     it("passes vite's plugin context through as this", async () => {
-        const plugin = onlyPlugin({
+        const plugin = await onlyPlugin({
             name: 'reads-this',
             config(this: { meta: { viteVersion: string } }) {
                 return { define: { VERSION: this.meta.viteVersion } };
@@ -158,11 +159,56 @@ describe('wrapVitePlugins', () => {
         });
     });
 
-    it('returns a plugin with none of the wrapped hooks as the same object', () => {
+    it('returns a plugin with none of the wrapped hooks as the same object', async () => {
         const native = { name: 'native', hotUpdate: (): undefined => undefined };
 
-        const [resolved] = wrapVitePlugins([native], CONFIG_FILE);
+        const resolved = await onlyPlugin(native);
 
         expect(resolved).toBe(native);
+    });
+
+    it('throws CliConfigInvalidField that says to call a plugin factory left uncalled', async () => {
+        const caught: unknown = await vitePluginsOf(() => [{ name: 'json' }, function yaml() {}], CONFIG_FILE)
+            .create()
+            .catch((error: unknown) => error);
+
+        assert(isSeedcordError(caught, 'SeedcordTypeError', SeedcordErrorCode.CliConfigInvalidField));
+        const message = stripVTControlCharacters(caught.message);
+        expect(message).toContain('vitePlugins[1]');
+        expect(message).toContain('yaml()');
+    });
+
+    it('finds an uncalled factory that a promise inside a nested array resolves to', async () => {
+        const vitePlugins = vitePluginsOf(() => [false, [Promise.resolve(function yaml() {})]], CONFIG_FILE);
+
+        await expect(vitePlugins.create()).rejects.toMatchObject({
+            code: SeedcordErrorCode.CliConfigInvalidField,
+            message: expect.stringMatching(/vitePlugins\[1\]\[0\][\s\S]*yaml\(\)/) as string
+        });
+    });
+
+    it.each([['yaml'], [{ transform: () => undefined }]])(
+        'throws CliConfigInvalidField for the entry %o that has no plugin name',
+        async (entry) => {
+            const vitePlugins = vitePluginsOf(() => [entry], CONFIG_FILE);
+
+            await expect(vitePlugins.create()).rejects.toMatchObject({
+                code: SeedcordErrorCode.CliConfigInvalidField,
+                message: expect.stringContaining('vitePlugins[0]') as string
+            });
+        }
+    );
+
+    it('throws CoreVitePluginThrew with the entry and the reason for an entry whose promise rejects', async () => {
+        const missing = new Error("Cannot find package 'yaml-plugin'");
+        const vitePlugins = vitePluginsOf(() => [{ name: 'json' }, Promise.reject(missing)], CONFIG_FILE);
+
+        const caught: unknown = await vitePlugins.create().catch((error: unknown) => error);
+
+        assert(isSeedcordError(caught, 'SeedcordError', SeedcordErrorCode.CoreVitePluginThrew));
+        const message = stripVTControlCharacters(caught.message);
+        expect(message).toContain('vitePlugins[1]');
+        expect(message).toContain("Cannot find package 'yaml-plugin'");
+        expect(caught.cause).toBe(missing);
     });
 });

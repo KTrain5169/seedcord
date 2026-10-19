@@ -1,6 +1,7 @@
 import { paint, SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
-import { Environment } from 'envapt';
+import { Envapter, Environment } from 'envapt';
+import { loadEnv } from 'vite';
 
 // envapt reads these in this order
 const ENVIRONMENT_KEYS = ['ENVIRONMENT', 'ENV', 'NODE_ENV', 'MODE'] as const;
@@ -18,10 +19,16 @@ interface ShellVar {
 
 export type DefaultMode = 'development' | 'production';
 
-// the .env files are left out because a bot's .env usually sets its dev environment
+// loadEnv copies NODE_ENV from the mode's .env files into VITE_USER_NODE_ENV. vite accepts only development there
+function envFilesSetDevNodeEnv(mode: string, configDir: string): boolean {
+    loadEnv(mode, configDir);
+    return process.env.VITE_USER_NODE_ENV === 'development';
+}
+
 export class ShellMode {
     constructor(private readonly variable?: ShellVar) {}
 
+    // the mode comes from the shell alone because a bot's .env usually sets its dev environment
     public static read(): ShellMode {
         for (const key of ENVIRONMENT_KEYS) {
             const value = process.env[key];
@@ -30,7 +37,16 @@ export class ShellMode {
         return new ShellMode();
     }
 
-    public viteMode(defaultMode: DefaultMode): string {
+    public applyMode(defaultMode: DefaultMode, configDir: string): string {
+        const mode = this.viteMode(defaultMode);
+        Envapter.environment = mode;
+        // vite fills NODE_ENV with development when its first dev server opens
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- vite fills an empty NODE_ENV too
+        process.env.NODE_ENV ||= envFilesSetDevNodeEnv(mode, configDir) ? 'development' : defaultMode;
+        return mode;
+    }
+
+    private viteMode(defaultMode: DefaultMode): string {
         if (this.variable === undefined) return defaultMode;
         const mode = this.variable.value.toLowerCase();
         if (MODES.includes(mode)) return mode;
@@ -39,5 +55,5 @@ export class ShellMode {
     }
 }
 
-// vite writes NODE_ENV into process.env once a command starts it. the CLI loads this file before any command runs
+// the CLI loads this file before any command writes NODE_ENV
 export const startupShell = ShellMode.read();

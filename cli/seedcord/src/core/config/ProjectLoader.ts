@@ -3,7 +3,6 @@ import { dirname, resolve } from 'node:path';
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordTypeError } from '@seedcord/errors/internal';
 import { isInside } from '@seedcord/utils/node/internal';
-import { Envapter } from 'envapt';
 
 import { Project } from '#core/project/Project';
 import { resolveDefaultExport } from '#utils/resolveDefaultExport';
@@ -14,7 +13,7 @@ import { ConfigValidator } from './ConfigValidator';
 import { detectTarget } from './detectTarget';
 import { LoadedConfig } from './LoadedConfig';
 import { locateConfig } from './locateConfig';
-import { readVitePlugins, rethrowVitePluginError, wrapVitePlugins } from './vitePlugins';
+import { rethrowVitePluginError, VitePlugins } from './vitePlugins';
 
 import type { ModuleLoader, OpenModules } from '#core/modules/ModuleLoader';
 import type { DefaultMode, ShellMode } from '#core/viteMode';
@@ -58,10 +57,9 @@ export class ProjectLoader {
         projectDir = process.cwd(),
         check?: (config: ResolvedSeedcordConfig) => void
     ): Promise<LoadedConfig> {
-        const mode = this.shell.viteMode(this.defaultMode);
-        Envapter.environment = mode;
         const configPath = locateConfig(projectDir);
         const configDir = dirname(configPath);
+        const mode = this.shell.applyMode(this.defaultMode, configDir);
         const target = detectTarget(configDir);
         await using stack = new AsyncDisposableStack();
         const configModules = stack.use(await this.openModules(configDir, target, mode, 'config'));
@@ -95,9 +93,8 @@ export class ProjectLoader {
     ): Promise<ResolvedSeedcordConfig> {
         const loadedModule = await modules.importModule(configPath);
         const config: unknown = await Promise.resolve(resolveDefaultExport(loadedModule));
-        const vitePlugins = await readVitePlugins(config, configPath);
         const validator: ConfigValidator = new ConfigValidator(target, configPath);
-        validator.validate(config, vitePlugins.problems);
+        validator.validate(config);
 
         const configDir = dirname(configPath);
         const root = resolve(configDir, config.root ?? '.');
@@ -116,7 +113,7 @@ export class ProjectLoader {
             viteMode: mode,
             tunnel: resolveTunnel(config.tunnel),
             hmr: config.hmr,
-            vitePlugins: wrapVitePlugins(vitePlugins.plugins, configPath)
+            vitePlugins: new VitePlugins(config.vitePlugins, configPath)
         } satisfies ResolvedSeedcordConfig;
     }
 

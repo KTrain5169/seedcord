@@ -3,6 +3,7 @@ import { createServerModuleRunner } from 'vite';
 
 import { listenHostFor } from '#commands/dev/tunnel/listenHost';
 import { rethrowVitePluginError } from '#core/config/vitePlugins';
+import { BOT_ENVIRONMENT, botEnvironment } from '#core/modules/botEnvironment';
 import { openViteServer } from '#core/modules/openViteServer';
 import { RunnerModuleLoader } from '#core/modules/RunnerModuleLoader';
 import { mergeViteConfig } from '#core/modules/userCodeConfig';
@@ -19,15 +20,15 @@ export class ServerDevRuntime extends BaseDevRuntime {
     private readonly lifecycle = new InstanceLifecycle();
 
     protected async open(context: DevRuntimeContext, resources: AsyncDisposableStack): Promise<StartedRuntime> {
-        const hmr = this.openHmr(context, 'ssr', resources);
+        const hmr = this.openHmr(context, BOT_ENVIRONMENT, resources);
         const server = await openViteServer(
             resources,
             mergeViteConfig(serverViteConfig(context.config, process.cwd()), {
                 mode: context.config.viteMode,
-                plugins: [hmr.plugin, ...context.config.vitePlugins]
+                plugins: [hmr.plugin, context.config.vitePlugins.create()]
             })
         ).catch(rethrowVitePluginError);
-        const modules = new RunnerModuleLoader(createServerModuleRunner(server.environments.ssr));
+        const modules = new RunnerModuleLoader(createServerModuleRunner(botEnvironment(server.environments)));
         return { context, modules, hmr, resources };
     }
 
