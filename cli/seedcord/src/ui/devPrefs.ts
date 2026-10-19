@@ -1,6 +1,6 @@
 import { isPlainObject, isStringArray } from '@seedcord/utils/internal';
 
-import { FILTER_LEVELS } from '#ui/components/primitives/FilterChips';
+import { FILTER_LEVELS } from '#ui/components/primitives/FilterChips.tsx';
 
 import type { StateFile } from '#core/state/StateFolder';
 import type { LogLevel } from '@seedcord/types';

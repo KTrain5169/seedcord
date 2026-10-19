@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { agentRules, readmeFeatures } from '@seedcord/ui/agents';
 
-import { DOCS_URL, GUIDE_URL, REPO_URL, SITE_DESCRIPTION, SITE_URL } from '#lib/site';
+import { DOCS_URL, GUIDE_URL, REPO_URL, SITE_DESCRIPTION, SITE_URL } from '#lib/site.ts';
 
 export const dynamic = 'force-static';
 export const revalidate = false;

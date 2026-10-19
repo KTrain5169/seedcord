@@ -6,7 +6,7 @@ import { describe, expect, it, onTestFinished } from 'vite-plus/test';
 
 import { StateFolder } from '#core/state/StateFolder';
 import { silentLogger } from '#tests/silentLogger';
-import { devPrefsFile } from '#ui/devPrefs';
+import { devPrefsFile } from '#ui/devPrefs.ts';
 
 import type { LogLevel } from '@seedcord/types';
 

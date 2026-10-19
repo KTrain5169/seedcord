@@ -1,7 +1,7 @@
 import { DEFAULT_VERSION, parseEntityPathSegments } from '@seedcord/docs-engine';
 import { notFound } from 'next/navigation';
 
-import { EntityContent } from '#components/docs/entity/EntityContent';
+import { EntityContent } from '#components/docs/entity/EntityContent.tsx';
 import { DocsPage } from '#lib/docs/DocsPage';
 import { getDocsEngine } from '#lib/docs/engine';
 import { entityJsonLd, entityPagePath, entityPath } from '#lib/docs/entityJsonLd';

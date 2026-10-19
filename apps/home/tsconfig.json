@@ -11,15 +11,9 @@
                 "name": "next"
             }
         ],
-        "paths": {
-            "#src/*": ["./src/*"],
-            "#components/*": ["./src/components/*"],
-            "#ui/*": ["./src/components/ui/*"],
-            "#lib/*": ["./src/lib/*"],
-            "#styles/*": ["./src/app/*"]
-        },
         "incremental": true,
-        "esModuleInterop": true
+        "esModuleInterop": true,
+        "allowImportingTsExtensions": true
     },
     "include": [
         "next-env.d.ts",

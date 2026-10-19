@@ -15,9 +15,9 @@ import { staticClient } from 'fumadocs-core/search/client/orama-static';
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { firstPages } from '#lib/searchHighlight';
-import { stripStopwords } from '#lib/searchQuery';
-import { rankByCoverage } from '#lib/searchRank';
+import { firstPages } from '#lib/searchHighlight.ts';
+import { stripStopwords } from '#lib/searchQuery.ts';
+import { rankByCoverage } from '#lib/searchRank.ts';
 
 import { SearchResultRow } from './SearchResultRow';
 

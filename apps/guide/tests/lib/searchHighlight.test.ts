@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { firstPages, highlightSegments, matchWindow } from '#lib/searchHighlight';
+import { firstPages, highlightSegments, matchWindow } from '#lib/searchHighlight.ts';
 
 describe('the parts of a search result the query matched', () => {
     it('marks the run the query matched', () => {

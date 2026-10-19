@@ -1,6 +1,6 @@
 import { PREVIEW_EMOJI, SITE_ACCENT } from '@seedcord/ui/LinkPreview';
 
-import { CDN_URL, DOCS_URL, GUIDE_URL, REPO_URL, SITE_NAME, SITE_URL } from '#lib/site';
+import { CDN_URL, DOCS_URL, GUIDE_URL, REPO_URL, SITE_NAME, SITE_URL } from '#lib/site.ts';
 
 import type { PreviewCardProps } from '@seedcord/ui/LinkPreview';
 

@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 
-import { useMeasuredBox } from '#ui/hooks/useMeasuredBox';
+import { useMeasuredBox } from '#ui/hooks/useMeasuredBox.ts';
 
 import type { DOMElement } from 'ink';
 import type { RefObject } from 'react';

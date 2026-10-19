@@ -21,8 +21,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
-import { DOCS_URL, HOME_URL, REPO_URL, SITE_URL } from '#lib/site';
-import { useVisibleHeadingIds } from '#lib/visibleHeadings';
+import { DOCS_URL, HOME_URL, REPO_URL, SITE_URL } from '#lib/site.ts';
+import { useVisibleHeadingIds } from '#lib/visibleHeadings.ts';
 
 import { DocsSidebar } from './DocsSidebar';
 import { GuideSearch, SEARCH_LABEL } from './GuideSearch';
@@ -31,8 +31,8 @@ import { PageActions } from './PageActions';
 import { TableOfContents } from './TableOfContents';
 import { TocBar } from './TocBar';
 
-import type { GuideTab, SidebarsByTab } from '#lib/nav';
-import type { PageActionProps } from '#lib/pageActions';
+import type { GuideTab, SidebarsByTab } from '#lib/nav.ts';
+import type { PageActionProps } from '#lib/pageActions.ts';
 import type { SiteDestination } from '@seedcord/ui';
 import type { TocBarProps } from './TocBar';
 import type { TOCItemType } from 'fumadocs-core/toc';

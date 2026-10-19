@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { computeScrollView } from '#ui/hooks/useScroll';
-import { expandRows, messageColumn, rowKey, wrapRows } from '#ui/logRows';
+import { computeScrollView } from '#ui/hooks/useScroll.ts';
+import { expandRows, messageColumn, rowKey, wrapRows } from '#ui/logRows.ts';
 
-import type { LogEntry } from '#ui/stores/LogStore';
+import type { LogEntry } from '#ui/stores/LogStore.ts';
 
 const LABEL_WIDTH = 3;
 const COLUMN = messageColumn(LABEL_WIDTH);

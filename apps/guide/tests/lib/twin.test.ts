@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { twinDocument } from '#lib/twin';
+import { twinDocument } from '#lib/twin.ts';
 
 describe('the document a twin serves', () => {
     it('opens on the page title, which the body never carries', () => {

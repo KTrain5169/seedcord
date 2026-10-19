@@ -2,9 +2,9 @@ import { render } from 'ink-testing-library';
 import React from 'react';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
-import { NO_ROOM, ScrollableLogView } from '#ui/components/primitives/ScrollableLogView';
-import { expandRows, messageColumn, wrapRows } from '#ui/logRows';
-import { LogStore } from '#ui/stores/LogStore';
+import { NO_ROOM, ScrollableLogView } from '#ui/components/primitives/ScrollableLogView.tsx';
+import { expandRows, messageColumn, wrapRows } from '#ui/logRows.ts';
+import { LogStore } from '#ui/stores/LogStore.ts';
 
 import type { LogRecord } from '@seedcord/types';
 

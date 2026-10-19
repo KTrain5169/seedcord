@@ -6,7 +6,7 @@ import { loadDocsCatalog } from '#lib/docs/catalog';
 import { getDocsEngine } from '#lib/docs/engine';
 
 import type { SearchIndexEntry, SearchPackage } from './types';
-import type { CommandAction, SearchResultKind } from '#components/search/command-palette/types';
+import type { CommandAction, SearchResultKind } from '#components/search/command-palette/types.ts';
 import type { DocNode, DocSearchEntry, VersionedDocsEngine } from '@seedcord/docs-engine';
 
 const RESULT_KINDS: Partial<Record<number, SearchResultKind>> = {

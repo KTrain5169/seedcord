@@ -1,5 +1,5 @@
-import { sitemapEntries } from '#lib/site';
-import { source } from '#lib/source';
+import { sitemapEntries } from '#lib/site.ts';
+import { source } from '#lib/source.ts';
 
 import type { MetadataRoute } from 'next';
 

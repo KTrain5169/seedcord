@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { BookOpen } from 'lucide-react';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { SidebarItem } from '#components/layout/sidebar/SidebarItem';
+import { SidebarItem } from '#components/layout/sidebar/SidebarItem.tsx';
 
 const STYLES = { item: 'item', badge: 'badge' };
 

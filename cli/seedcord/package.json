@@ -33,13 +33,13 @@
     "type": "module",
     "types": "./dist/index.d.mts",
     "imports": {
-        "#src/*": "./src/*",
-        "#tests/*": "./tests/*",
+        "#src/*": "./src/*.ts",
+        "#tests/*": "./tests/*.ts",
         "#ui/*": "./src/ui/*",
-        "#core/*": "./src/core/*",
-        "#commands/*": "./src/commands/*",
-        "#utils/*": "./src/utils/*",
-        "#api/*": "./src/api/*"
+        "#core/*": "./src/core/*.ts",
+        "#commands/*": "./src/commands/*.ts",
+        "#utils/*": "./src/utils/*.ts",
+        "#api/*": "./src/api/*.ts"
     },
     "exports": {
         ".": {

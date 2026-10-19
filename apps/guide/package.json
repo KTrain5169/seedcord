@@ -4,11 +4,11 @@
     "private": true,
     "type": "module",
     "imports": {
-        "#tests/*": "./tests/*",
-        "#src/*": "./src/*",
+        "#tests/*": "./tests/*.ts",
+        "#src/*": "./src/*.ts",
         "#components/*": "./src/components/*",
         "#lib/*": "./src/lib/*",
-        "#styles/*": "./src/app/*"
+        "#styles/*": "./src/app/*.ts"
     },
     "scripts": {
         "dev": "cross-env TWOSLASH=0 next dev",

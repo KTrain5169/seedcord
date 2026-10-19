@@ -1,14 +1,14 @@
 import React from 'react';
 
 import { plural } from '#core/format';
-import { CommandRefreshPrompt } from '#ui/components/CommandRefreshPrompt';
-import { ErrorDisplay } from '#ui/components/ErrorDisplay';
-import { QuitConfirmCard } from '#ui/components/QuitConfirmCard';
-import { RestartRequiredCard } from '#ui/components/RestartRequiredCard';
-import { TunnelOpeningCard } from '#ui/components/TunnelOpeningCard';
+import { CommandRefreshPrompt } from '#ui/components/CommandRefreshPrompt.tsx';
+import { ErrorDisplay } from '#ui/components/ErrorDisplay.tsx';
+import { QuitConfirmCard } from '#ui/components/QuitConfirmCard.tsx';
+import { RestartRequiredCard } from '#ui/components/RestartRequiredCard.tsx';
+import { TunnelOpeningCard } from '#ui/components/TunnelOpeningCard.tsx';
 
 import type { TunnelPhase, TunnelStatus } from '#commands/dev/tunnel/TunnelCoordinator';
-import type { DevState } from '#ui/stores/DevStore';
+import type { DevState } from '#ui/stores/DevStore.ts';
 import type { ReactElement } from 'react';
 
 type NoticeKey = 'quit' | 'commands' | 'error' | 'restart' | 'tunnel';

@@ -1,26 +1,26 @@
 import { Box, useInput, useWindowSize } from 'ink';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-import { Rule } from '#ui/components/primitives/Rule';
-import { INITIAL_CURSOR } from '#ui/filterCursor';
-import { useDevState } from '#ui/hooks/useDevState';
-import { useFilters } from '#ui/hooks/useFilters';
-import { useLogs } from '#ui/hooks/useLogs';
-import { useMeasuredBox } from '#ui/hooks/useMeasuredBox';
-import { usePanelFit } from '#ui/hooks/usePanelFit';
-import { useRailWidth } from '#ui/hooks/useRailWidth';
-import { useScroll } from '#ui/hooks/useScroll';
-import { useUptime } from '#ui/hooks/useUptime';
-import { acceptsSessionKeys, dispatchHotkey } from '#ui/hotkeys';
-import { DevLayout } from '#ui/layout/DevLayout';
-import { expandRows, rowKey, wrapRows } from '#ui/logRows';
-import { noticesOf } from '#ui/notices';
-import { profileWrap } from '#ui/profile';
-import { LogStore } from '#ui/stores/LogStore';
-import { tierFor } from '#ui/tier';
+import { Rule } from '#ui/components/primitives/Rule.tsx';
+import { INITIAL_CURSOR } from '#ui/filterCursor.ts';
+import { useDevState } from '#ui/hooks/useDevState.ts';
+import { useFilters } from '#ui/hooks/useFilters.ts';
+import { useLogs } from '#ui/hooks/useLogs.ts';
+import { useMeasuredBox } from '#ui/hooks/useMeasuredBox.ts';
+import { usePanelFit } from '#ui/hooks/usePanelFit.ts';
+import { useRailWidth } from '#ui/hooks/useRailWidth.ts';
+import { useScroll } from '#ui/hooks/useScroll.ts';
+import { useUptime } from '#ui/hooks/useUptime.ts';
+import { acceptsSessionKeys, dispatchHotkey } from '#ui/hotkeys.ts';
+import { DevLayout } from '#ui/layout/DevLayout.tsx';
+import { expandRows, rowKey, wrapRows } from '#ui/logRows.ts';
+import { noticesOf } from '#ui/notices.tsx';
+import { profileWrap } from '#ui/profile.ts';
+import { LogStore } from '#ui/stores/LogStore.ts';
+import { tierFor } from '#ui/tier.ts';
 
-import type { LogFilters } from '#ui/devPrefs';
-import type { DevStore } from '#ui/stores/DevStore';
+import type { LogFilters } from '#ui/devPrefs.ts';
+import type { DevStore } from '#ui/stores/DevStore.ts';
 import type { DOMElement } from 'ink';
 import type { ReactElement } from 'react';
 

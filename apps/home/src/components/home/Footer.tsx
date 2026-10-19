@@ -11,7 +11,7 @@ import {
     NPM_ORG_URL,
     REPO_URL,
     ROADMAP_URL
-} from '#lib/site';
+} from '#lib/site.ts';
 
 import type { ReactNode } from 'react';
 

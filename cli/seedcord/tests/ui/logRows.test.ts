@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { expandRows } from '#ui/logRows';
+import { expandRows } from '#ui/logRows.ts';
 
-import type { LogEntry } from '#ui/stores/LogStore';
+import type { LogEntry } from '#ui/stores/LogStore.ts';
 
 function entry(over: Partial<LogEntry>): LogEntry {
     return {

@@ -11,10 +11,7 @@
     "type": "module",
     "types": "./dist/index.d.mts",
     "imports": {
-        "#src/*": [
-            "./src/*.ts",
-            "./src/*.tsx"
-        ]
+        "#src/*": "./src/*"
     },
     "exports": {
         ".": {

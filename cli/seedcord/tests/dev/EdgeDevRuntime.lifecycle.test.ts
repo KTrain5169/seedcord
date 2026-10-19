@@ -19,7 +19,7 @@ import { writeCloudflareConfig } from '#tests/commands/build/edgeBot';
 import { ED25519_KEY_BYTES } from '#tests/commands/build/smoke';
 import { GREETING, GREETING_PROBE, greetingPlugin } from '#tests/greetingPlugin';
 import { silentLogger } from '#tests/silentLogger';
-import { DevStore } from '#ui/stores/DevStore';
+import { DevStore } from '#ui/stores/DevStore.ts';
 
 import {
     captureLogs,

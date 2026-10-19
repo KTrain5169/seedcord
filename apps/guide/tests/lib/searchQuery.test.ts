@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { stripStopwords } from '#lib/searchQuery';
+import { stripStopwords } from '#lib/searchQuery.ts';
 
 describe('the query that reaches the index', () => {
     it('drops the words every block contains', () => {

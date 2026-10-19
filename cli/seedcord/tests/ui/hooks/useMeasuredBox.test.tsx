@@ -4,7 +4,7 @@ import { render } from 'ink-testing-library';
 import React, { useRef } from 'react';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { useMeasuredBox } from '#ui/hooks/useMeasuredBox';
+import { useMeasuredBox } from '#ui/hooks/useMeasuredBox.ts';
 
 import type { DOMElement } from 'ink';
 import type { ReactElement } from 'react';

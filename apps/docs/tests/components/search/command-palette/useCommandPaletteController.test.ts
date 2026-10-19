@@ -11,10 +11,10 @@ const PACKAGES: SearchPackage[] = [
 
 // searchFiles keeps each download for the life of the module
 async function freshController(): Promise<
-    typeof import('#components/search/command-palette/useCommandPaletteController')
+    typeof import('#components/search/command-palette/useCommandPaletteController.ts')
 > {
     vi.resetModules();
-    return import('#components/search/command-palette/useCommandPaletteController');
+    return import('#components/search/command-palette/useCommandPaletteController.ts');
 }
 
 describe('useCommandPaletteController', () => {

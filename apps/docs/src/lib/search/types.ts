@@ -1,4 +1,4 @@
-import type { CommandAction } from '#components/search/command-palette/types';
+import type { CommandAction } from '#components/search/command-palette/types.ts';
 import type { ScoredEntry } from '@seedcord/docs-engine/client';
 
 export interface SearchIndexEntry extends ScoredEntry {

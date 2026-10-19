@@ -5,16 +5,16 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 
 import { version } from '#core/version';
-import { Sidebar } from '#ui/components/primitives/Sidebar';
-import { INITIAL_CURSOR } from '#ui/filterCursor';
-import { DevStore } from '#ui/stores/DevStore';
-import { LogStore } from '#ui/stores/LogStore';
-import { COMPACT_ROWS, FULL_ROWS } from '#ui/tier';
+import { Sidebar } from '#ui/components/primitives/Sidebar.tsx';
+import { INITIAL_CURSOR } from '#ui/filterCursor.ts';
+import { DevStore } from '#ui/stores/DevStore.ts';
+import { LogStore } from '#ui/stores/LogStore.ts';
+import { COMPACT_ROWS, FULL_ROWS } from '#ui/tier.ts';
 
 import type { TunnelStatus } from '#commands/dev/tunnel/TunnelCoordinator';
-import type { LogFilters } from '#ui/devPrefs';
-import type { FilterView } from '#ui/hooks/useFilters';
-import type { DevState } from '#ui/stores/DevStore';
+import type { LogFilters } from '#ui/devPrefs.ts';
+import type { FilterView } from '#ui/hooks/useFilters.ts';
+import type { DevState } from '#ui/stores/DevStore.ts';
 import type { LogRecord } from '@seedcord/types';
 import type { DOMElement } from 'ink';
 import type { ReactElement } from 'react';

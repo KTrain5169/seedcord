@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vite-plus/test';
 
 import { SearchResults } from '#lib/search/SearchResults';
 
-import type { CommandAction } from '#components/search/command-palette/types';
+import type { CommandAction } from '#components/search/command-palette/types.ts';
 import type { SearchIndexEntry } from '#lib/search/types';
 
 function entry(slug: string, kind: CommandAction['kind'], packageName = 'seedcord'): SearchIndexEntry {

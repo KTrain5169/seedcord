@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { rankByCoverage } from '#lib/searchRank';
+import { rankByCoverage } from '#lib/searchRank.ts';
 
 interface Row {
     type: 'page' | 'heading' | 'text';

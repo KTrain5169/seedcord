@@ -10,7 +10,7 @@ import { DevSession } from '#commands/dev/DevSession';
 import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
 import { StateFolder } from '#core/state/StateFolder';
 import { silentLogger } from '#tests/silentLogger';
-import { DevStore } from '#ui/stores/DevStore';
+import { DevStore } from '#ui/stores/DevStore.ts';
 
 import { devConfigFor } from './devConfigFor';
 import { fakeBot, fakeRuntime } from './fakes';

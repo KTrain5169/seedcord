@@ -3,7 +3,7 @@ import { Box, Text } from 'ink';
 import Spinner from 'ink-spinner';
 import React from 'react';
 
-import { ui } from '#ui/palette';
+import { ui } from '#ui/palette.ts';
 
 import type { TunnelPhase } from '#commands/dev/tunnel/TunnelCoordinator';
 import type { ReactElement } from 'react';

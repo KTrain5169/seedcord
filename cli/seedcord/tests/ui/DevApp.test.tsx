@@ -2,17 +2,17 @@ import { settled, stableFrame } from '@seedcord/cli-prompts/testing';
 import React from 'react';
 import { describe, expect, it, vi } from 'vite-plus/test';
 
-import { NO_FILTER_ROOM } from '#ui/components/primitives/FilterPanel';
-import { NO_ROOM } from '#ui/components/primitives/ScrollableLogView';
-import { DevApp } from '#ui/DevApp';
-import { DevStore } from '#ui/stores/DevStore';
-import { LogStore } from '#ui/stores/LogStore';
-import { COMPACT_ROWS } from '#ui/tier';
+import { NO_FILTER_ROOM } from '#ui/components/primitives/FilterPanel.tsx';
+import { NO_ROOM } from '#ui/components/primitives/ScrollableLogView.tsx';
+import { DevApp } from '#ui/DevApp.tsx';
+import { DevStore } from '#ui/stores/DevStore.ts';
+import { LogStore } from '#ui/stores/LogStore.ts';
+import { COMPACT_ROWS } from '#ui/tier.ts';
 
 import { renderAt } from './renderAt';
 import { renderOnScreen } from './renderOnScreen';
 
-import type { LogFilters } from '#ui/devPrefs';
+import type { LogFilters } from '#ui/devPrefs.ts';
 import type { LogRecord } from '@seedcord/types';
 import type { ComponentProps, ReactElement } from 'react';
 

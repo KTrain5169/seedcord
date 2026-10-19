@@ -3,7 +3,7 @@ import { SearchCatalog } from './SearchCatalog';
 import { SearchResults } from './SearchResults';
 
 import type { SearchIndexEntry, SearchPackage } from './types';
-import type { ActiveDocsTarget } from '#components/search/command-palette/activeTarget';
+import type { ActiveDocsTarget } from '#components/search/command-palette/activeTarget.ts';
 
 class DownloadCache<Value> {
     private readonly downloads = new Map<string, Promise<Value>>();

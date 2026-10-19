@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-import type { LogFilters } from '#ui/devPrefs';
-import type { Tier } from '#ui/tier';
+import type { LogFilters } from '#ui/devPrefs.ts';
+import type { Tier } from '#ui/tier.ts';
 
 export type FilterView = 'always' | 'shown' | 'collapsed';
 

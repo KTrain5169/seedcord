@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { parseInput } from '#cli/parseInput';
 import { dashboardToggles, nextSteps as paintedSteps, reproducingCommand } from '#cli/summary';
 import { version } from '#cli/version';
-import { STEPS } from '#interview/steps';
+import { STEPS } from '#interview/steps/index';
 
 import type { ScaffoldAnswers } from '#template/context';
 

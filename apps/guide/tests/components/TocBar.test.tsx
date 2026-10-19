@@ -2,7 +2,7 @@ import { MotionProvider } from '@seedcord/ui';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { TocBar } from '#components/TocBar';
+import { TocBar } from '#components/TocBar.tsx';
 
 import type { TOCItemType } from 'fumadocs-core/toc';
 

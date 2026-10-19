@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { pageActionsFor } from '#lib/pageActions';
+import { pageActionsFor } from '#lib/pageActions.ts';
 
 const page = {
     url: '/commands/options',

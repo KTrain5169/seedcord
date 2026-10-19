@@ -1,23 +1,23 @@
 import { Box } from 'ink';
 import React from 'react';
 
-import { FilterPanel } from '#ui/components/primitives/FilterPanel';
-import { LogHeader } from '#ui/components/primitives/LogHeader';
-import { NotificationStack } from '#ui/components/primitives/NotificationStack';
-import { Rule } from '#ui/components/primitives/Rule';
-import { ScrollableLogView } from '#ui/components/primitives/ScrollableLogView';
-import { Sidebar } from '#ui/components/primitives/Sidebar';
-import { StatusLine } from '#ui/components/primitives/StatusLine';
+import { FilterPanel } from '#ui/components/primitives/FilterPanel.tsx';
+import { LogHeader } from '#ui/components/primitives/LogHeader.tsx';
+import { NotificationStack } from '#ui/components/primitives/NotificationStack.tsx';
+import { Rule } from '#ui/components/primitives/Rule.tsx';
+import { ScrollableLogView } from '#ui/components/primitives/ScrollableLogView.tsx';
+import { Sidebar } from '#ui/components/primitives/Sidebar.tsx';
+import { StatusLine } from '#ui/components/primitives/StatusLine.tsx';
 
-import type { LogFilters } from '#ui/devPrefs';
-import type { FilterCursor } from '#ui/filterCursor';
-import type { FilterView } from '#ui/hooks/useFilters';
-import type { PanelFit } from '#ui/hooks/usePanelFit';
-import type { ScrollApi } from '#ui/hooks/useScroll';
-import type { LogRow } from '#ui/logRows';
-import type { Notice } from '#ui/notices';
-import type { DevState } from '#ui/stores/DevStore';
-import type { Tier } from '#ui/tier';
+import type { LogFilters } from '#ui/devPrefs.ts';
+import type { FilterCursor } from '#ui/filterCursor.ts';
+import type { FilterView } from '#ui/hooks/useFilters.ts';
+import type { PanelFit } from '#ui/hooks/usePanelFit.ts';
+import type { ScrollApi } from '#ui/hooks/useScroll.ts';
+import type { LogRow } from '#ui/logRows.ts';
+import type { Notice } from '#ui/notices.tsx';
+import type { DevState } from '#ui/stores/DevStore.ts';
+import type { Tier } from '#ui/tier.ts';
 import type { DOMElement } from 'ink';
 import type { ReactElement, Ref } from 'react';
 
