@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { SiteAddress } from '#src/sites';
+import { SiteAddress } from '#src/sites.ts';
 
 describe('SiteAddress', () => {
     const guide = new SiteAddress('https://seedcord.org/guide');

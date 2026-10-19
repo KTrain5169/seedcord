@@ -3,11 +3,7 @@
     "extends": "@seedcord/tsconfig/node",
     "compilerOptions": {
         "rootDir": "./",
-        "outDir": "./dist",
-        "paths": {
-            "#tests/*": ["./tests/*"],
-            "#src/*": ["./src/*"]
-        }
+        "outDir": "./dist"
     },
     "include": ["src/**/*.ts", "tests/**/*.ts", "eslint.config.ts", "vite.config.ts"],
     "exclude": ["node_modules", "dist"]

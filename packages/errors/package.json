@@ -27,7 +27,7 @@
     "type": "module",
     "types": "./dist/index.d.mts",
     "imports": {
-        "#src/*": "./src/*"
+        "#src/*": "./src/*.ts"
     },
     "exports": {
         ".": {

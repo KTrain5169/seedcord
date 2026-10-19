@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vite-plus/test';
 
-import { BRAND } from '#src/palette';
+import { BRAND } from '#src/palette.ts';
 
 const uiTokens = readFileSync(join(import.meta.dirname, '../src/styles/tokens.css'), 'utf8');
 

@@ -4,10 +4,7 @@
     "compilerOptions": {
         "rootDir": "./",
         "outDir": "./dist",
-        "jsx": "react",
-        "paths": {
-            "#src/*": ["./src/*"]
-        }
+        "jsx": "react"
     },
     "include": [
         "src/**/*.ts",

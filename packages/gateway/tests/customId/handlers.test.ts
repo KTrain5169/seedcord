@@ -2,7 +2,7 @@ import { DispatchContext, Notice, CustomId, ButtonRoute, ModalRoute, UserMenuRou
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { describe, expect, it } from 'vite-plus/test';
 
-import { ButtonHandler, ModalHandler, UserMenuHandler } from '#handlers/interaction/components';
+import { ButtonHandler, ModalHandler, UserMenuHandler } from '#handlers/interaction/components/index';
 
 import type { Core } from '#interfaces/Core';
 import type { MatchArms } from '@seedcord/core/internal';

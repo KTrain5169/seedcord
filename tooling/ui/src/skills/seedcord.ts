@@ -1,6 +1,6 @@
-import { DOCS_URL, GUIDE_URL as GUIDE } from '#src/sites';
+import { DOCS_URL, GUIDE_URL as GUIDE } from '#src/sites.ts';
 
-import type { Skill } from '#src/skills';
+import type { Skill } from '#src/skills.ts';
 
 const DESCRIPTION =
     'Build a Discord bot with seedcord, a TypeScript framework for gateway and http bots, typed end to end. Covers picking a transport, declaring slash commands with generated option types, replying, gates, components, and the CLI.';

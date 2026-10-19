@@ -17,7 +17,7 @@ import {
     RoleMenuHandler,
     StringMenuHandler,
     UserMenuHandler
-} from '#handlers/interaction/components';
+} from '#handlers/interaction/components/index';
 
 import type { Core } from '#interfaces/Core';
 import type { ModalSubmitInteraction } from 'discord.js';

@@ -28,8 +28,8 @@
     "type": "module",
     "types": "./dist/index.d.mts",
     "imports": {
-        "#tests/*": "./tests/*",
-        "#src/*": "./src/*"
+        "#tests/*": "./tests/*.ts",
+        "#src/*": "./src/*.ts"
     },
     "exports": {
         ".": {

@@ -26,7 +26,7 @@
         }
     },
     "imports": {
-        "#src/*": "./src/*"
+        "#src/*": "./src/*.ts"
     },
     "exports": {
         ".": {

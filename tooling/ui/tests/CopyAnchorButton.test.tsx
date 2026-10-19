@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vite-plus/test';
 
-import { CopyAnchorButton } from '#src/CopyAnchorButton';
+import { CopyAnchorButton } from '#src/CopyAnchorButton.tsx';
 
 function stubClipboard(): ReturnType<typeof vi.fn> {
     const writeText = vi.fn(async () => {});

@@ -7,7 +7,7 @@ import {
     highlightSignatureToHtml,
     highlightToHtml,
     highlightTypeParamToHtml
-} from '#src/shiki';
+} from '#src/shiki.ts';
 
 import type { ShikiTransformer } from 'shiki';
 
