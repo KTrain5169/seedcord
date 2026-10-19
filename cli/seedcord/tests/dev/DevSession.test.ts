@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { SeedcordErrorCode, isSeedcordError } from '@seedcord/errors';
+import { toPosixPath } from '@seedcord/utils/node/internal';
 import { assert, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 
 import { DevSession } from '#commands/dev/DevSession';
@@ -29,7 +30,8 @@ function config(): ResolvedSeedcordConfig {
         typecheck: { enabled: false },
         idleAnimation: true,
         build: {},
-        viteMode: 'development'
+        viteMode: 'development',
+        vitePlugins: []
     };
 }
 
@@ -284,7 +286,7 @@ describe('DevSession with a broken entry', () => {
         assert(isSeedcordError(error));
         // vite's code frame repeats the path after this point
         const [prefix = '', reason] = error.message.split('Transform failed');
-        expect(prefix.split(entry)).toHaveLength(2);
+        expect(prefix.split(toPosixPath(entry))).toHaveLength(2);
         expect(reason).toContain('Unexpected token');
     }, 60_000);
 });

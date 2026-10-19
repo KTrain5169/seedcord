@@ -12,8 +12,11 @@ import type { ViteDevServer } from 'vite';
 
 const LOADER_PACKAGE = '@seedcord/fixture-loader';
 
-const LOADER_ENTRY = `export async function loadFile(absolutePath) {
-    return import(absolutePath);
+// traverseDirectory imports through a file url too
+const LOADER_ENTRY = `import { pathToFileURL } from 'node:url';
+
+export async function loadFile(absolutePath) {
+    return import(pathToFileURL(absolutePath).href);
 }
 `;
 
@@ -92,7 +95,7 @@ describe('dev runtime module resolution', () => {
         );
 
         const runner = createServerModuleRunner(server.environments.ssr);
-        ({ run } = await runner.import<{ run: (path: string) => Promise<string[]> }>('/entry.ts'));
+        ({ run } = await runner.import<{ run: (path: string) => Promise<string[]> }>('/src/entry.ts'));
     }, 30_000);
 
     afterAll(async () => {

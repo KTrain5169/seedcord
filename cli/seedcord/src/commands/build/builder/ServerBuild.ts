@@ -1,9 +1,11 @@
 import { existsSync } from 'node:fs';
-import { extname, join } from 'node:path';
+import { extname, join, relative } from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 import { build } from 'vite';
+
+import { viteKey } from '#core/project/ProjectFiles';
 
 import { assertOutDirSafe } from './assertOutDirSafe';
 import { bundleFailed, bundleStats, ENTRY_FILE_NAME } from './output';
@@ -12,7 +14,7 @@ import { serverCommands } from './serverCommands';
 import { ENTRY_ID, isServerEntry, serverEntry } from './serverEntry';
 import { TargetBuild } from './TargetBuild';
 
-import type { ResolvedServerTarget } from '#core/config/schema';
+import type { ResolvedSeedcordConfig, ResolvedServerTarget } from '#core/config/schema';
 import type { Project } from '#core/project/Project';
 import type { BundleStats } from './output';
 import type { NextCommand } from './TargetBuild';
@@ -44,10 +46,9 @@ export class ServerBuild extends TargetBuild {
         super(project);
     }
 
-    public check(): void {
-        const { entry, outDir } = this.target;
+    public static check({ root }: ResolvedSeedcordConfig, { entry, outDir }: ResolvedServerTarget): void {
         if (!existsSync(entry)) throw new SeedcordError(SeedcordErrorCode.CliEntryNotFound, [entry]);
-        assertOutDirSafe(outDir, this.project.config.root);
+        assertOutDirSafe(outDir, root);
     }
 
     public nextCommands(bundle: BundleStats): NextCommand[] {
@@ -55,19 +56,29 @@ export class ServerBuild extends TargetBuild {
     }
 
     public async bundle(): Promise<BundleStats> {
-        const { config, files } = this.project;
+        const { config, configDir, files } = this.project;
         const { entry, outDir } = this.target;
         const { root } = config;
         const folders = await files.foldersIncludingEmpty();
 
         const result = await build({
-            root,
+            root: configDir,
             mode: config.viteMode,
             configFile: false,
             // vite copies <root>/public into outDir otherwise
             publicDir: false,
             logLevel: 'warn',
-            plugins: [serverEntry({ files, entry, folders }), pinModulePaths(files)],
+            plugins: [
+                serverEntry({
+                    files,
+                    folders,
+                    entryKey: viteKey(configDir, entry),
+                    rootKey: viteKey(configDir, root),
+                    configFile: relative(outDir, config.configFile)
+                }),
+                pinModulePaths(files),
+                ...config.vitePlugins
+            ],
             resolve: { tsconfigPaths: true },
             build: {
                 ssr: true,

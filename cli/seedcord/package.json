@@ -93,7 +93,6 @@
         "minimatch": "^10.2.6",
         "react": "catalog:react",
         "reflect-metadata": "catalog:deps",
-        "vite": "catalog:deps",
         "wrap-ansi": "^10.0.0"
     },
     "devDependencies": {
@@ -114,12 +113,14 @@
         "ink-testing-library": "^4.0.0",
         "tsx": "catalog:deps",
         "typescript": "catalog:peer",
+        "vite": "catalog:deps",
         "vitest": "catalog:test"
     },
     "peerDependencies": {
         "@cloudflare/vite-plugin": "catalog:peer",
         "envapt": "catalog:peer",
-        "typescript": "catalog:consumerTypes"
+        "typescript": "catalog:consumerTypes",
+        "vite": "catalog:peer"
     },
     "peerDependenciesMeta": {
         "@cloudflare/vite-plugin": {

@@ -1,5 +1,6 @@
 import type { EdgeTarget, ServerTarget } from './detectTarget';
 import type { TypedOmit } from '@seedcord/types';
+import type { Plugin, PluginOption } from 'vite';
 
 /**
  * Build options every bot takes. An edge bot takes only these, because `@cloudflare/vite-plugin`
@@ -110,6 +111,12 @@ export interface SeedcordConfig {
      * Optional HMR configuration.
      */
     hmr?: SeedcordHmrConfig;
+    /**
+     * Vite plugins that run on your bot's code in every `seedcord` command that loads it. They change
+     * what an import loads, like turning a `.yaml` file into an object. A seedcord plugin goes on your
+     * bot with `attach`, in the file `instance` points at.
+     */
+    vitePlugins?: PluginOption[];
 }
 
 /**
@@ -146,9 +153,10 @@ export interface ResolvedSeedcordBuildConfig {
 
 // every path in here is absolute
 export interface ResolvedSeedcordConfig extends Required<
-    TypedOmit<SeedcordConfig, 'build' | 'hmr' | 'tunnel' | 'port'>
+    TypedOmit<SeedcordConfig, 'build' | 'hmr' | 'tunnel' | 'port' | 'vitePlugins'>
 > {
     tunnel: ResolvedTunnel;
+    vitePlugins: Plugin[];
     configFile: string;
     target: ResolvedTarget;
     build: ResolvedSeedcordBuildConfig;

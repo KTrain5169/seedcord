@@ -8,19 +8,20 @@ const RESOLVED_ENTRY_ID = `\0${ENTRY_ID}`;
 
 interface EntryOptions {
     files: ProjectFiles;
-    entry: string;
     folders: string[];
+    entryKey: string;
+    rootKey: string;
+    configFile: string;
 }
 
 export function isServerEntry(moduleId: string | null | undefined): boolean {
     return moduleId === RESOLVED_ENTRY_ID;
 }
 
-// vite's root is the bot's root on a server build
-function entrySource({ files, entry, folders }: EntryOptions): string {
+function entrySource({ entryKey, ...builtFiles }: EntryOptions): string {
     return [
-        builtFilesSource({ files, folders, rootExpression: 'import.meta.dirname', rootKey: '/', sourcePaths: false }),
-        `await import(${JSON.stringify(files.keyOf(entry))});`,
+        builtFilesSource({ ...builtFiles, rootExpression: 'import.meta.dirname', sourcePaths: false }),
+        `await import(${JSON.stringify(entryKey)});`,
         ''
     ].join('\n');
 }

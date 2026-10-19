@@ -1,19 +1,23 @@
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join, relative } from 'node:path';
+import { join } from 'node:path';
 
-import { SeedcordErrorCode } from '@seedcord/errors';
+import { isSeedcordError, SeedcordErrorCode } from '@seedcord/errors';
+import { posixRelative } from '@seedcord/utils/node/internal';
 import { bindings, exports } from 'cf/config';
-import { describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
+import { assert, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 
 import { CodegenRunner } from '#commands/codegen/CodegenRunner';
 import { DevRunner } from '#commands/dev/DevRunner';
 import { EdgeDevRuntime } from '#commands/dev/runtime/EdgeDevRuntime';
+import { LoadedConfig } from '#core/config/LoadedConfig';
+import { wrapVitePlugins } from '#core/config/vitePlugins';
 import { quietSteps } from '#core/output/quietSteps';
 import { deployedCommandsFile } from '#core/state/deployedCommands';
 import { StateFolder } from '#core/state/StateFolder';
 import { ShellMode } from '#core/viteMode';
 import { writeCloudflareConfig } from '#tests/commands/build/edgeBot';
 import { ED25519_KEY_BYTES } from '#tests/commands/build/smoke';
+import { GREETING, GREETING_PROBE, greetingPlugin } from '#tests/greetingPlugin';
 import { silentLogger } from '#tests/silentLogger';
 import { DevStore } from '#ui/stores/DevStore';
 
@@ -31,8 +35,12 @@ import {
 
 import type { DevEvent } from '#commands/dev/runtime/events';
 import type { TunnelRouter } from '#commands/dev/tunnel/TunnelRouter';
-import type { ProjectLoader } from '#core/config/ProjectLoader';
 import type { ResolvedEdgeTarget, ResolvedSeedcordConfig } from '#core/config/schema';
+
+// node lists a ProcessWrap for each child process until it closes
+function runningChildren(): number {
+    return process.getActiveResourcesInfo().filter((resource) => resource === 'ProcessWrap').length;
+}
 
 async function nodeCopyApiToken(projectDir: string, viteMode = 'development'): Promise<unknown> {
     await writeCloudflareConfig(projectDir, { env: { API_TOKEN: bindings.secret() } });
@@ -80,7 +88,9 @@ describe('EdgeDevRuntime lifecycle', () => {
         const types = events.map((event) => event.type);
         const steps = events.flatMap((event) => (event.type === 'progress' ? [event.status] : []));
         expect(types.lastIndexOf('progress')).toBeLessThan(types.indexOf('server-listening'));
-        expect(steps).toContainEqual(expect.stringContaining(relative(process.cwd(), join(projectDir, 'src/bot.ts'))));
+        expect(steps).toContainEqual(
+            expect.stringContaining(posixRelative(process.cwd(), join(projectDir, 'src/bot.ts')))
+        );
     }, 120_000);
 
     it('runs the startup sequence once in a seedcord dev session', async () => {
@@ -98,20 +108,15 @@ describe('EdgeDevRuntime lifecycle', () => {
         await mkdir(join(projectDir, 'src/commands'));
         await writeFile(join(projectDir, 'src/commands/Wave.ts'), WAVE_COMMAND);
         const logs = captureLogs();
-        // justified: the runner reads only these fields on top of the runtime's
-        const config = {
+        const config: ResolvedSeedcordConfig = {
             ...edgeConfig(projectDir),
             tunnel: { mode: 'off' },
-            typecheck: { enabled: false },
             idleAnimation: false
-        } as ResolvedSeedcordConfig;
+        };
         const store = new DevStore();
         const state = new StateFolder(projectDir, silentLogger);
         const runner = new DevRunner({
-            // justified: the runner reads config and disposes the project
-            projectLoader: {
-                open: () => Promise.resolve({ config, [Symbol.asyncDispose]: () => Promise.resolve() })
-            } as unknown as Pick<ProjectLoader, 'open'>,
+            projectLoader: { readConfig: () => Promise.resolve(new LoadedConfig(config)) },
             store,
             state,
             codegen: CodegenRunner.create(quietSteps, silentLogger, new ShellMode()),
@@ -158,6 +163,20 @@ describe('EdgeDevRuntime lifecycle', () => {
         await expect(startedRuntime(projectDir)).rejects.toThrow('bot.ts threw in workerd');
     }, 60_000);
 
+    it('stops workerd when the bot throws while workerd loads it', async () => {
+        await using project = await edgeProject();
+        const { projectDir } = project;
+        await appendFile(
+            join(projectDir, 'src/bot.ts'),
+            "\nif (navigator.userAgent === 'Cloudflare-Workers') throw new Error('bot.ts threw in workerd');\n"
+        );
+        const before = runningChildren();
+
+        await expect(startedRuntime(projectDir)).rejects.toThrow('bot.ts threw in workerd');
+
+        await vi.waitFor(() => expect(runningChildren()).toBe(before), { timeout: 10_000 });
+    }, 60_000);
+
     it('settles a start that is still running when the session stops', async () => {
         await using project = await edgeProject();
         const { projectDir } = project;
@@ -194,6 +213,68 @@ describe('EdgeDevRuntime lifecycle', () => {
 
         const unsigned = await fetch(`http://localhost:${started.port()}/`, { method: 'POST', body: '{}' });
         expect(unsigned.status).toBe(401);
+    }, 60_000);
+
+    it("runs vitePlugins on the worker's code and on codegen's node copy", async () => {
+        await using project = await edgeProject();
+        const { projectDir } = project;
+        // the worker loads this folder on start
+        await writeFile(join(projectDir, 'src/handlers/greeting.ts'), GREETING_PROBE);
+        await using started = await startedRuntime(projectDir, undefined, { vitePlugins: [greetingPlugin()] });
+        const { runtime, instance } = started;
+
+        await runtime.startBot(instance);
+        const nodeCopy = await runtime.importModule<{ default: string }>(join(projectDir, 'src/handlers/greeting.ts'));
+
+        expect(nodeCopy.default).toBe(GREETING);
+    }, 60_000);
+
+    it('throws CoreVitePluginThrew for a plugin that throws while edge dev starts', async () => {
+        await using project = await edgeProject();
+        const vitePlugins = wrapVitePlugins(
+            [
+                {
+                    name: 'breaks-on-start',
+                    configResolved: () => {
+                        throw new Error('bad option');
+                    }
+                }
+            ],
+            join(project.projectDir, 'seedcord.config.ts')
+        );
+
+        const caught: unknown = await startedRuntime(project.projectDir, undefined, { vitePlugins }).catch(
+            (error: unknown) => error
+        );
+
+        assert(isSeedcordError(caught, 'SeedcordError', SeedcordErrorCode.CoreVitePluginThrew));
+        expect(caught.message).toContain('breaks-on-start');
+    }, 60_000);
+
+    it('throws CoreVitePluginThrew with the file it was loading when a handler import fails in the worker', async () => {
+        await using project = await edgeProject();
+        const { projectDir } = project;
+        await writeFile(join(projectDir, 'src/word.ts'), "export const word = 'ok';\n");
+        await writeFile(join(projectDir, 'src/handlers/Word.ts'), "export { word } from '../word';\n");
+        const vitePlugins = wrapVitePlugins(
+            [
+                {
+                    name: 'breaks-in-transform',
+                    transform: (_code, id) => {
+                        if (id.endsWith('/word.ts')) throw new Error('bad yaml on line 3');
+                        return undefined;
+                    }
+                }
+            ],
+            join(projectDir, 'seedcord.config.ts')
+        );
+        await using started = await startedRuntime(projectDir, undefined, { vitePlugins });
+
+        // the worker's error crosses the dev channel as a plain Error that keeps its code
+        await expect(started.runtime.startBot(started.instance)).rejects.toMatchObject({
+            code: SeedcordErrorCode.CoreVitePluginThrew,
+            message: expect.stringMatching(/breaks-in-transform[\s\S]*word\.ts/) as string
+        });
     }, 60_000);
 
     it('throws CliStartFailed when the worker answers a GET with something other than 405', async () => {

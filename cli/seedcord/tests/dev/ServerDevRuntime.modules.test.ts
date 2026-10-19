@@ -1,11 +1,14 @@
 import { mkdir, mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { stripVTControlCharacters } from 'node:util';
 
-import { SeedcordErrorCode } from '@seedcord/errors';
-import { describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
+import { isSeedcordError, SeedcordErrorCode } from '@seedcord/errors';
+import { assert, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 
 import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
+import { wrapVitePlugins } from '#core/config/vitePlugins';
+import { GREETING, GREETING_PROBE, greetingPlugin } from '#tests/greetingPlugin';
 
 import { devContextFor } from './devConfigFor';
 
@@ -54,6 +57,87 @@ describe('dev runtime mode', () => {
 
         expect(module).toMatchObject({ mode: 'staging' });
     }, 60_000);
+});
+
+describe('dev runtime vitePlugins', () => {
+    it("runs them on the bot's code", async () => {
+        const temp = await mkdtempDisposable(join(tmpdir(), 'dev-vite-plugins-'));
+        onTestFinished(() => temp.remove());
+        await writeProject(temp.path);
+        await writeFile(join(temp.path, 'src', 'greeting.ts'), GREETING_PROBE);
+        const context = devContextFor(temp.path, 'greeting.ts');
+        const runtime = new ServerDevRuntime();
+        onTestFinished(() => runtime.stop());
+
+        await runtime.start({ ...context, config: { ...context.config, vitePlugins: [greetingPlugin()] } });
+        const { module } = await runtime.loadEntry();
+
+        expect(module).toMatchObject({ default: GREETING });
+    }, 60_000);
+
+    it('throws CoreVitePluginThrew for a plugin that throws while the dev server starts', async () => {
+        const temp = await mkdtempDisposable(join(tmpdir(), 'dev-vite-plugins-'));
+        onTestFinished(() => temp.remove());
+        await writeProject(temp.path);
+        const context = devContextFor(temp.path, 'index.ts');
+        const vitePlugins = wrapVitePlugins(
+            [
+                {
+                    name: 'breaks-on-start',
+                    configureServer: () => {
+                        throw new Error('bad option');
+                    }
+                }
+            ],
+            context.config.configFile
+        );
+        const runtime = new ServerDevRuntime();
+        onTestFinished(() => runtime.stop());
+
+        const caught: unknown = await runtime
+            .start({ ...context, config: { ...context.config, vitePlugins } })
+            .catch((error: unknown) => error);
+
+        assert(isSeedcordError(caught, 'SeedcordError', SeedcordErrorCode.CoreVitePluginThrew));
+        expect(caught.message).toContain('breaks-on-start');
+    }, 60_000);
+
+    it.each(['load', 'transform'] as const)(
+        'throws CoreVitePluginThrew with the file it was loading for a plugin that throws in %s',
+        async (hook) => {
+            const temp = await mkdtempDisposable(join(tmpdir(), 'dev-vite-plugins-'));
+            onTestFinished(() => temp.remove());
+            await writeProject(temp.path);
+            await writeFile(join(temp.path, 'src', 'word.ts'), "export const word = 'ok';\n");
+            await writeFile(join(temp.path, 'src', 'reexport.ts'), "export { word } from './word';\n");
+            const throwOnWord = (id: string): undefined => {
+                if (id.endsWith('/word.ts')) throw new Error('bad yaml on line 3');
+                return undefined;
+            };
+            const context = devContextFor(temp.path, 'reexport.ts');
+            const vitePlugins = wrapVitePlugins(
+                [
+                    hook === 'load'
+                        ? { name: 'breaks-the-word', load: throwOnWord }
+                        : { name: 'breaks-the-word', transform: (_code, id) => throwOnWord(id) }
+                ],
+                context.config.configFile
+            );
+            const runtime = new ServerDevRuntime();
+            onTestFinished(() => runtime.stop());
+            await runtime.start({ ...context, config: { ...context.config, vitePlugins } });
+
+            const caught: unknown = await runtime.loadEntry().catch((error: unknown) => error);
+
+            assert(isSeedcordError(caught, 'SeedcordError', SeedcordErrorCode.CoreVitePluginThrew));
+            const message = stripVTControlCharacters(caught.message);
+            expect(message).toContain('breaks-the-word');
+            expect(message).toContain(`its ${hook} hook`);
+            expect(message).toContain('src/word.ts');
+            expect(message).toContain('bad yaml on line 3');
+        },
+        60_000
+    );
 });
 
 describe('dev runtime importModule', () => {

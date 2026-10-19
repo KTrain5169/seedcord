@@ -1,4 +1,13 @@
 import { stat } from 'node:fs/promises';
+import path from 'node:path';
+
+export function toPosixPath(filePath: string): string {
+    return filePath.split(path.sep).join('/');
+}
+
+export function posixRelative(from: string, to: string): string {
+    return toPosixPath(path.relative(from, to));
+}
 
 export async function pathExists(filePath: string): Promise<boolean> {
     try {

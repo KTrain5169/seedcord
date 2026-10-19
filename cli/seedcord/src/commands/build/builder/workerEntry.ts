@@ -1,5 +1,6 @@
 import { BAKED_IDS_KEY } from '@seedcord/core/internal';
 import { assertNever } from '@seedcord/utils';
+import { workerdPath } from '@seedcord/utils/node/internal';
 
 import { builtFilesSource } from './builtFiles';
 
@@ -63,7 +64,7 @@ interface ModeSetup {
 function modeSetup(mode: EntryMode): ModeSetup {
     switch (mode.kind) {
         case 'dev': {
-            return { root: mode.root, cwd: mode.cwd, sourcePaths: true, modules: [] };
+            return { root: workerdPath(mode.root), cwd: workerdPath(mode.cwd), sourcePaths: true, modules: [] };
         }
         case 'build': {
             return {
@@ -92,16 +93,33 @@ function setupSources({ files, folders, rootKey, mode }: WorkerEntryOptions): Ma
     ]);
 }
 
+const INSTANCE_MODULE_KEY = 'seedcord:cli:instance-module';
+
+// after a save to bot.ts or a file it imports, cloudflare evaluates this entry again on the next request.
+// a second new Seedcord would throw. the bot that started keeps answering until the restart
+function keptInstanceExports(instance: string, named: string[]): string[] {
+    const lines = [
+        `const instanceModule = (globalThis[Symbol.for(${JSON.stringify(INSTANCE_MODULE_KEY)})] ??= await import(${instance}));`,
+        'export default instanceModule.default;'
+    ];
+    if (named.length > 0) lines.push(`export const { ${named.join(', ')} } = instanceModule;`);
+    return lines;
+}
+
+function instanceExports(instance: string, named: string[]): string[] {
+    const lines = [`export { default } from ${instance};`];
+    if (named.length > 0) lines.push(`export { ${named.join(', ')} } from ${instance};`);
+    return lines;
+}
+
 async function entrySource(
-    { instanceKey, functionExports }: WorkerEntryOptions,
+    { instanceKey, functionExports, mode }: WorkerEntryOptions,
     setup: Map<string, string>
 ): Promise<string> {
-    const instance = JSON.stringify(instanceKey);
     const lines = [...setup.keys()].map((id) => `import '${id}';`);
-    lines.push(`export { default } from ${instance};`);
+    const exportsFrom = mode.kind === 'dev' ? keptInstanceExports : instanceExports;
     // cloudflare reads durable object and workflow classes from the worker's named exports
-    const named = await functionExports();
-    if (named.length > 0) lines.push(`export { ${named.join(', ')} } from ${instance};`);
+    lines.push(...exportsFrom(JSON.stringify(instanceKey), await functionExports()));
     return [...lines, ''].join('\n');
 }
 

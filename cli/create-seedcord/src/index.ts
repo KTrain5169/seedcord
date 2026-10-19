@@ -4,6 +4,8 @@ import process from 'node:process';
 import { Prompter, unlessCancelled } from '@seedcord/cli-prompts';
 import { paint } from '@seedcord/errors';
 
+import ownPackage from '#package' with { type: 'json' };
+
 import { helpText } from '#cli/help';
 import { inviteUrl } from '#cli/invite';
 import { messageOf } from '#cli/messageOf';
@@ -18,7 +20,7 @@ import { STEPS } from '#interview/steps';
 import { missingNotice, probeCloudflared } from '#scaffold/cloudflared';
 import { createExecRunner } from '#scaffold/exec';
 import { scaffold } from '#scaffold/scaffold';
-import { requireScaffoldAnswers } from '#template/context';
+import { capabilitiesOf, requireScaffoldAnswers } from '#template/context';
 
 import type { FlowMode } from '#interview/runFlow';
 import type { ScaffoldAnswers } from '#template/context';
@@ -105,7 +107,7 @@ async function reportOutcome(
         output.warn(missingNotice(process.platform));
     }
 
-    const toggles = dashboardToggles(answers.capabilities ?? []);
+    const toggles = dashboardToggles(capabilitiesOf(answers));
     if (toggles.length > 0) {
         output.line();
         output.row('intents', toggles);
@@ -121,6 +123,12 @@ async function reportOutcome(
     // powershell and cmd split a command wrapped with a trailing `\`
     output.row('again', [paint.bold(reproducingCommand(answers, agent))]);
     output.row('guide', [paint.sky('https://seedcord.org/guide')]);
+    output.line();
+    output.line(
+        paint.mute(
+            `A star on GitHub helps more people find seedcord: ${ownPackage.repository.url.replace(/\.git$/, '')}`
+        )
+    );
     output.line();
 }
 

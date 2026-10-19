@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -7,6 +8,7 @@ import { SeedcordError } from '@seedcord/errors/internal';
 
 import { asError } from '#src/misc/asError';
 
+import { importFailed } from './importFailed';
 import { isInside, resolveFromRoot } from './paths';
 
 import type * as fs from 'node:fs';
@@ -140,6 +142,8 @@ interface BuiltFileLoaders {
     text: Record<string, TextLoader>;
     // seedcord dev runs the source files themselves
     sourcePaths?: boolean;
+    // relative to root. only a server build writes it
+    configFile?: string;
 }
 
 // seedcord build writes a BuiltFileLoaders object here from the entry it generates
@@ -157,6 +161,15 @@ const builtSources = new WeakMap<BuiltFileLoaders, BuiltFiles>();
 
 function builtFiles(): BuiltFileLoaders | undefined {
     return Reflect.get(globalThis, Symbol.for(BUILT_FILES_KEY)) as BuiltFileLoaders | undefined;
+}
+
+export function builtConfigDir(): string | undefined {
+    const built = builtFiles();
+    if (built?.configFile === undefined) return undefined;
+
+    const configFile = path.resolve(built.root, built.configFile);
+    // a bun binary's root is under /$bunfs
+    return existsSync(configFile) ? path.dirname(configFile) : undefined;
 }
 
 export function setBotRoot(root: string | undefined): void {
@@ -219,9 +232,7 @@ export async function* traverseDirectory(dir: string): AsyncGenerator<ImportedFi
         try {
             imported = await load();
         } catch (err) {
-            throw new SeedcordError(SeedcordErrorCode.CoreImportFailed, [relativePath, asError(err).message], {
-                cause: err
-            });
+            throw importFailed(relativePath, err);
         }
         yield { fullPath, relativePath, imported };
     }

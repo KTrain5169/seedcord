@@ -1,6 +1,7 @@
-import { createServer, createServerModuleRunner } from 'vite';
+import { createServerModuleRunner } from 'vite';
 
 import { edgeStandIns } from './edgeStandIns';
+import { openViteServer } from './openViteServer';
 import { RunnerModuleLoader } from './RunnerModuleLoader';
 import { seedcordDependents } from './seedcordDependents';
 import { mergeViteConfig, NODE_CONDITIONS, WORKERD_CONDITIONS, userCodeConfig } from './userCodeConfig';
@@ -34,9 +35,10 @@ export async function openModuleLoader(
     projectDir: string,
     target: BuildTarget,
     mode: string,
-    use: LoaderUse = 'bot'
+    use: LoaderUse
 ): Promise<ModuleLoader & AsyncDisposable> {
-    const runsWorkerCode = target.kind === 'edge' && use === 'bot';
+    const runsWorkerCode = target.kind === 'edge' && use !== 'config';
+    const vitePlugins = use === 'config' ? [] : use.vitePlugins;
     const workerEnv = target.kind === 'edge' ? lazyWorkerEnv(target.cloudflareConfig, mode) : undefined;
     // read up front because the runner reports anything a load hook throws as CoreImportFailed
     if (runsWorkerCode) await workerEnv?.();
@@ -51,11 +53,10 @@ export async function openModuleLoader(
         // the ssr runner never reads the client dep cache in node_modules/.vite
         optimizeDeps: { noDiscovery: true, include: [] },
         ssr: { noExternal: seedcordDependents(projectDir) },
-        plugins: workerEnv ? [edgeStandIns(workerEnv)] : []
+        plugins: [...(workerEnv ? [edgeStandIns(workerEnv)] : []), ...vitePlugins]
     });
     await using onFailure = new AsyncDisposableStack();
-    const server = await createServer(config);
-    onFailure.defer(() => server.close());
+    const server = await openViteServer(onFailure, config);
     const runner = createServerModuleRunner(server.environments.ssr, { hmr: false });
     onFailure.defer(() => runner.close());
 
