@@ -28,7 +28,9 @@ describe('wire errors', () => {
 
     it('keeps the error a wrapper was built from', () => {
         const discord = new Error('Missing Access');
-        const sent = new SeedcordError(SeedcordErrorCode.CoreCommandGuildDeployFailed, ['111'], { cause: discord });
+        const sent = new SeedcordError(SeedcordErrorCode.CoreCommandGuildDeployFailed, ['111', discord.message], {
+            cause: discord
+        });
 
         const received = fromWireError(overTheWire(toWireError(sent)));
 

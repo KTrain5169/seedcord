@@ -1,9 +1,9 @@
 import { EventEmitter } from 'node:events';
 
-import { RESTEvents } from '@discordjs/rest';
+import { DiscordAPIError, RESTEvents } from '@discordjs/rest';
 import { isSeedcordError, SeedcordErrorCode } from '@seedcord/errors';
 import { ApplicationCommandType, Routes } from 'discord-api-types/v10';
-import { describe, expect, it, vi } from 'vitest';
+import { assert, describe, expect, it, vi } from 'vitest';
 
 import { putCommands } from '#src/commands/putCommands';
 import { GLOBAL_ID } from '#src/commands/scopes';
@@ -50,6 +50,30 @@ function rateLimitedRest(limited: (route: string) => RateLimitData): FakeRest {
         return Promise.resolve(deployedAs('123', 'ping'));
     });
     return rest;
+}
+
+// the errors @discordjs/rest throws for a 401 and for a body that fails discord's validation
+function discordRefusal(status: 400 | 401): DiscordAPIError {
+    const rawError =
+        status === 401
+            ? { message: '401: Unauthorized', code: 0 }
+            : {
+                  message: 'Invalid Form Body',
+                  code: 50_035,
+                  errors: {
+                      0: {
+                          description: { _errors: [{ code: 'BASE_TYPE_REQUIRED', message: 'This field is required' }] }
+                      }
+                  }
+              };
+    return new DiscordAPIError(rawError, rawError.code, status, 'PUT', 'https://discord.com/api/v10', {});
+}
+
+async function deployFailure(scope: ScopeId, refusal: DiscordAPIError): Promise<Error> {
+    const rest = restWith(vi.fn().mockRejectedValue(refusal));
+    const caught: unknown = await deploy([[scope, [PING]]], rest).deploying.catch((error: unknown) => error);
+    assert(Error.isError(caught));
+    return caught;
 }
 
 function deploy(scopes: [ScopeId, CommandBody[]][], rest: FakeRest, extra: { signal?: AbortSignal } = {}): Deploy {
@@ -120,29 +144,35 @@ describe('putCommands', () => {
         ]);
     });
 
-    it('reports the guild whose deploy failed, keeping discord’s reason as the cause', async () => {
-        const refused = new Error('Missing Access');
+    it('reports the guild whose deploy discord refused, pointing at the token on a 401', async () => {
+        const refusal = discordRefusal(401);
 
-        const caught: unknown = await deploy(
-            [['999', [CONFIG]]],
-            restWith(vi.fn().mockRejectedValue(refused))
-        ).deploying.catch((error: unknown) => error);
+        const error = await deployFailure('999', refusal);
 
-        expect(isSeedcordError(caught, undefined, SeedcordErrorCode.CoreCommandGuildDeployFailed)).toBe(true);
-        expect(Error.isError(caught) ? caught.message : '').toContain('999');
-        expect(Error.isError(caught) ? caught.cause : undefined).toBe(refused);
+        expect(isSeedcordError(error, undefined, SeedcordErrorCode.CoreCommandGuildDeployFailed)).toBe(true);
+        expect(error.cause).toBe(refusal);
+        expect(error.message).toContain('999');
+        expect(error.message).toContain('DISCORD_BOT_TOKEN');
+        expect(error.message).not.toContain('in that server');
     });
 
-    it('throws CoreCommandGlobalDeployFailed with discord’s reason as the cause when the global deploy fails', async () => {
-        const refused = new Error('Invalid Form Body');
+    it('shows which field discord rejected when the global commands fail its validation', async () => {
+        const refusal = discordRefusal(400);
 
-        const caught: unknown = await deploy(
-            [[GLOBAL_ID, [PING]]],
-            restWith(vi.fn().mockRejectedValue(refused))
-        ).deploying.catch((error: unknown) => error);
+        const error = await deployFailure(GLOBAL_ID, refusal);
 
-        expect(isSeedcordError(caught, undefined, SeedcordErrorCode.CoreCommandGlobalDeployFailed)).toBe(true);
-        expect(Error.isError(caught) ? caught.cause : undefined).toBe(refused);
+        expect(isSeedcordError(error, undefined, SeedcordErrorCode.CoreCommandGlobalDeployFailed)).toBe(true);
+        expect(error.cause).toBe(refusal);
+        expect(error.message).toContain('0.description[BASE_TYPE_REQUIRED]: This field is required');
+        expect(error.message).toContain('description and options');
+    });
+
+    it('points at the token when discord rejects it during the global deploy', async () => {
+        const { message } = await deployFailure(GLOBAL_ID, discordRefusal(401));
+
+        expect(message).toContain('401: Unauthorized');
+        expect(message).toContain('DISCORD_BOT_TOKEN');
+        expect(message).not.toContain('description and options');
     });
 
     it('logs the wait when discord rate-limits the deploy', async () => {

@@ -29,6 +29,15 @@ const listedFolderProblems = {
 // the edge worker sets chalk's color level after this module loads
 const token = (): string => paint.bold('DISCORD_BOT_TOKEN');
 
+const BAD_REQUEST = 400;
+const UNAUTHORIZED = 401;
+
+function deployFix(status: number | undefined, otherwise: string): string {
+    if (status === UNAUTHORIZED) return `Check that ${token()} is still valid.`;
+    if (status === BAD_REQUEST) return "Check that each command's name, description and options are valid.";
+    return otherwise;
+}
+
 /** @internal */
 const messages = {
     [SeedcordErrorCode.ConfigEmojiUnresolved]: (count: number) =>
@@ -132,10 +141,10 @@ const messages = {
         `core.bus.emit('${event}') would reach your on() listeners but skip every Subscriber class. Call core.bus.publish('${event}', data) to run both.`,
     [SeedcordErrorCode.CoreCommandGuildsEmpty]: (commandName: string) =>
         `${paint.sky(commandName)} registers to the 'config' guilds while commands.guilds is empty.\nList the ids under commands.guilds, or pass them to @RegisterCommand('guild', [...]).`,
-    [SeedcordErrorCode.CoreCommandGuildDeployFailed]: (guildId: string) =>
-        `Discord refused the command deploy for guild ${paint.sky(guildId)}.\nCheck that the id is right, and that your bot is in that server.`,
-    [SeedcordErrorCode.CoreCommandGlobalDeployFailed]: () =>
-        `Discord refused the global command deploy. Check that every global command's name, description and options are valid.`,
+    [SeedcordErrorCode.CoreCommandGuildDeployFailed]: (guildId: string, reason: string, status?: number) =>
+        `Discord refused the command deploy for guild ${paint.sky(guildId)}. ${reasonThen(reason, deployFix(status, 'Check that the id is right, and that your bot is in that server.'))}`,
+    [SeedcordErrorCode.CoreCommandGlobalDeployFailed]: (reason: string, status?: number) =>
+        `Discord refused the global command deploy. ${reasonThen(reason, deployFix(status, 'Try again, and check discordstatus.com if it keeps failing.'))}`,
     [SeedcordErrorCode.CoreWebhookUrlInvalid]: (className: string) =>
         `${paint.sky(className)} was given a URL that is not a Discord webhook URL. Pass the URL from the channel's Integrations settings, which looks like ${paint.bold('https://discord.com/api/webhooks/<id>/<token>')}.`,
     [SeedcordErrorCode.CoreDiscordReadFailed]: (what: string, reason: string, fix?: string) =>
