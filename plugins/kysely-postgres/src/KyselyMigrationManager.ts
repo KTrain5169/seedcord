@@ -137,18 +137,15 @@ export class KyselyMigrationManager {
         let encounteredError: unknown;
 
         for (let index = 0; index < steps; index += 1) {
-            const { error, results } = await runner(migrator);
-
-            if (results?.length) {
-                aggregated.push(...results);
-            }
+            const { error, results = [] } = await runner(migrator);
+            aggregated.push(...results);
 
             if (error) {
                 encounteredError = error;
                 break;
             }
 
-            if (!results?.length) {
+            if (!results.some((result) => result.status === 'Success')) {
                 break;
             }
         }
