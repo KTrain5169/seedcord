@@ -18,7 +18,7 @@ export interface KyselyMigrationsOptions {
     readonly migrationLockTableName?: string;
     /** Schema that contains the migration bookkeeping tables */
     readonly migrationTableSchema?: string;
-    /** Orders two migrations that ran at the same timestamp. Kysely runs pending migrations sorted by name with `Array.prototype.sort()`. */
+    /** Orders recorded migrations that ran at the same timestamp. Defaults to `localeCompare`. Pending migrations always run sorted by name. */
     readonly nameComparator?: (nameA: string, nameB: string) => number;
     /** Behavior when the plugin connects. `true`/`undefined` runs to latest. */
     readonly onStartup?: boolean | MigrationOptions;
