@@ -21,6 +21,14 @@ describe('the testing guilds step', () => {
         expect(supplied.testingGuilds).toEqual([GUILD, OTHER_GUILD]);
     });
 
+    it.each([
+        ['too short', '1'.repeat(16)],
+        ['too long', '1'.repeat(21)],
+        ['not digits', 'my-server']
+    ])('rejects a guild id that is %s', (_, id) => {
+        expect(() => testingGuildsStep.flag.parse(`${GUILD},${id}`)).toThrow(`"${id}" is not a server id`);
+    });
+
     it('reads an empty --testing-guilds as a global deploy', () => {
         expect(parseInput(['my-bot', '--testing-guilds', '']).testingGuilds).toEqual([]);
     });

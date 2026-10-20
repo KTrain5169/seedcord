@@ -1,7 +1,5 @@
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
-import { SeedcordTypeError } from '@seedcord/errors/internal';
-
-import { isSnowflake } from '#cli/snowflake';
+import { isSnowflake, SeedcordTypeError } from '@seedcord/errors/internal';
 
 import { validatorFor } from './validatorFor';
 

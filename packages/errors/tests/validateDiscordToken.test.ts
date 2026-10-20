@@ -40,15 +40,20 @@ describe('validateDiscordToken', () => {
         );
     });
 
-    it.each([42, {}, 'not-a-token', 'short.bits.here', tokenFor('a'.repeat(24)), tokenFor('a'.repeat(25))])(
-        'reports an invalid DISCORD_BOT_TOKEN for %p',
-        (raw) => {
-            expect(() => validateDiscordToken(raw)).toThrow(
-                expect.objectContaining({
-                    code: SeedcordErrorCode.ConfigInvalidEnv,
-                    message: expect.stringContaining('DISCORD_BOT_TOKEN') as string
-                })
-            );
-        }
-    );
+    it.each([
+        42,
+        {},
+        'not-a-token',
+        'short.bits.here',
+        tokenFor('a'.repeat(24)),
+        tokenFor('a'.repeat(25)),
+        tokenOf('1'.repeat(21))
+    ])('reports an invalid DISCORD_BOT_TOKEN for %p', (raw) => {
+        expect(() => validateDiscordToken(raw)).toThrow(
+            expect.objectContaining({
+                code: SeedcordErrorCode.ConfigInvalidEnv,
+                message: expect.stringContaining('DISCORD_BOT_TOKEN') as string
+            })
+        );
+    });
 });

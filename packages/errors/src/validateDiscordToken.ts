@@ -1,4 +1,5 @@
 import { SeedcordErrorCode } from './ErrorCodes';
+import { isSnowflake } from './isSnowflake';
 import { SeedcordError } from './SeedcordError';
 
 const ENV_NAME = 'DISCORD_BOT_TOKEN';
@@ -7,7 +8,6 @@ const TOKEN_SOURCE = "the bot token from your application's Bot page";
 
 const URL_SAFE = /[-_]/g;
 const STANDARD: Record<string, string> = { '-': '+', _: '/' };
-const SNOWFLAKE = /^\d+$/;
 
 export interface BotToken {
     readonly value: string;
@@ -40,7 +40,7 @@ function applicationIdOf(value: string): string {
     const decoded = decode(first);
 
     // a mistyped token can still be valid base64
-    if (!SNOWFLAKE.test(decoded)) throw unreadable();
+    if (!isSnowflake(decoded)) throw unreadable();
 
     return decoded;
 }
