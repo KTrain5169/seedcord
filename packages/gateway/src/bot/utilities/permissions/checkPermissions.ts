@@ -62,7 +62,7 @@ export function checkPermissions(
  */
 export function checkPermissions(
     target: Role | GuildMember,
-    // eslint-disable-next-line @typescript-eslint/unified-signatures -- the guild and channel forms resolve different bits, documented separately
+    // oxlint-disable-next-line @typescript-eslint/unified-signatures -- the guild and channel forms resolve different bits, documented separately
     ctx: TextChannel,
     scope: PermissionScope,
     inverse?: boolean,

@@ -1,4 +1,4 @@
-/* eslint-disable no-console -- CLI script */
+/* oxlint-disable no-console -- CLI script */
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 

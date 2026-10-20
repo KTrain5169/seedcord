@@ -1,4 +1,4 @@
-/* eslint-disable no-magic-numbers -- lots of bigints */
+/* oxlint-disable no-magic-numbers -- lots of bigints */
 
 import { invalidError } from './errors';
 import { bigintToBoundedValue, boundedToBigint, isBounded, radixOf, reject, rejectOutOfRange } from './values';

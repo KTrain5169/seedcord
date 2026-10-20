@@ -61,7 +61,7 @@ export class LoggerChannelRegistry {
             if (muted && sink.kind === 'console') continue;
             this.emit(sink, record);
         }
-        // eslint-disable-next-line unicorn/no-useless-spread -- snapshot so a capture installed mid-dispatch is skipped this pass
+        // oxlint-disable-next-line unicorn/no-useless-spread -- snapshot so a capture installed mid-dispatch is skipped this pass
         for (const { sink } of [...this.captures.values()]) {
             this.emit(sink, record);
         }
@@ -82,7 +82,7 @@ export class LoggerChannelRegistry {
     private sinkFailed(sink: ILogSink, error: unknown): void {
         if (this.broken.has(sink)) return;
         this.broken.add(sink);
-        // eslint-disable-next-line no-console -- console because the log pipeline is the thing that broke
+        // oxlint-disable-next-line no-console -- console because the log pipeline is the thing that broke
         console.error('[seedcord] a log sink threw, dropping its output for this process', error);
     }
 

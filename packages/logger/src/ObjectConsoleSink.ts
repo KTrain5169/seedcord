@@ -104,6 +104,6 @@ export class ObjectConsoleSink implements ILogSink {
 function emit(level: LogLevel, payload: unknown): void {
     // debug carries trace too, because workerd has no console.trace
     const method = level === 'error' ? 'error' : level === 'warn' ? 'warn' : level === 'info' ? 'info' : 'debug';
-    // eslint-disable-next-line no-console -- this sink emits to the console by design
+    // oxlint-disable-next-line no-console -- this sink emits to the console by design
     console[method](payload);
 }

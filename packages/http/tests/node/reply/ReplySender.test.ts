@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- one suite per sender, splitting fragments the shared rest mock and body fixtures */
+/* oxlint-disable max-lines -- one suite per sender, splitting fragments the shared rest mock and body fixtures */
 import { TextDisplayBuilder } from '@discordjs/builders';
 import { DispatchContext } from '@seedcord/core';
 import { AckTrace } from '@seedcord/core/internal';

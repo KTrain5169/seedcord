@@ -261,7 +261,7 @@ describe('fault boundary', () => {
         class Throws extends SlashHandler<never> {
             async execute(): Promise<void> {
                 await Promise.resolve();
-                // eslint-disable-next-line no-throw-literal, @typescript-eslint/only-throw-error -- this pins the bare throw
+                // oxlint-disable-next-line no-throw-literal, @typescript-eslint/only-throw-error -- this pins the bare throw
                 throw 'a bare string';
             }
         }

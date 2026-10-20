@@ -53,7 +53,7 @@ function underBasePath(src: ImageProps['src']): ImageProps['src'] {
 
 function GuideImage({ alt, src, frame = false, align = 'left', className, ...props }: ImageProps): ReactElement {
     return (
-        // eslint-disable-next-line @next/next/no-img-element -- next/image requires width and height, both optional on ImageProps
+        // oxlint-disable-next-line @next/next/no-img-element -- next/image requires width and height, both optional on ImageProps
         <img
             {...props}
             src={underBasePath(src)}

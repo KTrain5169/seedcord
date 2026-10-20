@@ -201,7 +201,7 @@ describe('DevSession', () => {
 
     it('puts a non-Error value that start() rejects with into CliStartFailed', async () => {
         const instance = fakeBot({
-            // eslint-disable-next-line prefer-promise-reject-errors, @typescript-eslint/prefer-promise-reject-errors -- the case under test is a non-Error rejection
+            // oxlint-disable-next-line prefer-promise-reject-errors, @typescript-eslint/prefer-promise-reject-errors -- the case under test is a non-Error rejection
             start: () => Promise.reject('token was revoked')
         });
         const session = new DevSession(config(), fakeRuntime({ default: instance }), sessionDeps());

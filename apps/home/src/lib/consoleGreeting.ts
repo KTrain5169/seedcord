@@ -156,6 +156,6 @@ export function logConsoleGreeting(): void {
     logged = true;
     // the devtools theme is unreadable from the page, and its default follows the OS scheme
     const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    // eslint-disable-next-line no-console -- the console is the display surface here
+    // oxlint-disable-next-line no-console -- the console is the display surface here
     console.log(...buildArgs(dark ? DARK : LIGHT));
 }

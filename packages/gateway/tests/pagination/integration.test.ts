@@ -23,7 +23,7 @@ function dispatcherOf(instance: Seedcord): PrivateDispatcher {
 }
 
 // the sender reads the interaction's unacked flags, so this.deferUpdate() sets deferred-update
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine for the mock
+// oxlint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine for the mock
 function fakeButton(customId: string) {
     return {
         customId,

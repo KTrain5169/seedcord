@@ -1,6 +1,6 @@
 import type { PlopTypes } from '@turbo/gen';
 
-// eslint-disable-next-line max-lines-per-function -- one add action per scaffolded file, splitting only fragments the list
+// oxlint-disable-next-line max-lines-per-function -- one add action per scaffolded file, splitting only fragments the list
 export default function generator(plop: PlopTypes.NodePlopAPI): void {
     plop.setHelper('folder', (dir: string, name: string) => {
         const unscoped = name.replace(/^@seedcord\//, '');

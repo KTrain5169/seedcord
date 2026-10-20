@@ -172,7 +172,7 @@ export class TypedEventEmitter<TEvents extends EventMap<TEvents>> {
                 reject(new WaitForError('aborted'));
             };
 
-            // eslint-disable-next-line prefer-const -- an already-aborted signal runs cleanup before the timer is set
+            // oxlint-disable-next-line prefer-const -- an already-aborted signal runs cleanup before the timer is set
             let timer: ReturnType<typeof setTimeout> | undefined;
 
             const cleanup = (): void => {

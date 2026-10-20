@@ -1,4 +1,4 @@
-/* eslint-disable no-console -- CLI script */
+/* oxlint-disable no-console -- CLI script */
 import { appendFile } from 'node:fs/promises';
 
 import { buildOfHead, exportedFiles, workerBucket } from '#src/docs/docsSite';

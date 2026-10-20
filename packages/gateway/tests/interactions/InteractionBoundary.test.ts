@@ -17,7 +17,7 @@ import type { RenderContext, ReplyResponse } from '@seedcord/types';
 
 const withResponse = { resource: { message: { id: 'sent' } } };
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine here
+// oxlint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine here
 function mockInteraction() {
     return {
         reply: vi.fn().mockResolvedValue(withResponse),

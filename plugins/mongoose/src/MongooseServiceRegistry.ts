@@ -87,7 +87,7 @@ export class MongooseServiceRegistry {
         // tracked before construction so a throw below still leaves the model reachable for cleanup
         if (!preexisting) this.ownModels.add(model.modelName);
 
-        // eslint-disable-next-line no-new -- the base ctor calls _register, so constructing is the registration
+        // oxlint-disable-next-line no-new -- the base ctor calls _register, so constructing is the registration
         new Service(this.plugin, this.core, model);
     }
 

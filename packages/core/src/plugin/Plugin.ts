@@ -218,7 +218,7 @@ export type Attached<Key extends string, Instance> = Key extends `${infer Group}
     : Record<Key, Instance>;
 
 // attach writes the key onto the host, so a key like toString would shadow the one on Object.prototype
-// eslint-disable-next-line @typescript-eslint/no-wrapper-object-types -- lint:fix swaps this for `keyof object`, which is never
+// oxlint-disable-next-line @typescript-eslint/no-wrapper-object-types -- lint:fix swaps this for `keyof object`, which is never
 type HostMember<Host> = keyof Host | keyof Object;
 
 // a string argument against an object type renders only as `string is not assignable`

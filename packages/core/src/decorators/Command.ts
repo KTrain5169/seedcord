@@ -55,7 +55,7 @@ export function RegisterCommand(): (ctor: CommandCtor) => void;
  * class PingCommand extends BuilderComponent<'command'> {} // or BuilderComponent<'context_menu'>
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/unified-signatures -- merging these puts two different deploy targets under one doc block
+// oxlint-disable-next-line @typescript-eslint/unified-signatures -- merging these puts two different deploy targets under one doc block
 export function RegisterCommand(scope: 'global'): (ctor: CommandCtor) => void;
 
 /**

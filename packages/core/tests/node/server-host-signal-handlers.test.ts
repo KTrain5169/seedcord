@@ -43,7 +43,7 @@ describe('signal handlers on a plugin host', () => {
     it('installs none while the bot is only constructed', () => {
         const before = signalListeners();
 
-        // eslint-disable-next-line no-new -- construction is the behavior under test
+        // oxlint-disable-next-line no-new -- construction is the behavior under test
         new TestHost();
 
         expect(signalListeners()).toEqual(before);

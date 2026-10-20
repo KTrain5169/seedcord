@@ -1,4 +1,4 @@
-/* eslint-disable no-console -- CLI script */
+/* oxlint-disable no-console -- CLI script */
 import { SiteBuild } from '@seedcord/docs-engine';
 import { Converters, Envapter } from 'envapt';
 

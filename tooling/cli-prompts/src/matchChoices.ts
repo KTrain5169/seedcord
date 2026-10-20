@@ -7,10 +7,10 @@ function includesIgnoreCase(text: string, search: string): boolean {
 }
 
 // "mhub" finds "Main Hub"
-// eslint-disable-next-line new-cap -- external library
+// oxlint-disable-next-line new-cap -- external library
 const SKIPPED_LETTERS = new uFuzzy({ intraIns: Infinity, intraChars: String.raw`[a-z\d' ]` });
 // one wrong, extra, missing or swapped letter per word
-// eslint-disable-next-line new-cap -- external library
+// oxlint-disable-next-line new-cap -- external library
 const ONE_TYPO = new uFuzzy({ intraMode: 1 });
 // every order of up to three typed words, 3! searches at most
 const WORD_ORDERS = 3;

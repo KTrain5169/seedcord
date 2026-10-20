@@ -27,7 +27,7 @@ const cancelWire = CONFIRM_DEF.encode({ choice: 'cancel' });
 
 const mockMessage = { id: 'prompt-message', awaitMessageComponent: vi.fn() };
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine here
+// oxlint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine here
 function mockEvent() {
     return {
         reply: vi.fn().mockResolvedValue({ resource: { message: mockMessage } }),
@@ -52,7 +52,7 @@ function mockEvent() {
     };
 }
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine here
+// oxlint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine here
 function winner(customId: string, userId = 'u1') {
     return { customId, user: { id: userId }, deferUpdate: vi.fn().mockResolvedValue(undefined) };
 }

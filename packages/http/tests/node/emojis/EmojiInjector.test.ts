@@ -69,7 +69,7 @@ describe('EmojiInjector', () => {
 
         let caught: unknown;
         try {
-            // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- the read is the assertion
+            // oxlint-disable-next-line @typescript-eslint/no-unused-expressions -- the read is the assertion
             emojis.NeverConfigured;
         } catch (error) {
             caught = error;

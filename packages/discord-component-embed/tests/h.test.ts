@@ -57,7 +57,7 @@ describe('h', () => {
     });
 
     it('rejects an async component in TypeScript and at runtime', () => {
-        // eslint-disable-next-line @typescript-eslint/require-await -- the async signature is the input under test
+        // oxlint-disable-next-line @typescript-eslint/require-await -- the async signature is the input under test
         async function Preview(): Promise<EmbedElement> {
             return h(TextDisplay, null, 'hi');
         }

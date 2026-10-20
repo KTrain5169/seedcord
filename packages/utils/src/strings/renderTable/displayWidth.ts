@@ -1,6 +1,6 @@
 const segmenter = new Intl.Segmenter();
 
-/* eslint-disable no-magic-numbers -- Unicode code-point range boundaries */
+/* oxlint-disable no-magic-numbers -- Unicode code-point range boundaries */
 const ZERO_WIDTH_RANGES: readonly (readonly [number, number])[] = [
     [0x20_0b, 0x20_0b],
     [0x03_00, 0x03_6f],
@@ -25,7 +25,7 @@ const WIDE_RANGES: readonly (readonly [number, number])[] = [
     [0x1_f3_00, 0x1_fa_ff],
     [0x2_00_00, 0x3_ff_fd]
 ];
-/* eslint-enable no-magic-numbers */
+/* oxlint-enable no-magic-numbers */
 
 function inRanges(cp: number, ranges: readonly (readonly [number, number])[]): boolean {
     return ranges.some(([lo, hi]) => cp >= lo && cp <= hi);

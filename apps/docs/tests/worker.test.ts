@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-// eslint-disable-next-line no-restricted-imports -- the app root has no alias
+// oxlint-disable-next-line no-restricted-imports -- the app root has no alias
 import handler from '../worker';
 
 type Env = Parameters<typeof handler.fetch>[1];

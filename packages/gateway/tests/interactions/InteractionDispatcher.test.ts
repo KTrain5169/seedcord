@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- one integration suite per dispatcher, splitting fragments the shared test env */
+/* oxlint-disable max-lines -- one integration suite per dispatcher, splitting fragments the shared test env */
 
 import { CustomId, InteractionKind } from '@seedcord/core';
 import { shutdownOf } from '@seedcord/core/node/internal';
@@ -29,7 +29,7 @@ interface PrivateInteractionDispatcher {
     handleInteraction(interaction: unknown): Promise<void>;
 }
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- the type is the literal below
+// oxlint-disable-next-line @typescript-eslint/explicit-function-return-type -- the type is the literal below
 function fakeSlash(commandName: string) {
     return {
         reply: vi.fn().mockResolvedValue({ resource: { message: { id: 'fault-msg' } } }),
@@ -57,7 +57,7 @@ function fakeSlash(commandName: string) {
     };
 }
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- the type is the literal below
+// oxlint-disable-next-line @typescript-eslint/explicit-function-return-type -- the type is the literal below
 function fakeAutocomplete(commandName: string) {
     return {
         respond: vi.fn().mockResolvedValue(undefined),

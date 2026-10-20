@@ -8,7 +8,7 @@ import type { LogRecord } from '@seedcord/types';
 
 // vite's dev channel sends JSON between the worker and the CLI
 function overTheWire<Wire>(wire: Wire): Wire {
-    // eslint-disable-next-line unicorn/prefer-structured-clone -- structuredClone keeps values JSON would not
+    // oxlint-disable-next-line unicorn/prefer-structured-clone -- structuredClone keeps values JSON would not
     return JSON.parse(JSON.stringify(wire)) as Wire;
 }
 

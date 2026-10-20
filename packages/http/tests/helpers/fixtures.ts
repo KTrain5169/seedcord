@@ -11,7 +11,7 @@ export function stubBus(): Bus {
 // the id every host decodes out of VALID_TOKEN
 export const APP_ID = '1195232619718254663';
 
-// eslint-disable-next-line no-magic-numbers -- mimic valid token shape
+// oxlint-disable-next-line no-magic-numbers -- mimic valid token shape
 export const VALID_TOKEN = `${btoa(APP_ID).replaceAll('=', '')}.${'b'.repeat(6)}.${'c'.repeat(27)}`;
 
 export const nullPathConfig: HttpConfig = {

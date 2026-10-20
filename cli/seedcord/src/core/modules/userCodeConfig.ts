@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-restricted-imports -- the one typed caller of mergeConfig
+// oxlint-disable-next-line @typescript-eslint/no-restricted-imports -- the one typed caller of mergeConfig
 import { mergeConfig } from 'vite';
 
 import type { InlineConfig, UserConfig } from 'vite';

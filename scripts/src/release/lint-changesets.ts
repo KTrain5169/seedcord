@@ -1,4 +1,4 @@
-/* eslint-disable no-console -- CLI script */
+/* oxlint-disable no-console -- CLI script */
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';

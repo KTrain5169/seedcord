@@ -51,7 +51,7 @@ const Reminders = new Paginator({
 @ButtonRoute(Reminders.cursor)
 class RemindersNav extends Reminders.Handler {}
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine for the mock
+// oxlint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine for the mock
 function startEvent() {
     return {
         id: 'i1',
@@ -76,7 +76,7 @@ function startEvent() {
 }
 
 // the sender reads the interaction's unacked flags, so this.deferUpdate() sets deferred-update
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine for the mock
+// oxlint-disable-next-line @typescript-eslint/explicit-function-return-type -- inference is fine for the mock
 function navEvent(customId: string) {
     return {
         customId,

@@ -155,7 +155,7 @@ describe('IndexLoader', () => {
     });
 
     it('validateIndex round-trips a known-good index', () => {
-        // eslint-disable-next-line unicorn/prefer-structured-clone -- exercises the JSON wire round-trip the remote docs format uses
+        // oxlint-disable-next-line unicorn/prefer-structured-clone -- exercises the JSON wire round-trip the remote docs format uses
         expect(validateIndex(JSON.parse(JSON.stringify(fixture)))).toEqual(fixture);
     });
 });

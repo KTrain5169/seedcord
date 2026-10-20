@@ -24,7 +24,7 @@ describe('Seedcord host', () => {
     it('installs no signal handlers while only constructed', () => {
         const base = [process.listenerCount('SIGTERM'), process.listenerCount('SIGINT')];
 
-        // eslint-disable-next-line no-new -- construction is the behavior under test
+        // oxlint-disable-next-line no-new -- construction is the behavior under test
         new Seedcord(testConfig());
 
         expect([process.listenerCount('SIGTERM'), process.listenerCount('SIGINT')]).toEqual(base);
@@ -74,7 +74,7 @@ describe('Seedcord host', () => {
         dead.startup.addTask(StartupPhase.Configuration, 'boom', () => Promise.reject(new Error('boom')));
         await expect(dead.start()).rejects.toThrow();
 
-        // eslint-disable-next-line no-new -- the live host under test
+        // oxlint-disable-next-line no-new -- the live host under test
         new Seedcord(testConfig());
 
         await expect(dead.start()).rejects.toThrow(/new instance/);

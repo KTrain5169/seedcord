@@ -39,7 +39,7 @@ describe('TypedEventEmitter.emitSafe', () => {
         const boom = new Error('boom');
         const after = vi.fn();
 
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises -- the void position is exactly what this pins
+        // oxlint-disable-next-line @typescript-eslint/no-misused-promises -- the void position is exactly what this pins
         ee.on('e', async () => {
             await Promise.resolve();
             throw boom;
@@ -57,7 +57,7 @@ describe('TypedEventEmitter.emitSafe', () => {
         const ee = new SafeEmitter();
         const boom = new Error('boom');
 
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises -- the void position is exactly what this pins
+        // oxlint-disable-next-line @typescript-eslint/no-misused-promises -- the void position is exactly what this pins
         ee.once('e', async () => {
             await Promise.resolve();
             throw boom;
@@ -73,9 +73,9 @@ describe('TypedEventEmitter.emitSafe', () => {
         const ee = new SafeEmitter();
         const boom = new Error('boom');
 
-        // eslint-disable-next-line @typescript-eslint/no-misused-promises -- a listener returning a thenable is the case under test
+        // oxlint-disable-next-line @typescript-eslint/no-misused-promises -- a listener returning a thenable is the case under test
         ee.on('e', () => ({
-            // eslint-disable-next-line unicorn/no-thenable -- this object is the foreign thenable
+            // oxlint-disable-next-line unicorn/no-thenable -- this object is the foreign thenable
             then: (_resolve: (value: unknown) => void, reject: (error: unknown) => void): void => {
                 reject(boom);
             }

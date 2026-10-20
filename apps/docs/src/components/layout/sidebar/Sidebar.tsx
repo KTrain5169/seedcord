@@ -26,7 +26,7 @@ const OVERVIEW_STYLES = {
     badge: tw`border-(--border) bg-(--surface-moderate) text-(--text)`
 };
 
-// eslint-disable-next-line max-lines-per-function -- composes selection state, persistence, navigation handlers, store wiring, and the full sidebar tree
+// oxlint-disable-next-line max-lines-per-function -- composes selection state, persistence, navigation handlers, store wiring, and the full sidebar tree
 export function Sidebar({
     catalog,
     activePackageId,

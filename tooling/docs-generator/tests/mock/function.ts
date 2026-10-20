@@ -98,7 +98,7 @@ export function LogDecorator(): MethodDecorator {
  * @returns A promise resolving to the processed value.
  * @internal
  */
-// eslint-disable-next-line @typescript-eslint/require-await -- async is intentional so the extractor sees an async function signature
+// oxlint-disable-next-line @typescript-eslint/require-await -- async is intentional so the extractor sees an async function signature
 export async function asyncMockFunction(value: string): Promise<string> {
     return `async: ${value}`;
 }

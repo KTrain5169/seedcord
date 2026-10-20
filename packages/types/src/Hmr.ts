@@ -30,7 +30,7 @@ export interface SeedcordFrameworkEvents {
 export interface SeedcordCliEvents {
     'seedcord:hmr': HmrUpdateEvent;
     'seedcord:refresh-commands': { shouldRefresh: boolean };
-    // eslint-disable-next-line no-magic-numbers -- chalk's ColorSupportLevel for the CLI's terminal, copied to keep chalk out of types
+    // oxlint-disable-next-line no-magic-numbers -- chalk's ColorSupportLevel for the CLI's terminal, copied to keep chalk out of types
     'seedcord:start': { colorLevel: 0 | 1 | 2 | 3 };
     'seedcord:last-deploy': { deployed: DeployedHashes | undefined };
 }

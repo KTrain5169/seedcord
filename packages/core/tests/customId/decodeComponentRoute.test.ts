@@ -24,7 +24,7 @@ function noticeNameFrom(fn: () => unknown): string {
 
 describe('decodeComponentRoute', () => {
     it('decodes the wire against the stored defs', () => {
-        // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- a bare metadata target
+        // oxlint-disable-next-line @typescript-eslint/no-extraneous-class -- a bare metadata target
         class Approve {}
         storeComponentRoute(InteractionKind.Button, [ApproveId], Approve);
 
@@ -34,7 +34,7 @@ describe('decodeComponentRoute', () => {
     });
 
     it('throws CustomIdHandlerRouteMissing on an undecorated class', () => {
-        // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- a bare metadata target
+        // oxlint-disable-next-line @typescript-eslint/no-extraneous-class -- a bare metadata target
         class Bare {}
 
         let caught: unknown = null;
@@ -47,7 +47,7 @@ describe('decodeComponentRoute', () => {
     });
 
     it('refuses a wire no stored def owns with InvalidCustomId', () => {
-        // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- a bare metadata target
+        // oxlint-disable-next-line @typescript-eslint/no-extraneous-class -- a bare metadata target
         class Approve {}
         storeComponentRoute(InteractionKind.Button, [ApproveId], Approve);
         const StrangerId = new CustomId('stranger').snowflake('userId');
@@ -59,7 +59,7 @@ describe('decodeComponentRoute', () => {
 
     it('refuses a wire minted from an older shape with StaleCustomId', () => {
         const NewApprove = new CustomId('approve').snowflake('userId').str('reason');
-        // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- a bare metadata target
+        // oxlint-disable-next-line @typescript-eslint/no-extraneous-class -- a bare metadata target
         class Approve {}
         storeComponentRoute(InteractionKind.Button, [NewApprove], Approve);
 

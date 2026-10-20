@@ -7,7 +7,7 @@ import { CDN_URL } from '#lib/site.ts';
 
 import type { ReactNode } from 'react';
 
-// eslint-disable-next-line no-magic-numbers -- the widths we export
+// oxlint-disable-next-line no-magic-numbers -- the widths we export
 const WIDTHS = [640, 1024, 1240, 1860, 2480] as const;
 
 const SHOT = `${CDN_URL}/assets/screenshots/dev-tui`;

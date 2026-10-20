@@ -24,7 +24,7 @@ const WORKER_ROUTED = [
 // move this back to the dev channel once the plugin gets fixed
 export function forwardLogsToCli(): void {
     const registry = LoggerChannelRegistry.instance;
-    // eslint-disable-next-line no-console -- console is the transport
+    // oxlint-disable-next-line no-console -- console is the transport
     const print = console.log.bind(console);
     registry.installSink({ kind: 'capture', onLog: (record) => print(toDevLogLine(record)) }, { muteConsole: true });
     routeConsole(WORKER_ROUTED, (method, args, invoked) => {

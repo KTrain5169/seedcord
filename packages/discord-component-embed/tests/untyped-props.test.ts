@@ -114,7 +114,7 @@ describe('toComponentEmbed with untyped props', () => {
     it('rejects a component that returns a promise-like object', () => {
         const promise = Promise.resolve(null);
         function Preview(): PromiseLike<null> {
-            // eslint-disable-next-line unicorn/no-thenable -- the object with a then method is the input under test
+            // oxlint-disable-next-line unicorn/no-thenable -- the object with a then method is the input under test
             return { then: promise.then.bind(promise) };
         }
 

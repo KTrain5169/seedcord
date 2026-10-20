@@ -1,4 +1,4 @@
-/* eslint-disable no-magic-numbers -- lots of bigints */
+/* oxlint-disable no-magic-numbers -- lots of bigints */
 
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordRangeError, SeedcordTypeError } from '@seedcord/errors/internal';

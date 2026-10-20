@@ -24,7 +24,7 @@ export type MockIntersection = { a: string } & { b: number };
 /**
  * A literal type.
  */
-export type MockLiteral = 'literal1' | 'literal2' | 42; // eslint-disable-line no-magic-numbers
+export type MockLiteral = 'literal1' | 'literal2' | 42; // oxlint-disable-line no-magic-numbers
 
 /**
  * A tuple type.

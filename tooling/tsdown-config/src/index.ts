@@ -30,7 +30,7 @@ function readPackageFacts(): PackageFacts {
         if (typeof pkg.engines?.node === 'string') nodeRange = pkg.engines.node;
         if (typeof pkg.engines?.bun === 'string') bunRange = pkg.engines.bun;
     } catch (error) {
-        // eslint-disable-next-line no-console -- build-config helper has no Logger
+        // oxlint-disable-next-line no-console -- build-config helper has no Logger
         console.warn(`[tsdown-config] could not read package.json, using defaults: ${String(error)}`);
     }
 
@@ -39,7 +39,7 @@ function readPackageFacts(): PackageFacts {
 }
 
 /** Creates a standardized tsdown configuration for seedcord packages. */
-// eslint-disable-next-line complexity -- one destructure of every tsdown default
+// oxlint-disable-next-line complexity -- one destructure of every tsdown default
 export function createTsdownConfig({
     format = ['esm'],
     entry = ['src/index.ts'],

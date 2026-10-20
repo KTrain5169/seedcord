@@ -90,7 +90,7 @@ describe('a plugin from vitePlugins that throws', () => {
         const plugin = onlyPlugin({
             name: 'shop-loader',
             config: () => {
-                // eslint-disable-next-line no-throw-literal, @typescript-eslint/only-throw-error -- a plugin can throw anything
+                // oxlint-disable-next-line no-throw-literal, @typescript-eslint/only-throw-error -- a plugin can throw anything
                 throw 'bad option';
             }
         });

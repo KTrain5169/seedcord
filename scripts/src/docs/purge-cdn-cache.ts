@@ -1,4 +1,4 @@
-/* eslint-disable no-console -- CLI script */
+/* oxlint-disable no-console -- CLI script */
 import { Converters, Envapter } from 'envapt';
 
 import { CdnPurge } from '#src/docs/CdnPurge';

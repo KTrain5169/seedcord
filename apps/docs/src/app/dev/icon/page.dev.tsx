@@ -5,7 +5,7 @@ import { Check, Code, Command, Search, Settings, Sun } from 'lucide-react';
 
 import type { ReactElement } from 'react';
 
-// eslint-disable-next-line no-magic-numbers -- pixel size matrix
+// oxlint-disable-next-line no-magic-numbers -- pixel size matrix
 const SIZES = [12, 14, 16, 18, 20, 24, 32] as const;
 const LUCIDE_SAMPLE = [
     { Cmp: Settings, label: 'Settings' },

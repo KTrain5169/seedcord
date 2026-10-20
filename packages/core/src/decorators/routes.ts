@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- this one file has all the route defs */
+/* oxlint-disable max-lines -- this one file has all the route defs */
 
 import { ApplicationCommandType } from 'discord-api-types/v10';
 

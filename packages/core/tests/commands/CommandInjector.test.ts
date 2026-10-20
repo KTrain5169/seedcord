@@ -248,7 +248,7 @@ describe('CommandInjector', () => {
         it('throws on a menu name that has not resolved', () => {
             let caught: unknown;
             try {
-                // eslint-disable-next-line @typescript-eslint/no-unused-expressions -- the read is the assertion
+                // oxlint-disable-next-line @typescript-eslint/no-unused-expressions -- the read is the assertion
                 userMenus['Never Deployed'];
             } catch (error) {
                 caught = error;

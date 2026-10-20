@@ -20,7 +20,7 @@ function controllerOf(instance: Seedcord): PrivateInteractionDispatcher {
     return interactionsOf(instance.bot) as unknown as PrivateInteractionDispatcher;
 }
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type -- an explicit return type would repeat the literal below
+// oxlint-disable-next-line @typescript-eslint/explicit-function-return-type -- an explicit return type would repeat the literal below
 function fakeButton(customId: string) {
     return {
         customId,

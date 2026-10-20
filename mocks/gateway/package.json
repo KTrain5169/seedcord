@@ -15,8 +15,8 @@
         "start": "vp run build && node --enable-source-maps dist/index.mjs",
         "codegen": "seedcord codegen",
         "clean": "rm -rf dist",
-        "lint": "eslint '**/*.{ts,tsx}' --cache --no-error-on-unmatched-pattern",
-        "lint:fix": "eslint '**/*.{ts,tsx}' --fix --cache --no-error-on-unmatched-pattern",
+        "lint": "vp lint '**/*.{ts,tsx}'",
+        "lint:fix": "vp lint '**/*.{ts,tsx}' --fix",
         "fmt": "vp fmt --write '**/*.{ts,tsx,json,md}' --no-error-on-unmatched-pattern",
         "fmt:check": "vp fmt --check '**/*.{ts,tsx,json,md}' --no-error-on-unmatched-pattern",
         "tc": "tsgo --noEmit",
@@ -31,7 +31,6 @@
         "mongoose": "catalog:peer"
     },
     "devDependencies": {
-        "@seedcord/eslint-config": "workspace:^",
         "@seedcord/tsconfig": "workspace:^",
         "seedcord": "workspace:^"
     },

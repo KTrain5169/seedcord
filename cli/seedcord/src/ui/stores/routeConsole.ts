@@ -25,7 +25,7 @@ export function routeConsoleToLogs(): () => void {
             LoggerChannelRegistry.instance.dispatch(consoleRecord(level, '', [traceError(format(...args), invoked)]));
             return;
         }
-        // eslint-disable-next-line @typescript-eslint/unbound-method -- node's Console binds every method to its instance
+        // oxlint-disable-next-line @typescript-eslint/unbound-method -- node's Console binds every method to its instance
         Reflect.apply(formatter[method], formatter, args);
     });
 }

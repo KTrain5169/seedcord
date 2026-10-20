@@ -240,7 +240,7 @@ describe('HmrPlugin', () => {
             watcher = watcherMock();
             hotSendMock = vi.fn();
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- spy on the private `hot` getter
+            // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- spy on the private `hot` getter
             vi.spyOn(hmrPlugin as any, 'hot', 'get').mockReturnValue({
                 send: hotSendMock,
                 on: vi.fn()
@@ -264,7 +264,7 @@ describe('HmrPlugin', () => {
 
             const plugin = hmrPlugin.plugin;
             if (typeof plugin.configureServer === 'function') {
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- Vite types configureServer with a `this` context, which blocks a direct call
+                // oxlint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- Vite types configureServer with a `this` context, which blocks a direct call
                 (plugin.configureServer as (server: ViteDevServer) => void)(serverMock);
             }
         });
@@ -301,7 +301,7 @@ describe('HmrPlugin', () => {
 
         beforeEach(() => {
             hotSendMock = vi.fn();
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- spy on the private `hot` getter
+            // oxlint-disable-next-line @typescript-eslint/no-explicit-any -- spy on the private `hot` getter
             vi.spyOn(hmrPlugin as any, 'hot', 'get').mockReturnValue({ send: hotSendMock, on: vi.fn() });
         });
 

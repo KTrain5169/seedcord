@@ -57,8 +57,8 @@
     "scripts": {
         "build": "vp pack",
         "clean": "rm -rf dist",
-        "lint": "eslint '**/*.ts' --cache --no-error-on-unmatched-pattern",
-        "lint:fix": "eslint '**/*.ts' --fix --cache --no-error-on-unmatched-pattern",
+        "lint": "vp lint '**/*.ts'",
+        "lint:fix": "vp lint '**/*.ts' --fix",
         "fmt": "vp fmt --write '**/*.{ts,json,md}' --no-error-on-unmatched-pattern",
         "fmt:check": "vp fmt --check '**/*.{ts,json,md}' --no-error-on-unmatched-pattern",
         "tc": "tsgo --noEmit",
@@ -67,32 +67,18 @@
         "coverage": "vp test run --coverage"
     },
     "dependencies": {
-        "@seedcord/eslint-plugin": "workspace:^",
-        "@types/eslint-plugin-security": "catalog:eslint",
-        "@typescript-eslint/parser": "catalog:eslint",
-        "eslint-config-prettier": "catalog:eslint",
         "eslint-import-resolver-typescript": "catalog:eslint",
-        "eslint-plugin-discordjs": "workspace:^",
-        "eslint-plugin-import-x": "catalog:eslint",
         "eslint-plugin-security": "catalog:eslint",
         "eslint-plugin-tsdoc": "catalog:eslint",
-        "eslint-plugin-unicorn": "catalog:eslint",
         "lodash.merge": "catalog:deps",
-        "prettier": "catalog:deps",
-        "typescript-eslint": "catalog:eslint"
+        "prettier": "catalog:deps"
     },
     "devDependencies": {
-        "@seedcord/eslint-config-base": "workspace:^",
         "@seedcord/vitest-config": "workspace:^",
         "@typescript-eslint/utils": "catalog:eslint",
-        "eslint": "catalog:eslint",
         "vitest": "catalog:test"
     },
     "peerDependencies": {
-        "eslint": "^9.22.0 || ^10.4.0",
-        "eslint-plugin-better-tailwindcss": "catalog:eslint",
-        "eslint-plugin-mdx": "catalog:eslint",
-        "eslint-plugin-tailwind-canonical-classes": "catalog:eslint",
         "prettier-plugin-tailwindcss": "catalog:deps",
         "tailwindcss": "catalog:deps",
         "typescript": "catalog:consumerLint"

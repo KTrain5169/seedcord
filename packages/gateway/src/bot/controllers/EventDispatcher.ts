@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- splitting this would split one event's path from load to dispatch across files */
+/* oxlint-disable max-lines -- splitting this would split one event's path from load to dispatch across files */
 import { DispatchContext } from '@seedcord/core';
 import { HmrModuleHandler } from '@seedcord/core/hmr';
 import {

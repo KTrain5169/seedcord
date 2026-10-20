@@ -64,7 +64,7 @@ async function run() {
 
 const unsupported = unsupportedRuntime();
 if (unsupported) {
-    // eslint-disable-next-line no-console -- the bin has no logger
+    // oxlint-disable-next-line no-console -- the bin has no logger
     console.error(
         `seedcord requires ${unsupported.name} ${unsupported.range} but this process runs ${unsupported.running}.`
     );
@@ -72,7 +72,7 @@ if (unsupported) {
 }
 
 run().catch((error) => {
-    // eslint-disable-next-line no-console -- the bin has no logger
+    // oxlint-disable-next-line no-console -- the bin has no logger
     console.error(error);
     process.exitCode = 1;
 });

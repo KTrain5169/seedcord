@@ -50,13 +50,13 @@ function buildToneCandidates(value: string): string[] {
     }
 
     if (value.endsWith('es')) {
-        // eslint-disable-next-line no-magic-numbers -- 'es' suffix length
+        // oxlint-disable-next-line no-magic-numbers -- 'es' suffix length
         const withoutEs = value.slice(0, -2);
         if (withoutEs) candidates.add(withoutEs);
     }
 
     if (value.endsWith('ies')) {
-        // eslint-disable-next-line no-magic-numbers -- 'ies' suffix length
+        // oxlint-disable-next-line no-magic-numbers -- 'ies' suffix length
         const withoutIes = `${value.slice(0, -3)}y`;
         if (withoutIes) candidates.add(withoutIes);
     }

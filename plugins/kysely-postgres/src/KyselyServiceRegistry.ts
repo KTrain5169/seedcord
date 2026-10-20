@@ -60,7 +60,7 @@ export class KyselyServiceRegistry {
     }
 
     public initializeService(Service: KyselyServiceConstructor): void {
-        // eslint-disable-next-line no-new -- the base ctor calls _register, so constructing is the registration
+        // oxlint-disable-next-line no-new -- the base ctor calls _register, so constructing is the registration
         new Service(this.plugin, this.core);
     }
 

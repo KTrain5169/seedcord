@@ -28,7 +28,7 @@ describe('toComponentEmbed with your own components', () => {
     });
 
     it('rejects an async component', () => {
-        // eslint-disable-next-line @typescript-eslint/require-await -- the async signature is the point of the test
+        // oxlint-disable-next-line @typescript-eslint/require-await -- the async signature is the point of the test
         async function Preview(): Promise<ReactElement> {
             return (
                 <Container>

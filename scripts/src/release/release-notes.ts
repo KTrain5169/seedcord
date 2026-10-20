@@ -1,4 +1,4 @@
-/* eslint-disable no-console -- CLI script */
+/* oxlint-disable no-console -- CLI script */
 import { execFile } from 'node:child_process';
 import { writeFile } from 'node:fs/promises';
 import process from 'node:process';

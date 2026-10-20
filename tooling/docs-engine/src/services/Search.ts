@@ -71,7 +71,7 @@ export class DocSearch<Entry extends ScoredEntry = DocSearchEntry> {
     };
 
     constructor(private readonly searchIndex: readonly Entry[]) {
-        // eslint-disable-next-line new-cap -- external library
+        // oxlint-disable-next-line new-cap -- external library
         this.uf = new uFuzzy({ intraMode: 1 });
         this.namesHaystack = this.searchIndex.map((e) => e.name.toLowerCase());
         this.qualifiedNamesHaystack = this.searchIndex.map((e) => e.qualifiedName.toLowerCase());

@@ -54,7 +54,7 @@ function CommandOptions({ matches, selected, onHover, onRun }: CommandOptionsPro
     return (
         <div role="listbox" aria-label="Commands" className={cn('border-b-[3px] border-(--seed-dark)')}>
             {matches.map((command, index) => (
-                // eslint-disable-next-line react/forbid-elements -- a listbox option. a Button's styling and semantics would fight it
+                // oxlint-disable-next-line react/forbid-elements -- a listbox option. a Button's styling and semantics would fight it
                 <button
                     key={command.name}
                     type="button"

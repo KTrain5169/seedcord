@@ -1,4 +1,4 @@
-/* eslint-disable no-magic-numbers */
+/* oxlint-disable no-magic-numbers */
 
 /**
  * All Seedcord error codes.

@@ -16,10 +16,10 @@ export {
     OverrideBase,
     OverrideChild
 } from './class.js';
-// eslint-disable-next-line @typescript-eslint/no-deprecated -- deprecated on purpose, the fixture tests deprecation rendering
+// oxlint-disable-next-line @typescript-eslint/no-deprecated -- deprecated on purpose, the fixture tests deprecation rendering
 export { MockClass } from './class.js';
 export { MockEnum } from './enum.js';
-// eslint-disable-next-line @typescript-eslint/no-deprecated -- deprecated on purpose, the fixture tests deprecation rendering
+// oxlint-disable-next-line @typescript-eslint/no-deprecated -- deprecated on purpose, the fixture tests deprecation rendering
 export { mockFunction, mockFunctionWithRest, asyncMockFunction, LogDecorator, usesPromoted } from './function.js';
 export type { MockInterface, RecursiveInterface, IndexableInterface, ExtendedInterface } from './interface.js';
 export type {

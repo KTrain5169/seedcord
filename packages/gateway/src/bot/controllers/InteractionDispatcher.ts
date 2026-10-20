@@ -1,4 +1,4 @@
-/* eslint-disable max-lines -- one handler method per interaction type keeps the router in one file */
+/* oxlint-disable max-lines -- one handler method per interaction type keeps the router in one file */
 import { DispatchContext, InteractionKind } from '@seedcord/core';
 import { HmrModuleHandler } from '@seedcord/core/hmr';
 import {

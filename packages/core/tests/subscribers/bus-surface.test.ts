@@ -27,7 +27,7 @@ describe('the Bus surface a bot author reaches', () => {
 
         const payload = { uuid: randomUUID(), dispatchId: 'd-1', error: new Error('x'), origin: 'r' };
 
-        // eslint-disable-next-line @typescript-eslint/no-deprecated --  this pins the deprecation
+        // oxlint-disable-next-line @typescript-eslint/no-deprecated --  this pins the deprecation
         expect(() => bus.emit('unknownException', payload)).toThrow(
             expect.objectContaining({ code: SeedcordErrorCode.CoreBusEmitUnavailable })
         );
