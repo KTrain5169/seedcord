@@ -7,6 +7,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { targetBuildFor } from '#commands/build/builder/targetBuildFor';
 import { runProjectTsc } from '#core/modules/runProjectTsc';
 import { ShellMode } from '#core/viteMode';
+import httpBotConfig from '#tests/fixtures/http-bot/seedcord.config';
 
 import { fixtureCopy, GATEWAY_BOT, HTTP_BOT } from './fixtureCopy';
 import { quickBuildRunner } from './quickBuildRunner';
@@ -86,7 +87,7 @@ describe('seedcord build without build.start on an http bot', () => {
     beforeAll(async () => {
         await using cleanup = new AsyncDisposableStack();
         ({ path: projectDir } = cleanup.use(await fixtureCopy(HTTP_BOT)));
-        await writeExportProject(projectDir, { 'server.mjs': FETCH_SERVER }, ['./locales', './logs', './assets']);
+        await writeExportProject(projectDir, { 'server.mjs': FETCH_SERVER }, httpBotConfig.files);
         const botFile = join(projectDir, 'src/bot.ts');
         const source = await readFile(botFile, 'utf8');
         await writeFile(botFile, source.replace('port: 0', 'port: false'));

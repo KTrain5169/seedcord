@@ -49,7 +49,14 @@ export class ProjectFiles {
             .toSorted();
     }
 
-    private entries(): Promise<BotEntry[]> {
-        return Array.fromAsync(this.layout.entriesUnder(this.layout.root));
+    private async entries(): Promise<BotEntry[]> {
+        const besideRoot = this.layout
+            .listedBesideRoot()
+            .map(async (folder) => [
+                { path: folder, isFolder: true },
+                ...(await Array.fromAsync(this.layout.entriesUnder(folder)))
+            ]);
+        const all = await Promise.all([Array.fromAsync(this.layout.entriesUnder(this.layout.root)), ...besideRoot]);
+        return all.flat();
     }
 }

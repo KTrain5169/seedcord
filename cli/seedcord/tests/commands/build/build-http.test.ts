@@ -34,7 +34,7 @@ describe('seedcord build on an http bot', () => {
     it('reports what it bundled for the summary', () => {
         expect(result.bundle).toEqual({
             modules: 9,
-            listedFiles: 5,
+            listedFiles: 6,
             bytes: expect.any(Number) as number,
             entry: join(HTTP_BOT, 'dist/index.mjs')
         });
@@ -89,9 +89,16 @@ describe('seedcord build on an http bot', () => {
         expect(output).toContain('fixture:text a source folder named logs');
     });
 
-    it('writes a listed text file as plain text, named by its path under root', () => {
+    it('bundles a listed folder beside root into dist', () => {
+        const beside = readFileSync(join(HTTP_BOT, 'dist/_virtual/files/shared/beside.txt.js'), 'utf8');
+
+        expect(beside).toContain('hello from beside src');
+        expect(output).toContain('fixture:text hello from beside src');
+    });
+
+    it('writes a listed text file as plain text, named by its path under the folder that holds the config', () => {
         const written = readdirSync(join(HTTP_BOT, 'dist'), { recursive: true, encoding: 'utf8' });
-        const greeting = readFileSync(join(HTTP_BOT, 'dist/_virtual/files/locales/greeting.md.js'), 'utf8');
+        const greeting = readFileSync(join(HTTP_BOT, 'dist/_virtual/files/src/locales/greeting.md.js'), 'utf8');
 
         expect(written.filter((path) => path.includes('"') || path.includes(HTTP_BOT.slice(1)))).toEqual([]);
         expect(greeting).toContain('hello from the markdown twin');

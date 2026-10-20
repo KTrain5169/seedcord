@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
+import { BotLayout } from '@seedcord/utils/internal';
 import { createServer } from 'vite';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
@@ -41,8 +42,11 @@ async function globKeys(root: string, globs: string[]): Promise<string[]> {
 }
 
 describe('the build globs', () => {
-    it('match the files the layout says belong to the bot', async () => {
-        const root = await projectRoot();
+    it.for([
+        { shape: 'root is the project folder', rootDir: '.', listedDir: './locales' },
+        { shape: 'files lists the project folder beside a src root', rootDir: './src', listedDir: '.' }
+    ])('match the files the layout says belong to the bot when $shape', async ({ rootDir, listedDir }) => {
+        const projectDir = await projectRoot();
         const tree = [
             'handlers/Ping.ts',
             'handlers/Dice.tsx',
@@ -63,22 +67,23 @@ describe('the build globs', () => {
             'locales/node_modules/pkg/data.json'
         ];
         for (const file of tree) {
-            await mkdir(join(root, file, '..'), { recursive: true });
-            await writeFile(join(root, file), '{}\n');
+            await mkdir(join(projectDir, file, '..'), { recursive: true });
+            await writeFile(join(projectDir, file), '{}\n');
         }
         const files = new ProjectFiles({
-            root,
-            configFile: realPath(join(root, 'seedcord.config.ts')),
-            files: [realPath(join(root, 'locales'))],
-            target: { kind: 'server', start: undefined, outDir: realPath(join(root, 'dist')) }
+            root: realPath(join(projectDir, rootDir)),
+            configFile: realPath(join(projectDir, 'seedcord.config.ts')),
+            files: [realPath(join(projectDir, listedDir))],
+            target: { kind: 'server', start: undefined, outDir: realPath(join(projectDir, 'dist')) }
         });
         const { layout } = files;
-        const listed = tree.map((file) => join(root, file)).filter((file) => layout.isListedFile(file));
+        const keyOf = (file: string): string => BotLayout.keyUnder(projectDir, file);
+        const listed = tree.map((file) => join(projectDir, file)).filter((file) => layout.isListedFile(file));
         const modules = await files.modulePaths();
 
-        await expect(globKeys(root, layout.moduleGlobs())).resolves.toEqual(modules.map((file) => layout.keyOf(file)));
-        await expect(globKeys(root, layout.listedFileGlobs())).resolves.toEqual(
-            listed.map((file) => layout.keyOf(file)).toSorted()
+        await expect(globKeys(projectDir, layout.moduleGlobs(rootDir))).resolves.toEqual(modules.map(keyOf));
+        await expect(globKeys(projectDir, layout.listedFileGlobs(rootDir))).resolves.toEqual(
+            listed.map(keyOf).toSorted()
         );
     });
 

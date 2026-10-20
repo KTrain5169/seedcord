@@ -27,7 +27,7 @@ function outputChunks(result: Awaited<ReturnType<ViteBuilder['build']>>): Rolldo
 
 function outputName(moduleId: string | null | undefined, layout: BotLayout): string {
     if (isServerEntry(moduleId)) return ENTRY_FILE_NAME;
-    if (moduleId && isListedFileId(moduleId)) return `_virtual/files${layout.keyOf(listedFileOf(moduleId))}.js`;
+    if (moduleId && isListedFileId(moduleId)) return `_virtual/files${layout.listedKeyOf(listedFileOf(moduleId))}.js`;
     return `[name]${BotLayout.builtExtension(withoutQuery(moduleId ?? ''))}`;
 }
 

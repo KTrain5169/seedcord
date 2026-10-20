@@ -88,7 +88,8 @@ export interface SeedcordConfig {
     instance: string;
     /**
      * Folders whose non-code files `seedcord build` bundles for `readFiles` to read, like `['./locales']`.
-     * Each one includes its subfolders and resolves against `root`.
+     * Each one includes its subfolders and resolves against `root`. A folder can sit beside `root`, like `'../assets'`
+     * with `root: './src'`, as long as it is inside the folder that holds this config.
      *
      * @defaultValue `[]`
      */

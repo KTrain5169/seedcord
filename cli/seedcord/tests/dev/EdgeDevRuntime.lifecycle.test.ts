@@ -228,6 +228,21 @@ describe('EdgeDevRuntime lifecycle', () => {
         expect(message).toContain(`theme.css=${Buffer.from('body { color: red; }\n').toString('hex')}`);
     }, 60_000);
 
+    it('reads a listed folder beside root inside workerd', async () => {
+        await using project = await edgeProject();
+        const { projectDir } = project;
+        await mkdir(join(projectDir, 'shared'));
+        await writeFile(join(projectDir, 'shared/hello.txt'), 'hello\n');
+        await appendFile(join(projectDir, 'src/bot.ts'), READ_IN_WORKERD.replace('./locales', '../shared'));
+
+        const caught: unknown = await startedRuntime(projectDir, undefined, {
+            files: [join(projectDir, 'shared')]
+        }).catch((error: unknown) => error);
+
+        const message = Error.isError(caught) ? caught.message : '';
+        expect(message).toBe(`read hello.txt=${Buffer.from('hello\n').toString('hex')}`);
+    }, 60_000);
+
     it('stops workerd when the bot throws while workerd loads it', async () => {
         await using project = await edgeProject();
         const { projectDir } = project;

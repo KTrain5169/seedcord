@@ -1,5 +1,5 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { SeedcordErrorCode, isSeedcordError } from '@seedcord/errors';
 import { toPosixPath } from '@seedcord/utils/internal';
@@ -460,12 +460,18 @@ describe('ProjectLoader files', () => {
         expect(loaded.config.files).toEqual([join(projectDir, 'src', 'locales'), tags]);
     });
 
-    it('throws CorePathOutsideRoot for a folder outside root', async () => {
-        const load = projectWith({ ...MINIMAL, root: './src', files: ['../shared'] }).load();
+    it('loads a folder beside root inside the folder that holds the config', async () => {
+        const { files, configFile } = await projectWith({ ...MINIMAL, root: './src', files: ['../shared'] }).load();
+
+        expect(files).toEqual([join(dirname(configFile), 'shared')]);
+    });
+
+    it('throws CliListedFolderUnusable for a folder outside the folder that holds the config', async () => {
+        const load = projectWith({ ...MINIMAL, root: './src', files: ['../../shared'] }).load();
 
         await expect(load).rejects.toMatchObject({
-            code: SeedcordErrorCode.CorePathOutsideRoot,
-            message: expect.stringContaining('shared') as string
+            code: SeedcordErrorCode.CliListedFolderUnusable,
+            message: expect.stringContaining('outside the folder that holds seedcord.config.ts') as string
         });
     });
 

@@ -4,7 +4,7 @@ import { basename, resolve } from 'node:path';
 import { HANDLERS_LOADED } from '#lib/markers';
 import { readFiles, importFiles } from '@seedcord/http';
 
-for (const folder of ['../locales', '../logs']) {
+for (const folder of ['../locales', '../logs', '../../shared']) {
     for await (const { bytes } of readFiles(resolve(import.meta.dirname, folder))) {
         console.log(`fixture:text ${bytes.toString().trim()}`);
     }

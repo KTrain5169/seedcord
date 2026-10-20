@@ -147,6 +147,22 @@ describe('a built edge worker', () => {
         expect(body).toContain(`greeting.txt=${greeting.toString('hex')}`);
         expect(body).toContain(`theme.css=${Buffer.from('body { color: red; }\n').toString('hex')}`);
     }, 120_000);
+
+    it('reads a listed folder beside root', async () => {
+        const projectDir = await copyEdgeBotForTest();
+        await mkdir(join(projectDir, 'shared'));
+        await writeFile(join(projectDir, 'shared/hello.txt'), 'hello\n');
+        await writeFile(
+            join(projectDir, 'seedcord.config.ts'),
+            "export default { root: './src', instance: './bot.ts', files: ['../shared'] };\n"
+        );
+        await writeFile(join(projectDir, 'src/handlers/Read.ts'), READ_IN_WORKERD.replace('./locales', '../shared'));
+        const signing = await writeSigningEnv(projectDir);
+        await edgeBuildRunner(fakeDiscord(signing.publicKey)).run(projectDir);
+        const body = await postToPreview(projectDir, signing.sign);
+
+        expect(body).toContain(`read hello.txt=${Buffer.from('hello\n').toString('hex')}.`);
+    }, 120_000);
 });
 
 describe('seedcord build on an edge bot with files it never loads', () => {

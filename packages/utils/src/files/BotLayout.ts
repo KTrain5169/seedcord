@@ -27,7 +27,6 @@ export interface BotEntry {
 const MODULE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.js', '.jsx', '.mjs'];
 const DECLARATION_EXTENSIONS = ['.d.ts', '.d.mts'];
 const CODE_AND_MAP_EXTENSIONS = [...MODULE_EXTENSIONS, '.map'];
-const SKIPPED_NAME_GLOBS = ['!**/node_modules/**', '!**/.*', '!**/.*/**'];
 const PROJECT_FILE_NAMES = new Set([
     'package.json',
     'pnpm-lock.yaml',
@@ -122,7 +121,8 @@ export class BotLayout {
     public isSkipped(file: string): boolean {
         if (this.skippedFolders.some((folder) => isInside(folder, file))) return true;
         if (this.isProjectFile(file)) return true;
-        return this.holds(file) && path.relative(this.root, file).split(path.sep).some(isSkippedName);
+        const base = this.holds(file) ? this.root : this.projectDir();
+        return isInside(base, file) && path.relative(base, file).split(path.sep).some(isSkippedName);
     }
 
     // also true for one written after the layout was built
@@ -134,6 +134,27 @@ export class BotLayout {
         if (!this.holds(folder)) return new SeedcordError(SeedcordErrorCode.CorePathOutsideRoot, [folder, this.root]);
         if (this.isSkipped(folder)) return new SeedcordError(SeedcordErrorCode.CoreDirectorySkipped, [folder]);
         return undefined;
+    }
+
+    // only the CLI checks inProject. a built bot's root is outDir or /bot
+    public listedReadProblem(folder: string): SeedcordError | undefined {
+        if (!this.isListed(folder)) return new SeedcordError(SeedcordErrorCode.CoreDirectoryNotListed, [folder]);
+        if (this.isSkipped(folder)) return new SeedcordError(SeedcordErrorCode.CoreDirectorySkipped, [folder]);
+        return undefined;
+    }
+
+    // a folder in files can sit anywhere in here
+    public inProject(folder: string): boolean {
+        return isInside(this.projectDir(), folder);
+    }
+
+    public listedBesideRoot(): string[] {
+        return this.listed.filter((folder) => !this.holds(folder));
+    }
+
+    // a key under root climbs out of outDir for a listed folder beside root
+    public listedKeyOf(file: string): string {
+        return BotLayout.keyUnder(this.projectDir(), file);
     }
 
     public assertBundled(folder: string): void {
@@ -210,14 +231,13 @@ export class BotLayout {
         return this.data;
     }
 
-    // a built bot resolves these against its own root, where a key like '/../dist' is the bot itself.
+    // a built bot resolves these against its own root, where a skipped key like '/../dist' is the bot itself.
     // the built entry writes its own configFile, relative to outDir
     public bundledData(): BotLayoutData {
-        const insideRoot = (keys: readonly string[]): string[] => keys.filter((key) => this.holds(this.pathOf(key)));
         return {
             root: this.root,
-            listed: insideRoot(this.data.listed),
-            skippedFolders: insideRoot(this.data.skippedFolders)
+            listed: [...this.data.listed],
+            skippedFolders: this.data.skippedFolders.filter((key) => this.holds(this.pathOf(key)))
         };
     }
 
@@ -225,14 +245,19 @@ export class BotLayout {
         return this.configFile === undefined ? undefined : path.dirname(this.configFile);
     }
 
+    private projectDir(): string {
+        return this.configDir() ?? this.root;
+    }
+
+    // import.meta.glob already leaves out dotfiles, dot-folders and node_modules
     private globExcludes(base: string): string[] {
-        const folders = this.bundledData().skippedFolders.map((key) => `!${globFolder(base, key)}/**`);
+        const folders = this.data.skippedFolders.map((key) => `!${globFolder(base, key)}/**`);
         const configDir = this.configDir();
         const projectFiles =
-            configDir === undefined || !this.holds(configDir)
+            configDir === undefined
                 ? []
                 : PROJECT_FILE_GLOBS.map((name) => `!${globFolder(base, this.keyOf(configDir))}/${name}`);
-        return [...SKIPPED_NAME_GLOBS, ...folders, ...projectFiles];
+        return [...folders, ...projectFiles];
     }
 
     private pathOf(key: string): string {

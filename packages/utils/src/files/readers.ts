@@ -62,7 +62,7 @@ export async function* importFiles(dir: string): AsyncGenerator<ImportedFile> {
  *
  * @throws **SeedcordError** when the directory or a file in it cannot be read.
  * @throws **SeedcordError** when `dir` is relative and the bot did not start through `seedcord dev` or its built output.
- * @throws **SeedcordError** under `seedcord dev` or in a built bot, when `dir` is outside `root`, outside every folder in `files`, or has a dot-folder or node_modules in its path.
+ * @throws **SeedcordError** under `seedcord dev` or in a built bot, when `dir` is outside every folder in `files`, or has a dot-folder or node_modules in its path.
  * @throws **SeedcordError** in a built bot, when the directory was missing at build time.
  *
  * @example

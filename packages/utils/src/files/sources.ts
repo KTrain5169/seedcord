@@ -38,10 +38,8 @@ class BotFolderAccess implements FolderAccess {
 
     public resolveListed(dir: string): string {
         const folder = this.resolve(dir);
-        this.layout.assertBundled(folder);
-        if (!this.layout.isListed(folder)) {
-            throw new SeedcordError(SeedcordErrorCode.CoreDirectoryNotListed, [folder]);
-        }
+        const problem = this.layout.listedReadProblem(folder);
+        if (problem) throw problem;
         return folder;
     }
 

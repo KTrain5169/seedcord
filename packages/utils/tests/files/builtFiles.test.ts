@@ -315,18 +315,6 @@ describe('readFiles in a built bot', () => {
         expect(Error.isError(error) ? error.cause : undefined).toMatchObject({ message: 'boom' });
     });
 
-    it('throws with the folder and the root when the folder sits outside root', async () => {
-        using _built = register({
-            folders: ['/locales'],
-            listed: ['/locales'],
-            listedFiles: { '/locales/en.json': storedText('{}') }
-        });
-
-        const error = await rejection(readFiles('/elsewhere/locales'));
-
-        expect(error).toMatchObject({ code: SeedcordErrorCode.CorePathOutsideRoot });
-    });
-
     it('reads a subfolder of a listed folder', async () => {
         using _built = register({
             folders: ['/locales', '/locales/en'],

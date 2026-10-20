@@ -157,11 +157,31 @@ describe('a folder on disk under seedcord dev', () => {
         expect(error).toMatchObject({ code: SeedcordErrorCode.CoreDirectoryNotListed });
     });
 
-    it.each([
-        ['importFiles', () => importFiles(path.join(scratch, 'extensions'))],
-        ['readFiles', () => readFiles(scratch)]
-    ])('throws CorePathOutsideRoot when %s reads a folder outside root', async (_, read) => {
-        expect(await rejection(read())).toMatchObject({ code: SeedcordErrorCode.CorePathOutsideRoot });
+    it('throws CorePathOutsideRoot when importFiles reads a folder outside root', async () => {
+        const error = await rejection(importFiles(path.join(scratch, 'extensions')));
+
+        expect(error).toMatchObject({ code: SeedcordErrorCode.CorePathOutsideRoot });
+    });
+});
+
+describe('a listed folder beside root, under seedcord dev', () => {
+    it('reads it without its dot-folders or node_modules', async () => {
+        const shared = path.join(scratch, 'beside', 'shared');
+        for (const file of ['en.json', '.hidden/stale.json', 'node_modules/pkg/data.json']) {
+            await mkdir(path.dirname(path.join(shared, file)), { recursive: true });
+            await writeFile(path.join(shared, file), '{}\n');
+        }
+        using _dev = setDevFiles({
+            root: path.join(scratch, 'beside', 'src'),
+            listed: ['/../shared'],
+            skippedFolders: [],
+            configFile: '/../seedcord.config.ts'
+        });
+
+        const seen: string[] = [];
+        for await (const { fullPath } of readFiles('../shared')) seen.push(fullPath);
+
+        expect(seen).toEqual([path.join(shared, 'en.json')]);
     });
 });
 

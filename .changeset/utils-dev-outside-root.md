@@ -3,4 +3,4 @@
 'seedcord': minor
 ---
 
-**BREAKING:** Under `seedcord dev` and in a built bot, `importFiles` and `readFiles` now throw `CorePathOutsideRoot` for a folder outside `root`, and `CoreDirectorySkipped` for a folder that `seedcord build` leaves out of the bot, like `./locales/.cache`. `seedcord codegen`, `build` and `commands` run the same checks on the folders in your config.
+**BREAKING:** Under `seedcord dev` and in a built bot, `importFiles` now throws `CorePathOutsideRoot` for a folder outside `root`. `importFiles` and `readFiles` throw `CoreDirectorySkipped` for a folder that `seedcord build` leaves out of the bot, like `./locales/.cache`, and `seedcord codegen`, `build` and `commands` run the same checks on the folders in your config.
