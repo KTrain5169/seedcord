@@ -1,7 +1,7 @@
-import { TypedEventEmitter } from '@seedcord/event-emitter';
 import { LoggerChannelRegistry } from '@seedcord/logger';
 import { formatBody } from '@seedcord/logger/node';
 
+import { ChangeStore } from './ChangeStore';
 import { routeConsoleToLogs } from './routeConsole';
 
 import type { ILogSink, LogLevel, LogRecord, LogSinkHandle } from '@seedcord/types';
@@ -19,17 +19,13 @@ export interface LogEntry {
 
 const STACK_FRAME = /^\s+at\s/;
 
-interface LogStoreEvents {
-    change: [];
-}
-
 // 30ms keeps a noisy bot from re-rendering the log view once per line
 const UPDATE_DEBOUNCE_MS = 30;
 
 // eslint-disable-next-line no-magic-numbers -- 27 is the ESC control code
 const ESC = String.fromCharCode(27);
 
-export class LogStore extends TypedEventEmitter<LogStoreEvents> implements ILogSink {
+export class LogStore extends ChangeStore implements ILogSink {
     private static _instance: LogStore | null = null;
 
     public readonly kind = 'capture';
@@ -42,7 +38,6 @@ export class LogStore extends TypedEventEmitter<LogStoreEvents> implements ILogS
     private pendingUpdate = false;
     private flushTimer: ReturnType<typeof setTimeout> | null = null;
     private readonly MAX_LOGS = 1000;
-    private readonly MAX_LABEL_WIDTH = 12;
 
     private constructor() {
         super();
@@ -103,10 +98,10 @@ export class LogStore extends TypedEventEmitter<LogStoreEvents> implements ILogS
         return [...seen].sort();
     }
 
-    public getLabelWidth(): number {
-        let width = 0;
-        for (const entry of this.entries) if (entry.label.length > width) width = entry.label.length;
-        return Math.min(width, this.MAX_LABEL_WIDTH);
+    public getLongestLabel(): number {
+        let longest = 0;
+        for (const entry of this.entries) if (entry.label.length > longest) longest = entry.label.length;
+        return longest;
     }
 
     public clear(): void {

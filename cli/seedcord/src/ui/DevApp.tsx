@@ -1,25 +1,25 @@
-import { Box, useInput, useWindowSize } from 'ink';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Box, useBoxMetrics, useInput, useWindowSize } from 'ink';
+import React, { useRef, useState } from 'react';
 
 import { Rule } from '#ui/components/primitives/Rule';
 import { INITIAL_CURSOR } from '#ui/filterCursor';
 import { useDevState } from '#ui/hooks/useDevState';
-import { useFilters } from '#ui/hooks/useFilters';
+import { useFilterPanel } from '#ui/hooks/useFilterPanel';
+import { useLogCapture } from '#ui/hooks/useLogCapture';
+import { useLogRows } from '#ui/hooks/useLogRows';
 import { useLogs } from '#ui/hooks/useLogs';
-import { useMeasuredBox } from '#ui/hooks/useMeasuredBox';
 import { usePanelFit } from '#ui/hooks/usePanelFit';
+import { usePrefs } from '#ui/hooks/usePrefs';
 import { useRailWidth } from '#ui/hooks/useRailWidth';
 import { useScroll } from '#ui/hooks/useScroll';
 import { useUptime } from '#ui/hooks/useUptime';
 import { acceptsSessionKeys, dispatchHotkey } from '#ui/hotkeys';
 import { DevLayout } from '#ui/layout/DevLayout';
-import { expandRows, rowKey, wrapRows } from '#ui/logRows';
+import { rowKey } from '#ui/logRows';
 import { noticesOf } from '#ui/notices';
-import { profileWrap } from '#ui/profile';
-import { LogStore } from '#ui/stores/LogStore';
-import { tierFor } from '#ui/tier';
+import { Screen } from '#ui/Screen';
 
-import type { LogFilters } from '#ui/devPrefs';
+import type { DevPrefs } from '#ui/devPrefs';
 import type { DevStore } from '#ui/stores/DevStore';
 import type { DOMElement } from 'ink';
 import type { ReactElement } from 'react';
@@ -27,8 +27,8 @@ import type { ReactElement } from 'react';
 interface DevAppProps {
     readonly store: DevStore;
     readonly onReady: () => void;
-    readonly initialFilters: LogFilters;
-    readonly onFiltersChange?: (filters: LogFilters) => void;
+    readonly initialPrefs: DevPrefs;
+    readonly onPrefsChange?: (prefs: DevPrefs) => void;
     readonly onQuit?: () => Promise<void> | void;
     readonly onDisconnect?: () => Promise<void> | void;
     readonly onRestart?: () => Promise<void> | void;
@@ -36,34 +36,32 @@ interface DevAppProps {
 }
 
 export function DevApp(props: DevAppProps): ReactElement {
-    const { store, onReady, initialFilters, onFiltersChange } = props;
+    const { store, onReady } = props;
     const state = useDevState(store);
     const { rows, columns } = useWindowSize();
 
-    const tier = tierFor(rows, columns);
-    const { filters, setFilters, view, toggleView } = useFilters(initialFilters, tier, onFiltersChange);
+    const { filters, details, railHidden, setFilters, toggleRail, cycleDetails } = usePrefs(
+        props.initialPrefs,
+        props.onPrefsChange
+    );
+    const screen = Screen.fit(rows, columns, railHidden);
+    const { open, toggleOpen } = useFilterPanel(screen.filters);
     const panelFit = usePanelFit();
-    const keysView = tier === 'logs' && !panelFit.fits ? 'collapsed' : view;
     const [cursor, setCursor] = useState(INITIAL_CURSOR);
 
     const logBoxRef = useRef<DOMElement | null>(null);
-    const logBox = useMeasuredBox(logBoxRef);
+    const logBox = useBoxMetrics(logBoxRef);
 
     const railRef = useRef<DOMElement | null>(null);
-    const railWidth = useRailWidth(railRef, state.phase, rows, columns);
+    const railWidth = useRailWidth(railRef, state.phase);
 
     const notices = noticesOf(state);
 
     const logs = useLogs(filters.channels, filters.levels);
-    // the label width only grows with a new entry, so the logs dep already covers it
-    const logRows = useMemo(
-        () =>
-            profileWrap(() => wrapRows(expandRows(logs), logBox.width, Math.max(1, LogStore.instance.getLabelWidth()))),
-        [logs, logBox.width]
-    );
+    const { logLayout, logRows } = useLogRows(logs, logBox.width, details);
     const viewportHeight = Math.max(1, logBox.height);
     const scroll = useScroll(logRows, viewportHeight, rowKey);
-    const uptimeMs = useUptime(state, tier !== 'logs');
+    const uptimeMs = useUptime(state, screen.uptime);
 
     const interactive = acceptsSessionKeys(state);
 
@@ -77,8 +75,11 @@ export function DevApp(props: DevAppProps): ReactElement {
             store,
             filters,
             setFilters,
-            filterView: keysView,
-            toggleFilterView: toggleView,
+            filterView: screen.filterKeysView(open, panelFit.fits),
+            toggleFilterView: toggleOpen,
+            canToggleRail: screen.canToggleRail,
+            toggleRail,
+            cycleDetails,
             cursor,
             setCursor,
             onQuit: props.onQuit,
@@ -88,19 +89,7 @@ export function DevApp(props: DevAppProps): ReactElement {
         });
     });
 
-    const isInitializedRef = useRef(false);
-    useEffect(() => {
-        if (isInitializedRef.current) return;
-        isInitializedRef.current = true;
-
-        LogStore.instance.clear();
-        LogStore.instance.mount();
-        onReady();
-
-        return () => {
-            LogStore.instance.unmount();
-        };
-    }, [onReady]);
+    useLogCapture(onReady);
 
     return (
         <Box flexDirection="column" width={columns} height={rows} overflow="hidden">
@@ -108,20 +97,22 @@ export function DevApp(props: DevAppProps): ReactElement {
             <Rule />
             <DevLayout
                 state={state}
-                tier={tier}
+                screen={screen}
                 notices={notices}
                 railRef={railRef}
                 railWidth={railWidth}
                 logBoxRef={logBoxRef}
                 scroll={scroll}
+                logLayout={logLayout}
                 viewportHeight={viewportHeight}
-                measured={logBox.height > 0}
+                measured={logBox.hasMeasured}
                 filters={filters}
-                filterView={view}
+                filterView={screen.filterView(open)}
                 panelFit={panelFit}
                 cursor={cursor}
                 interactive={interactive}
                 uptimeMs={uptimeMs}
+                details={details}
             />
         </Box>
     );
