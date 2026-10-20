@@ -2,8 +2,7 @@ import { KEY, PromptTerminal, settled } from '@seedcord/cli-prompts/testing';
 import { describe, expect, it } from 'vitest';
 
 import { tokenStep } from '#interview/steps/token';
-
-const TOKEN = `${'a'.repeat(26)}.${'b'.repeat(6)}.${'c'.repeat(38)}`;
+import { BOT_TOKEN, TOKEN } from '#tests/token';
 
 describe('the token question', () => {
     it('answers null on the second empty Enter', async () => {
@@ -25,7 +24,7 @@ describe('the token question', () => {
         await settled(async () => expect(await terminal.screen()).toContain('Bot page'));
 
         await terminal.press(KEY.ctrlU, TOKEN, KEY.enter);
-        await expect(answer).resolves.toBe(TOKEN);
+        await expect(answer).resolves.toEqual(BOT_TOKEN);
     });
 
     it('trims the spaces a copy paste picked up', async () => {
@@ -34,6 +33,6 @@ describe('the token question', () => {
 
         await terminal.press(` ${TOKEN} `, KEY.enter);
 
-        await expect(answer).resolves.toBe(TOKEN);
+        await expect(answer).resolves.toEqual(BOT_TOKEN);
     });
 });

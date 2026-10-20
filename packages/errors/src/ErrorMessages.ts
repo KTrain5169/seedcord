@@ -334,6 +334,10 @@ const messages = {
         `seedcord runs the bot in Vite's ${paint.bold(name)} environment. Vite created only ${allOf.format(created.map((environment) => paint.bold(environment)))}. Look in ${paint.bold('vitePlugins')} for a plugin whose ${paint.bold('config')} hook rewrites ${paint.bold('environments')}.`,
     [SeedcordErrorCode.CliListedFolderUnusable]: (folder: string, problem: keyof typeof listedFolderProblems) =>
         `${paint.bold('files')} in seedcord.config.ts lists ${paint.path(folder)}, ${listedFolderProblems[problem]}`,
+    [SeedcordErrorCode.CliDevAlreadyRunning]: (configDir: string, pid: number, startedAt: string, lockFile: string) =>
+        `Another ${paint.bold('seedcord dev')} is running this bot's application from ${paint.path(configDir)} (pid ${pid}, started ${startedAt}). Two dev sessions on one application overwrite each other's commands and interactions endpoint. Press ${paint.bold('q')} in that session, or delete ${paint.path(lockFile)} if it is no longer running.`,
+    [SeedcordErrorCode.CliDevLockFolderNotOwned]: (folder: string) =>
+        `Another user owns ${paint.path(folder)}, the folder ${paint.bold('seedcord dev')} writes its session locks to. That account could write a lock there that blocks your dev sessions. Ask that user or an admin to delete the folder, then start ${paint.bold('seedcord dev')} again.`,
     [SeedcordErrorCode.CliCodegenOutOfDate]: (outputPath: string) =>
         `${paint.path(outputPath)} is out of date. Run ${paint.bold('seedcord codegen')} and commit it.`,
     [SeedcordErrorCode.CliEdgeWithoutWorkerdCondition]: (cloudflareConfig: string, tsconfig: string) =>

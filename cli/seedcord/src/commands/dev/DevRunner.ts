@@ -5,6 +5,7 @@ import { cliLogger } from '#core/cliLogger';
 import { ProjectLoader } from '#core/config/ProjectLoader';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
 import { quietSteps } from '#core/output/quietSteps';
+import { DevLock } from '#core/state/DevLock';
 import { startupShell } from '#core/viteMode';
 import { resetChannelColors } from '#ui/channelColor';
 import { profileMark } from '#ui/profile';
@@ -52,6 +53,7 @@ export class DevRunner {
             projectLoader: new ProjectLoader(openModuleLoader, startupShell),
             store,
             state,
+            lock: DevLock.create(cliLogger('Dev')),
             codegen: CodegenRunner.create(quietSteps, codegenLogger),
             codegenLogger,
             tunnel: new TunnelRouter(makeCoordinator, tunnelLogger),
@@ -134,8 +136,10 @@ export class DevRunner {
         this.next = 'quit';
         this.deps.store.setPhase('quitting');
         await this.currentSession?.stop();
+        // release after the clear, or the clear can wipe the endpoint the next session just set
+        const endpointCleared = this.deps.tunnel.stop().finally(() => this.deps.lock.release());
         // the endpoint clear is a discord round trip
-        await settleWithin(this.deps.tunnel.stop(), TUNNEL_TEARDOWN_MS);
+        await settleWithin(endpointCleared, TUNNEL_TEARDOWN_MS);
         this.signalResolve?.();
     }
 

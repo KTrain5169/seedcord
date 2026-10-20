@@ -3,8 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { parseInput, wantsHelp, wantsVerbose, wantsVersion } from '#cli/parseInput';
 import { thrownBy } from '#tests/thrownBy';
-
-const TOKEN = `${'a'.repeat(26)}.${'b'.repeat(6)}.${'c'.repeat(38)}`;
+import { BOT_TOKEN, TOKEN } from '#tests/token';
 
 describe('parseInput', () => {
     it('reads every step flag into its answer', () => {
@@ -13,7 +12,7 @@ describe('parseInput', () => {
         expect(supplied).toEqual({
             directory: 'my-bot',
             transport: 'http',
-            token: TOKEN,
+            token: BOT_TOKEN,
             botColor: 'Blurple'
         });
     });

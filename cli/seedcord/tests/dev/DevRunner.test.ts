@@ -2,16 +2,21 @@ import { mkdir, mkdtempDisposable, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { SeedcordErrorCode } from '@seedcord/errors';
 import { HostShutdown, HostStartup } from '@seedcord/types/internal';
-import { afterEach, describe, expect, it, onTestFinished, vi, type Mock } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi, type Mock } from 'vitest';
 
 import { DevRunner } from '#commands/dev/DevRunner';
 import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
 import { ProjectLoader } from '#core/config/ProjectLoader';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
+import { DevLock } from '#core/state/DevLock';
 import { StateFolder } from '#core/state/StateFolder';
 import { ShellMode } from '#core/viteMode';
+import { bindEnv } from '#tests/bindEnv';
+import { APP_ID, FAKE_TOKEN } from '#tests/commands/build/smoke';
 import { loadedConfig } from '#tests/loadedConfig';
+import { lockDir, type LockDir } from '#tests/lockDir';
 import { silentLogger } from '#tests/silentLogger';
 import { DevStore } from '#ui/stores/DevStore';
 
@@ -19,6 +24,7 @@ import { devConfigFor } from './devConfigFor';
 import { fakeBot, fakeRuntime } from './fakes';
 
 import type { CodegenRunner } from '#commands/codegen/CodegenRunner';
+import type { DevRunnerDeps } from '#commands/dev/DevRunner';
 import type { DevRuntime } from '#commands/dev/runtime/DevRuntime';
 import type { TunnelRouter } from '#commands/dev/tunnel/TunnelRouter';
 import type { ILogger } from '@seedcord/types';
@@ -47,20 +53,17 @@ function fakeCodegen(writeFrom = vi.fn<CodegenRunner['writeFrom']>().mockResolve
     return { writeFrom };
 }
 
-function makeRunner(
-    codegen: FakeCodegen = fakeCodegen(),
-    tunnel: TunnelRouter = fakeTunnel(),
-    codegenLogger: ILogger = silentLogger,
-    runtime: () => DevRuntime = readyRuntime
-): DevRunner {
+function makeRunner(overrides: Partial<DevRunnerDeps> = {}): DevRunner {
     return new DevRunner({
         projectLoader: { readConfig: () => Promise.resolve(loadedDevConfig()) },
         store: new DevStore(),
         state: STATE,
-        codegen,
-        codegenLogger,
-        tunnel,
-        runtime
+        lock: new DevLock(locks.path, silentLogger),
+        codegen: fakeCodegen(),
+        codegenLogger: silentLogger,
+        tunnel: fakeTunnel(),
+        runtime: readyRuntime,
+        ...overrides
     });
 }
 
@@ -69,6 +72,15 @@ function fakeTunnel(overrides: Partial<TunnelRouter> = {}): TunnelRouter {
     return { route: () => undefined, stop: () => Promise.resolve(), ...overrides } as TunnelRouter;
 }
 
+let locks: LockDir;
+
+beforeEach(() => {
+    const test = new DisposableStack();
+    test.use(bindEnv({ DISCORD_BOT_TOKEN: FAKE_TOKEN }));
+    locks = test.use(lockDir());
+    return () => test.dispose();
+});
+
 // setImmediate runs after every queued promise callback
 function settled(): Promise<void> {
     return new Promise((resolve) => setImmediate(resolve));
@@ -76,7 +88,7 @@ function settled(): Promise<void> {
 
 // resolves once the startup write has gone out, with the run loop still going until the test ends
 async function startedRunner(codegen: FakeCodegen, codegenLogger: ILogger = silentLogger): Promise<DevRunner> {
-    const runner = makeRunner(codegen, fakeTunnel(), codegenLogger);
+    const runner = makeRunner({ codegen, codegenLogger });
     const running = runner.run();
     onTestFinished(async () => {
         await runner.quit();
@@ -94,7 +106,7 @@ describe('DevRunner quit', () => {
 
     it('tears the tunnel down', async () => {
         const stop = vi.fn().mockResolvedValue(undefined);
-        const runner = makeRunner(fakeCodegen(), fakeTunnel({ stop }));
+        const runner = makeRunner({ tunnel: fakeTunnel({ stop }) });
 
         await runner.quit();
 
@@ -104,9 +116,8 @@ describe('DevRunner quit', () => {
     it('holds the run loop open until the teardown settles', async () => {
         vi.useFakeTimers();
         const order: string[] = [];
-        const runner = makeRunner(
-            fakeCodegen(),
-            fakeTunnel({
+        const runner = makeRunner({
+            tunnel: fakeTunnel({
                 stop: () =>
                     new Promise<void>((resolve) => {
                         setTimeout(() => {
@@ -115,7 +126,7 @@ describe('DevRunner quit', () => {
                         }, 100);
                     })
             })
-        );
+        });
 
         void runner.quit();
         const running = runner.run().then(() => order.push('run'));
@@ -125,9 +136,31 @@ describe('DevRunner quit', () => {
         expect(order).toStrictEqual(['teardown', 'run']);
     });
 
+    it("holds the bot's application until the tunnel teardown finishes, even after quit stops waiting", async () => {
+        const teardown = Promise.withResolvers<undefined>();
+        const codegen = fakeCodegen();
+        const runner = makeRunner({ codegen, tunnel: fakeTunnel({ stop: () => teardown.promise }) });
+        const running = runner.run();
+        await vi.waitFor(() => expect(codegen.writeFrom).toHaveBeenCalledOnce());
+        const nextSession = (): void => new DevLock(locks.path, silentLogger).hold(APP_ID, '/bots/next');
+
+        vi.useFakeTimers();
+        const quitting = runner.quit();
+        await vi.advanceTimersByTimeAsync(3000);
+        await quitting;
+        await running;
+        expect(nextSession).toThrow(expect.objectContaining({ code: SeedcordErrorCode.CliDevAlreadyRunning }));
+
+        vi.useRealTimers();
+        teardown.resolve(undefined);
+        await settled();
+
+        expect(nextSession).not.toThrow();
+    });
+
     it('resolves when the teardown outlasts its budget', async () => {
         vi.useFakeTimers();
-        const runner = makeRunner(fakeCodegen(), fakeTunnel({ stop: () => new Promise(() => undefined) }));
+        const runner = makeRunner({ tunnel: fakeTunnel({ stop: () => new Promise(() => undefined) }) });
 
         const quitting = runner.quit();
         await vi.advanceTimersByTimeAsync(3000);
@@ -158,13 +191,9 @@ function runWithSlowConfig(): SlowConfigRun {
         await configLoaded;
         return loadedDevConfig();
     });
-    const runner = new DevRunner({
+    const runner = makeRunner({
         projectLoader: { readConfig },
         store,
-        state: STATE,
-        codegen: fakeCodegen(),
-        codegenLogger: silentLogger,
-        tunnel: fakeTunnel(),
         runtime: () => ({ ...readyRuntime(), loadEntry: () => Promise.resolve({ module: { default: bot } }) })
     });
     const running = runner.run();
@@ -242,7 +271,7 @@ describe('DevRunner restart', () => {
             const bot = nextBot();
             return { ...readyRuntime(), loadEntry: () => Promise.resolve({ module: { default: bot } }) };
         };
-        const runner = makeRunner(fakeCodegen(), fakeTunnel(), silentLogger, runtime);
+        const runner = makeRunner({ runtime });
         const running = runner.run();
         onTestFinished(async () => {
             await runner.quit();
@@ -277,7 +306,7 @@ describe('DevRunner restart', () => {
                 }
             };
         };
-        const runner = makeRunner(codegen, fakeTunnel(), silentLogger, runtime);
+        const runner = makeRunner({ codegen, runtime });
         const running = runner.run();
         onTestFinished(async () => {
             await runner.quit();
@@ -391,15 +420,7 @@ describe('DevRunner run', () => {
             readConfig: vi.fn(() => Promise.resolve(loadedConfig(devConfigFor(process.cwd(), 'bot.ts'))))
         };
         const store = new DevStore();
-        const runner = new DevRunner({
-            projectLoader,
-            store,
-            state: STATE,
-            codegen: fakeCodegen(),
-            codegenLogger: silentLogger,
-            tunnel: fakeTunnel(),
-            runtime: () => new ServerDevRuntime()
-        });
+        const runner = makeRunner({ projectLoader, store, runtime: () => new ServerDevRuntime() });
 
         const running = runner.run();
         const error = await untilError(store);
@@ -424,13 +445,9 @@ describe('DevRunner run', () => {
         });
         const loader = new ProjectLoader(openModuleLoader, new ShellMode());
         const store = new DevStore();
-        const runner = new DevRunner({
+        const runner = makeRunner({
             projectLoader: { readConfig: () => loader.readConfig(temp.path) },
             store,
-            state: STATE,
-            codegen: fakeCodegen(),
-            codegenLogger: silentLogger,
-            tunnel: fakeTunnel(),
             runtime: () => new ServerDevRuntime()
         });
 
