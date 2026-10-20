@@ -15,9 +15,8 @@ import { InFlight } from '@seedcord/core/node/internal';
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 import { Logger } from '@seedcord/logger';
-import { formatFilePath, hasKeys } from '@seedcord/utils';
+import { formatFilePath, hasKeys, importFiles } from '@seedcord/utils';
 import { asError, isStringArray } from '@seedcord/utils/internal';
-import { traverseDirectory } from '@seedcord/utils/node';
 import { Envapter } from 'envapt';
 
 import { eventMiddlewareMetaOf } from '#bDecorators/Middlewares';
@@ -166,7 +165,7 @@ export class EventDispatcher implements Initializeable, HmrAware {
     }
 
     private async loadHandlers(dir: string): Promise<void> {
-        for await (const { fullPath, relativePath, imported } of traverseDirectory(dir)) {
+        for await (const { fullPath, relativePath, imported } of importFiles(dir)) {
             for (const val of Object.values(imported)) {
                 if (!this.isEventHandlerClass(val)) continue;
                 this.registerHandler(val, relativePath);
@@ -176,7 +175,7 @@ export class EventDispatcher implements Initializeable, HmrAware {
     }
 
     private async loadMiddlewares(dir: string): Promise<void> {
-        for await (const { fullPath, relativePath, imported } of traverseDirectory(dir)) {
+        for await (const { fullPath, relativePath, imported } of importFiles(dir)) {
             for (const val of Object.values(imported)) {
                 if (!this.isMiddlewareClass(val)) continue;
 

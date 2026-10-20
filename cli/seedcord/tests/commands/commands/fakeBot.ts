@@ -9,9 +9,10 @@ import { SeedcordBrand } from '@seedcord/types/internal';
 import { ApplicationCommandType, Routes } from 'discord-api-types/v10';
 import { onTestFinished, vi } from 'vitest';
 
-import { LoadedConfig } from '#core/config/LoadedConfig';
 import { Project } from '#core/project/Project';
+import { realPath } from '#core/project/realPath';
 import { StateFolder } from '#core/state/StateFolder';
+import { loadedConfig } from '#tests/loadedConfig';
 import { silentLogger } from '#tests/silentLogger';
 import { vitePluginsOf } from '#tests/vitePluginsOf';
 
@@ -84,7 +85,7 @@ export async function fakeProject({
 }: BotOptions = {}): Promise<FakeProject> {
     const dir = await mkdtempDisposable(join(tmpdir(), 'bot-'));
     onTestFinished(() => dir.remove());
-    const root = dir.path;
+    const root = realPath(dir.path);
     await mkdir(join(root, 'commands'));
     const byPath = new Map<string, Record<string, unknown>>();
     for (const Command of commands) {
@@ -101,12 +102,18 @@ export async function fakeProject({
 
     const config: ResolvedSeedcordConfig = {
         root,
-        instance,
-        configFile: resolve(root, 'seedcord.config.ts'),
+        instance: realPath(instance),
+        configFile: realPath(resolve(root, 'seedcord.config.ts')),
         target: edge
-            ? { kind: 'edge', cloudflareConfig: resolve(root, 'cloudflare.config.ts'), viteRoot: root, port: 0 }
-            : { kind: 'server', start: resolve(root, 'index.ts'), outDir: resolve(root, 'dist') },
+            ? {
+                  kind: 'edge',
+                  cloudflareConfig: realPath(resolve(root, 'cloudflare.config.ts')),
+                  viteRoot: root,
+                  port: 0
+              }
+            : { kind: 'server', start: realPath(resolve(root, 'index.ts')), outDir: realPath(resolve(root, 'dist')) },
         build: {},
+        files: [],
         typecheck: { enabled: false },
         idleAnimation: false,
         tunnel: { mode: 'off' },
@@ -119,8 +126,8 @@ export async function fakeProject({
         [Symbol.asyncDispose]: () => Promise.resolve()
     } as ModuleLoader & AsyncDisposable;
     return {
-        readConfig: () => Promise.resolve(new LoadedConfig(config)),
-        openProject: (loaded) => Promise.resolve(new Project(loaded.config, modules)),
+        readConfig: () => Promise.resolve(loadedConfig(config)),
+        openProject: (loaded) => Promise.resolve(new Project(loaded.config, loaded.files, modules)),
         state: new StateFolder(root, silentLogger)
     };
 }

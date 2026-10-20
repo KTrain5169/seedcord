@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { setBotRoot } from '@seedcord/utils/node/internal';
+import { setDevFiles } from '@seedcord/utils/internal';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 import { HmrModuleHandler } from '#hmr/HmrModuleHandler';
@@ -56,7 +56,6 @@ describe('HmrModuleHandler', () => {
     });
 
     afterEach(() => {
-        setBotRoot(undefined);
         rmSync(dir, { recursive: true, force: true });
     });
 
@@ -95,6 +94,19 @@ describe('HmrModuleHandler', () => {
         expect(registerMiddleware).not.toHaveBeenCalled();
     });
 
+    it.each(['.drafts', 'node_modules/pkg'])(
+        'ignores a handler saved under %s, which startup skips',
+        async (folder) => {
+            const file = join(handlersDir, folder, 'Ping.mjs');
+            mkdirSync(join(handlersDir, folder), { recursive: true });
+            writeFileSync(file, 'export class Ping {}\n');
+
+            await handler.handle({ file, type: 'update' });
+
+            expect(registerHandler).not.toHaveBeenCalled();
+        }
+    );
+
     it('skips a created directory without logging a failed reload', async () => {
         const { logger, spies } = fakeLogger();
         const withSpies = new HmrModuleHandler<TestHandler>({
@@ -124,7 +136,11 @@ describe('HmrModuleHandler', () => {
     });
 
     it('reloads a handler file when the handlers dir is relative to root', async () => {
-        setBotRoot(dir);
+        using _dev = setDevFiles({
+            root: dir,
+            listed: [],
+            skippedFolders: []
+        });
         const relative = new HmrModuleHandler<TestHandler>({
             handlersDir: './commands',
             isHandler,
@@ -301,7 +317,7 @@ describe('HmrModuleHandler', () => {
             logger
         });
         const file = join(handlersDir, 'Shop.mjs');
-        const utils = import.meta.resolve('@seedcord/utils/node/internal');
+        const utils = import.meta.resolve('@seedcord/utils/internal');
         const thrownBy = { plugin: 'shop-loader', hook: 'load', configFile: join(dir, 'seedcord.config.ts') };
         writeFileSync(
             file,

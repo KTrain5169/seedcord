@@ -94,16 +94,15 @@ Passing epoch ms straight into `<t:...>` renders a date tens of thousands of yea
 
 <!-- prettier-ignore-end -->
 
-## Node
+## Files
 
-`@seedcord/utils/node` is a separate entry as it reads the filesystem.
+These run on node, bun, and Cloudflare Workers with Node compat. A built bot reads its files from the build output.
 
 <!-- prettier-ignore-start -->
 
 | function | what it does |
 | --- | --- |
-| `isTsOrJsFile(entry)` | whether a `Dirent` is a `.ts` or `.js` file, skipping `.d.ts` and `.map` |
-| `traverseDirectory(dir)` | imports every `.ts` and `.js` file under a directory, sorted by path, for a `for await` loop |
-| `readTextFiles(dir)` | reads every other file under a directory as text, sorted by path, for a `for await` loop |
+| `importFiles(dir)` | imports every `.ts`, `.tsx`, `.mts`, `.js`, `.jsx` or `.mjs` file under a directory, skipping type declarations, sorted by path, for a `for await` loop |
+| `readFiles(dir)` | reads every other file under a directory as a `Buffer`, sorted by path, for a `for await` loop |
 
 <!-- prettier-ignore-end -->

@@ -3,37 +3,25 @@ import { dirname, join } from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
-import { resolveFromRoot } from '@seedcord/utils/node/internal';
-
-import { ProjectFiles } from './ProjectFiles';
 
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { ModuleLoader } from '#core/modules/ModuleLoader';
+import type { ProjectFiles } from './ProjectFiles';
 
 export class Project implements AsyncDisposable {
     public readonly configDir: string;
-    public readonly files: ProjectFiles;
 
     constructor(
         public readonly config: ResolvedSeedcordConfig,
+        public readonly files: ProjectFiles,
         private readonly loader: ModuleLoader & AsyncDisposable,
         private readonly configLoader?: AsyncDisposable
     ) {
         this.configDir = dirname(config.configFile);
-        const { target } = config;
-        this.files = new ProjectFiles(
-            config.root,
-            this.configDir,
-            target.kind === 'server' ? target.outDir : undefined
-        );
     }
 
     public get modules(): ModuleLoader {
         return this.loader;
-    }
-
-    public fromRoot(path: string): string {
-        return resolveFromRoot(this.config.root, path);
     }
 
     public tsconfig(): string | undefined {

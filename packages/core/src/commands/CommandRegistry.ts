@@ -2,9 +2,8 @@ import { SlashCommandBuilder } from '@discordjs/builders';
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 import { Logger } from '@seedcord/logger';
-import { formatFilePath } from '@seedcord/utils';
-import { traverseDirectory } from '@seedcord/utils/node';
-import { isInside, resolveFolder } from '@seedcord/utils/node/internal';
+import { formatFilePath, importFiles } from '@seedcord/utils';
+import { botFolder } from '@seedcord/utils/internal';
 import { Envapter } from 'envapt';
 
 import { getDevChannel } from '#hmr/devChannel';
@@ -169,7 +168,7 @@ export class CommandRegistry implements Initializeable, HmrAware {
 
     /** @internal */
     public async onHmr(event: HmrUpdateEvent): Promise<void> {
-        if (isInside(resolveFolder(this.dir), event.file)) {
+        if (botFolder(this.dir).holds(event.file)) {
             this.pendingEvents.delete(event.file);
             this.pendingEvents.set(event.file, event);
             getDevChannel()?.send('seedcord:commands-update-prompt', {
@@ -181,7 +180,7 @@ export class CommandRegistry implements Initializeable, HmrAware {
     }
 
     private async loadCommands(dir: string): Promise<void> {
-        for await (const { fullPath, relativePath, imported } of traverseDirectory(dir)) {
+        for await (const { fullPath, relativePath, imported } of importFiles(dir)) {
             for (const exported of Object.values(imported)) {
                 if (!isCommandClass(exported)) continue;
                 this.registerCommand(exported, relativePath);

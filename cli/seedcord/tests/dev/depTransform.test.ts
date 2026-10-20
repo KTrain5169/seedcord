@@ -8,12 +8,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { serverViteConfig } from '#commands/dev/runtime/devServerConfig';
 import { botEnvironment } from '#core/modules/botEnvironment';
 import { mergeViteConfig } from '#core/modules/userCodeConfig';
+import { ProjectFiles } from '#core/project/ProjectFiles';
+import { realPath } from '#core/project/realPath';
 
 import type { ViteDevServer } from 'vite';
 
 const LOADER_PACKAGE = '@seedcord/fixture-loader';
 
-// traverseDirectory imports through a file url too
+// importFiles imports through a file url too
 const LOADER_ENTRY = `import { pathToFileURL } from 'node:url';
 
 export async function loadFile(absolutePath) {
@@ -88,11 +90,16 @@ describe('dev runtime module resolution', () => {
         root = await mkdtemp(join(tmpdir(), 'seedcord-dev-'));
         await writeFixture(root);
 
+        const config = {
+            root: realPath(join(root, 'src')),
+            configFile: realPath(join(root, 'seedcord.config.ts')),
+            files: [],
+            target: { kind: 'server', start: undefined, outDir: realPath(join(root, 'dist')) }
+        } as const;
         server = await createServer(
-            mergeViteConfig(
-                serverViteConfig({ root: join(root, 'src'), configFile: join(root, 'seedcord.config.ts') }, root),
-                { server: { hmr: false, watch: null } }
-            )
+            mergeViteConfig(serverViteConfig(config, new ProjectFiles({ ...config, files: [] }).layout), {
+                server: { hmr: false, watch: null }
+            })
         );
 
         const runner = createServerModuleRunner(botEnvironment(server.environments));

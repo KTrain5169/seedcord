@@ -2,7 +2,7 @@ import { pathToFileURL } from 'node:url';
 
 import { paint } from '@seedcord/errors';
 import { formatFilePath } from '@seedcord/utils';
-import { isInside, resolveFolder, vitePluginThrew } from '@seedcord/utils/node/internal';
+import { botFolder, vitePluginThrew } from '@seedcord/utils/internal';
 
 import type { Logger } from '@seedcord/logger';
 import type { HmrUpdateEvent } from '@seedcord/types';
@@ -88,8 +88,8 @@ export class HmrModuleHandler<THandler, TMiddleware = void, TArtifacts = unknown
     private inScope(file: string): boolean {
         const { handlersDir, middlewaresDir } = this.options;
 
-        if (isInside(resolveFolder(handlersDir), file)) return true;
-        return middlewaresDir ? isInside(resolveFolder(middlewaresDir), file) : false;
+        if (botFolder(handlersDir).holdsModule(file)) return true;
+        return middlewaresDir ? botFolder(middlewaresDir).holdsModule(file) : false;
     }
 
     // one line per save, since one edit can reload every module that imports the file

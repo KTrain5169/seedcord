@@ -3,10 +3,12 @@ import { join } from 'node:path';
 
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { HostListenHost, HostShutdown } from '@seedcord/types/internal';
-import { readTextFiles } from '@seedcord/utils/node';
+import { readFiles } from '@seedcord/utils';
 import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
+import { ProjectFiles } from '#core/project/ProjectFiles';
+import { realPath } from '#core/project/realPath';
 
 import { devContextFor } from './devConfigFor';
 import { fakeBot } from './fakes';
@@ -18,12 +20,26 @@ import type { SeedcordInstance } from '@seedcord/types/internal';
 const SCRATCH_ROOT = join(import.meta.dirname, '.root-fixture');
 
 const ENTRY = [
-    "import { readTextFiles } from '@seedcord/utils/node';",
+    "import { readFiles } from '@seedcord/utils';",
     '',
     'export const texts: string[] = [];',
-    "for await (const { text } of readTextFiles('./locales')) texts.push(text);",
+    "for await (const { bytes } of readFiles('./locales')) texts.push(bytes.toString());",
     ''
 ].join('\n');
+
+const HANDLERS_ENTRY = [
+    "import { importFiles } from '@seedcord/utils';",
+    '',
+    'export const names: unknown[] = [];',
+    "for await (const { imported } of importFiles('./handlers')) names.push(imported.name);",
+    ''
+].join('\n');
+
+function contextListing(dir: string, files: string[]): DevRuntimeContext {
+    const context = devContextFor(dir, 'index.ts');
+    const config = { ...context.config, files: files.map((folder) => realPath(folder)) };
+    return { ...context, config, files: new ProjectFiles(config) };
+}
 
 async function writeProject(dir: string): Promise<void> {
     await mkdir(join(dir, 'src', 'locales'), { recursive: true });
@@ -50,10 +66,44 @@ describe('dev runtime with root set to src', () => {
         const runtime = new ServerDevRuntime();
         runtimes.push(runtime);
 
-        await runtime.start(devContextFor(dir, 'index.ts'));
+        await runtime.start(contextListing(dir, [join(dir, 'src', 'locales')]));
         const { module } = await runtime.loadEntry();
 
         expect(module).toMatchObject({ texts: ['hello'] });
+    }, 60_000);
+
+    it('throws CoreDirectoryNotListed for a text folder that files leaves out', async () => {
+        await mkdir(SCRATCH_ROOT, { recursive: true });
+        const dir = await mkdtemp(join(SCRATCH_ROOT, 'dev-'));
+        await writeProject(dir);
+
+        const runtime = new ServerDevRuntime();
+        runtimes.push(runtime);
+
+        await runtime.start(contextListing(dir, []));
+
+        await expect(runtime.loadEntry()).rejects.toMatchObject({
+            code: SeedcordErrorCode.CoreImportFailed,
+            cause: { code: SeedcordErrorCode.CoreDirectoryNotListed }
+        });
+    }, 60_000);
+
+    it('imports .tsx and .mts files from a folder the bot walks', async () => {
+        await mkdir(SCRATCH_ROOT, { recursive: true });
+        const dir = await mkdtemp(join(SCRATCH_ROOT, 'dev-'));
+        await writeProject(dir);
+        await mkdir(join(dir, 'src', 'handlers'));
+        await writeFile(join(dir, 'src', 'handlers', 'Dice.tsx'), "export const name = 'Dice';\n");
+        await writeFile(join(dir, 'src', 'handlers', 'Coin.mts'), "export const name = 'Coin';\n");
+        await writeFile(join(dir, 'src', 'walk.ts'), HANDLERS_ENTRY);
+
+        const runtime = new ServerDevRuntime();
+        runtimes.push(runtime);
+
+        await runtime.start(devContextFor(dir, 'walk.ts'));
+        const { module } = await runtime.loadEntry();
+
+        expect(module).toMatchObject({ names: ['Coin', 'Dice'] });
     }, 60_000);
 
     it('reads VITE_ values from the .env beside the config', async () => {
@@ -81,7 +131,7 @@ describe('dev runtime with root set to src', () => {
         await runtime.start(devContextFor(dir, 'index.ts'));
         await runtime.stop();
 
-        await expect(readTextFiles('./locales').next()).rejects.toMatchObject({
+        await expect(readFiles('./locales').next()).rejects.toMatchObject({
             code: SeedcordErrorCode.CoreDirectoryRootUnknown
         });
     }, 60_000);
@@ -96,7 +146,7 @@ describe('dev runtime with root set to src', () => {
         await runtime.stop();
         await starting;
 
-        await expect(readTextFiles('./locales').next()).rejects.toMatchObject({
+        await expect(readFiles('./locales').next()).rejects.toMatchObject({
             code: SeedcordErrorCode.CoreDirectoryRootUnknown
         });
     }, 60_000);
@@ -111,7 +161,7 @@ describe('dev runtime with root set to src', () => {
         const first = runtime.stop();
         await runtime.stop();
 
-        await expect(readTextFiles('./locales').next()).rejects.toMatchObject({
+        await expect(readFiles('./locales').next()).rejects.toMatchObject({
             code: SeedcordErrorCode.CoreDirectoryRootUnknown
         });
         await first;
@@ -151,7 +201,7 @@ describe('dev runtime with root set to src', () => {
         const runtime = new FailsAfterOpening();
         await expect(runtime.start(devContextFor(dir, 'index.ts'))).rejects.toThrow('setup failed');
 
-        await expect(readTextFiles('./locales').next()).rejects.toMatchObject({
+        await expect(readFiles('./locales').next()).rejects.toMatchObject({
             code: SeedcordErrorCode.CoreDirectoryRootUnknown
         });
     }, 60_000);
@@ -192,7 +242,7 @@ describe('dev runtime with root set to src', () => {
         await runtime.startBot(failingBot as unknown as SeedcordInstance);
 
         await expect(runtime.stop()).rejects.toThrow('shutdown failed');
-        await expect(readTextFiles('./locales').next()).rejects.toMatchObject({
+        await expect(readFiles('./locales').next()).rejects.toMatchObject({
             code: SeedcordErrorCode.CoreDirectoryRootUnknown
         });
     }, 60_000);

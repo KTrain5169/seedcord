@@ -1,3 +1,4 @@
+import { assertBuildable } from './assertBuildable';
 import { EdgeBuild } from './EdgeBuild';
 import { ExportBuild } from './ExportBuild';
 import { StartBuild, startsItself } from './StartBuild';
@@ -23,9 +24,9 @@ function buildKindFor(config: ResolvedSeedcordConfig): BuildKind {
     return { check: () => ExportBuild.check(config, target), create: (project) => new ExportBuild(project, target) };
 }
 
-// runs before any plugin in vitePlugins starts
-export function checkBuildTarget(config: ResolvedSeedcordConfig): void {
-    buildKindFor(config).check();
+export async function checkBuildTarget(project: Project): Promise<void> {
+    buildKindFor(project.config).check();
+    await assertBuildable(project);
 }
 
 export function targetBuildFor(project: Project): Build {

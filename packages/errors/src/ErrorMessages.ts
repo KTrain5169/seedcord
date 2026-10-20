@@ -1,31 +1,6 @@
 import { SeedcordErrorCode } from './ErrorCodes';
+import { allOf, counted, isOne, oneOf, quoted, reasonThen, sentence } from './messageText';
 import { paint } from './palette';
-
-// a reason from a caught error may or may not end in a period
-function sentence(text: string): string {
-    // a multi-line reason usually ends in a code frame
-    if (text.includes('\n')) return text;
-    return /[.!?]$/.test(text) ? text : `${text}.`;
-}
-
-function reasonThen(reason: string, next: string): string {
-    return `${sentence(reason)}${reason.includes('\n') ? '\n' : ' '}${next}`;
-}
-
-// @seedcord/utils depends on this package, so its pluralize is out of reach here
-const plurals = new Intl.PluralRules('en');
-const allOf = new Intl.ListFormat('en', { type: 'conjunction' });
-const oneOf = new Intl.ListFormat('en', { type: 'disjunction' });
-
-function isOne(count: number): boolean {
-    return plurals.select(count) === 'one';
-}
-
-function counted(count: number, one: string, many: string): string {
-    return `${count} ${isOne(count) ? one : many}`;
-}
-
-const quoted = (value: string): string => paint.sky(JSON.stringify(value));
 
 export interface VitePluginPlace {
     hook?: string | undefined;
@@ -44,6 +19,11 @@ function vitePluginFix({ loading }: VitePluginPlace): string {
     if (loading?.kind !== 'file') return 'Check the options you pass the plugin.';
     return `Fix ${paint.path(loading.path)}, or check the options you pass the plugin if that file looks right.`;
 }
+
+const listedFolderProblems = {
+    missing: `which does not exist. Create it, or take it out of ${paint.bold('files')}.`,
+    file: `which is a file. ${paint.bold('files')} takes folders. List the folder that holds it.`
+};
 
 // the edge worker sets chalk's color level after this module loads
 const token = (): string => paint.bold('DISCORD_BOT_TOKEN');
@@ -121,6 +101,10 @@ const messages = {
         `${paint.path(dir)} is relative to ${paint.bold('root')}, but this process has no ${paint.bold('root')} to resolve it against. ${paint.bold('seedcord dev')} and a built bot set ${paint.bold('root')} from seedcord.config.ts. Start the bot one of those ways, or pass an absolute path like ${paint.sky(`resolve(import.meta.dirname, '${dir}')`)}.`,
     [SeedcordErrorCode.CoreDirectoryNotBuilt]: (dir: string, root: string) =>
         `${paint.path(dir)} was not a folder under ${paint.bold('root')} (${paint.path(root)}) when ${paint.bold('seedcord build')} ran, so the build holds none of its files. Create the folder, then build again.`,
+    [SeedcordErrorCode.CoreDirectoryNotListed]: (dir: string) =>
+        `${paint.bold('readFiles')} was called on ${paint.path(dir)}, which is outside every folder in ${paint.bold('files')} in seedcord.config.ts. ${paint.bold('seedcord build')} bundles non-code files from only those folders. Add it to ${paint.bold('files')}, like ${paint.sky("files: ['./locales']")}.`,
+    [SeedcordErrorCode.CoreDirectorySkipped]: (dir: string) =>
+        `${paint.path(dir)} is in a folder ${paint.bold('seedcord build')} skips, so a built bot holds none of its files. The build skips dot-folders, node_modules, outDir, the logs folder beside seedcord.config.ts and project files like package.json. Move the files to another folder under ${paint.bold('root')}.`,
     [SeedcordErrorCode.CorePluginGroupTaken]: (head: string, key: string) =>
         `${paint.bold(head)} is already taken on this bot, so ${paint.sky(key)} cannot nest under it. Pick another group name.`,
     [SeedcordErrorCode.CorePluginKeyMalformed]: (key: string, reason: string) =>
@@ -161,7 +145,7 @@ const messages = {
         sources: readonly string[] = [],
         note?: string
     ) =>
-        `${sources.length > 0 ? `${allOf.format(sources)} both define the ${kind} ${quoted(name)}.` : `The ${kind} ${quoted(name)} is defined twice.`}${note ? ` ${note}` : ''} Rename one.`,
+        `${sources.length > 0 ? `${allOf.format(sources)} define the ${kind} ${quoted(name)}.` : `The ${kind} ${quoted(name)} is defined twice.`}${note ? ` ${note}` : ''} Rename one.`,
 
     [SeedcordErrorCode.DecoratorCommandAlreadyRegistered]: (
         commandName: string,
@@ -252,6 +236,8 @@ const messages = {
         `renderTable's ${paint.bold(option)} is ${value}. Pass ${expected}.`,
     [SeedcordErrorCode.UtilUnhandledUnionMember]: (value: string) =>
         `assertNever() ran with ${value}, which its types ruled out. Something passed a value outside the union.`,
+    [SeedcordErrorCode.LoggerFileNameHasFolder]: (filename: string, logsFolder: string) =>
+        `${paint.bold('WinstonFileSink')} got ${paint.path(filename)} as its ${paint.bold('filename')}, which has a folder in it. File logs always go in ${paint.path(logsFolder)}. Pass only the file name, like ${paint.sky("'bot-{date}.log'")}.`,
 
     [SeedcordErrorCode.PluginOptionsRejected]: (pluginName: string, reason: string) =>
         `${paint.sky(pluginName)} rejected its options. ${sentence(reason.charAt(0).toUpperCase() + reason.slice(1))}`,
@@ -336,6 +322,8 @@ const messages = {
         `This ${paint.bold('seedcord')} runs from ${paint.path(cliDir)}, but the project installs its own at ${paint.path(projectInstall)}. The CLI and the bot must load the same seedcord packages. Run the command through a script in the project's ${paint.path('package.json')}.`,
     [SeedcordErrorCode.CliViteEnvironmentMissing]: (name: string, created: readonly string[]) =>
         `seedcord runs the bot in Vite's ${paint.bold(name)} environment. Vite created only ${allOf.format(created.map((environment) => paint.bold(environment)))}. Look in ${paint.bold('vitePlugins')} for a plugin whose ${paint.bold('config')} hook rewrites ${paint.bold('environments')}.`,
+    [SeedcordErrorCode.CliListedFolderUnusable]: (folder: string, problem: keyof typeof listedFolderProblems) =>
+        `${paint.bold('files')} in seedcord.config.ts lists ${paint.path(folder)}, ${listedFolderProblems[problem]}`,
     [SeedcordErrorCode.CliCodegenOutOfDate]: (outputPath: string) =>
         `${paint.path(outputPath)} is out of date. Run ${paint.bold('seedcord codegen')} and commit it.`,
     [SeedcordErrorCode.CliEdgeWithoutWorkerdCondition]: (cloudflareConfig: string, tsconfig: string) =>

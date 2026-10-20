@@ -6,15 +6,14 @@ import { paint } from '@seedcord/errors';
 import { displayPath } from '@seedcord/errors/internal';
 import { TypedEventEmitter } from '@seedcord/event-emitter';
 import { Logger } from '@seedcord/logger';
-import { posixRelative, resolveFromRoot, workerdPath } from '@seedcord/utils/node/internal';
-import { minimatch } from 'minimatch';
+import { workerdPath } from '@seedcord/utils/internal';
 
 import { deployedCommandsFile, lastDeployOf } from '#core/state/deployedCommands';
 
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { StateFolder } from '#core/state/StateFolder';
 import type { DevEvent } from './events';
-import type { ViteRestartFiles } from './ViteRestartFiles';
+import type { RestartFiles } from './RestartFiles';
 import type { HmrEventType, HmrUpdateEvent, TypedOmit } from '@seedcord/types';
 import type { DevChannel, SeedcordCliEvents, SeedcordFrameworkEvents } from '@seedcord/types/internal';
 import type { FSWatcher } from 'node:fs';
@@ -41,7 +40,6 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
     private readonly logger: Logger;
     private readonly lastUpdate = new Map<string, number>();
     private server: ViteDevServer | null = null;
-    private readonly restartPatterns: Set<string>;
     private restartFilesWatcher?: FSWatcher | undefined;
 
     private get hot(): NormalizedHotChannel | undefined {
@@ -56,11 +54,10 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
         private readonly config: ResolvedSeedcordConfig,
         private readonly state: StateFolder,
         private readonly botEnvironment: string,
-        private readonly restartFiles: ViteRestartFiles
+        private readonly restartFiles: RestartFiles
     ) {
         super();
         this.logger = new Logger('HMR', { channel: 'hmr' });
-        this.restartPatterns = new Set((config.hmr?.restart ?? []).map((pattern) => this.fromRoot(pattern)));
     }
 
     public get plugin(): Plugin {
@@ -68,9 +65,7 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
         const { restartFiles } = this;
         return {
             name: 'seedcord:hmr',
-            // vite restarts itself when its watcher reports an env file. the cloudflare plugin does the same for its config.
-            // either restart leaves the bot's module runner on the closed server
-            config: () => ({ server: { watch: { ignored: [restartFiles.includes] } } }),
+            config: () => ({ server: { watch: { ignored: [restartFiles.hiddenFromVite] } } }),
             configureServer: this.configureServer.bind(this),
             hotUpdate(ctx) {
                 return onHotUpdate(this.environment, ctx);
@@ -118,7 +113,7 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
         });
 
         this.dev?.on('seedcord:register-critical-files', (data) => {
-            for (const pattern of data.patterns) this.restartPatterns.add(this.fromRoot(pattern));
+            this.restartFiles.addPatterns(data.patterns);
             this.logger.debug(`Registered ${String(data.patterns.length)} critical file patterns`);
         });
     }
@@ -167,7 +162,7 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
 
         const viteFiles = affectedFiles(ctx.file, modules);
         const affectedModules = viteFiles.map((affected) => resolve(affected));
-        if (affectedModules.some((affected) => this.isCriticalFile(affected))) {
+        if (affectedModules.some((affected) => this.restartFiles.needsRestart(affected))) {
             this.reportRestartRequired(file);
             return [];
         }
@@ -181,24 +176,6 @@ export class HmrPlugin extends TypedEventEmitter<{ event: [DevEvent] }> {
 
         // [] skips vite's own hmr
         return [];
-    }
-
-    private isCriticalFile(file: string): boolean {
-        const { root, instance } = this.config;
-        const relPath = posixRelative(root, file);
-
-        return (
-            [...this.restartPatterns].some((pattern) => minimatch(relPath, pattern)) ||
-            file.endsWith('package.json') ||
-            file.endsWith('tsconfig.json') ||
-            file === resolve(root, instance)
-        );
-    }
-
-    // minimatch reads a windows separator as an escape
-    private fromRoot(pattern: string): string {
-        const { root } = this.config;
-        return posixRelative(root, resolveFromRoot(root, pattern));
     }
 }
 

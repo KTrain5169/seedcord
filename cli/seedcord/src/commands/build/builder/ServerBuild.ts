@@ -1,11 +1,12 @@
-import { extname, join, relative } from 'node:path';
+import { join } from 'node:path';
 
+import { BotLayout, withoutQuery } from '@seedcord/utils/internal';
 import { createBuilder } from 'vite';
 
 import { BOT_ENVIRONMENT, botEnvironment } from '#core/modules/botEnvironment';
-import { viteKey } from '#core/project/ProjectFiles';
 
 import { assertOutDirSafe } from './assertOutDirSafe';
+import { isListedFileId, listedFileOf } from './builtFiles';
 import { bundleFailed, bundleStats, ENTRY_FILE_NAME } from './output';
 import { pinModulePaths } from './pinModulePaths';
 import { ENTRY_ID, isServerEntry, serverEntry } from './serverEntry';
@@ -24,12 +25,10 @@ function outputChunks(result: Awaited<ReturnType<ViteBuilder['build']>>): Rolldo
     return outputs.flatMap(({ output }) => output.filter((file) => file.type === 'chunk'));
 }
 
-// Echo.ts builds to Echo.js and Echo.json to Echo.json.js
-function outputName(moduleId: string | null | undefined): string {
+function outputName(moduleId: string | null | undefined, layout: BotLayout): string {
     if (isServerEntry(moduleId)) return ENTRY_FILE_NAME;
-    const extension = extname(moduleId?.split('?')[0] ?? '');
-    if (extension === '' || extension === '.ts' || extension === '.js') return '[name].js';
-    return `[name]${extension}.js`;
+    if (moduleId && isListedFileId(moduleId)) return `_virtual/files${layout.keyOf(listedFileOf(moduleId))}.js`;
+    return `[name]${BotLayout.builtExtension(withoutQuery(moduleId ?? ''))}`;
 }
 
 export abstract class ServerBuild<Target extends ResolvedServerTarget = ResolvedServerTarget> extends TargetBuild {
@@ -42,24 +41,25 @@ export abstract class ServerBuild<Target extends ResolvedServerTarget = Resolved
         super(project);
     }
 
-    public static check({ root }: ResolvedSeedcordConfig, { outDir }: ResolvedServerTarget): void {
-        assertOutDirSafe(outDir, root);
+    public static check(_: ResolvedSeedcordConfig, { outDir }: ResolvedServerTarget): void {
+        assertOutDirSafe(outDir);
     }
 
     public abstract bundle(): Promise<BundleStats>;
 
     protected async bundleJs(importBot: string[]): Promise<BundleStats> {
         const { config, configDir, files } = this.project;
+        const { layout } = files;
         const { outDir } = this.target;
         const { root } = config;
         const builtFiles = {
-            files,
+            layout,
             folders: await files.foldersIncludingEmpty(),
-            rootKey: viteKey(configDir, root),
-            configFile: relative(outDir, config.configFile)
+            rootKey: BotLayout.keyUnder(configDir, root),
+            configFile: BotLayout.keyUnder(outDir, config.configFile)
         };
 
-        const result = await this.buildBot([serverEntry(builtFiles, importBot), pinModulePaths(files)], {
+        const result = await this.buildBot([serverEntry(builtFiles, importBot), pinModulePaths(layout)], {
             outDir,
             emptyOutDir: true,
             sourcemap: true,
@@ -71,11 +71,11 @@ export abstract class ServerBuild<Target extends ResolvedServerTarget = Resolved
                     format: 'esm',
                     preserveModules: true,
                     preserveModulesRoot: root,
-                    entryFileNames: (chunk) => outputName(chunk.facadeModuleId)
+                    entryFileNames: (chunk) => outputName(chunk.facadeModuleId, layout)
                 }
             }
         });
-        return bundleStats(outputChunks(result), files, join(outDir, ENTRY_FILE_NAME));
+        return bundleStats(outputChunks(result), layout, join(outDir, ENTRY_FILE_NAME));
     }
 
     protected async buildBot(

@@ -1,15 +1,18 @@
 import { once } from 'node:events';
-import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { createServer as createHttpServer } from 'node:http';
 import { join } from 'node:path';
 
 import { LoggerChannelRegistry } from '@seedcord/logger';
+import { logsFolderIn } from '@seedcord/logger/internal';
 import { installNodeDefaults } from '@seedcord/logger/node';
 import { Envapter, Environment } from 'envapt';
 import { onTestFinished } from 'vitest';
 
 import { EdgeDevRuntime } from '#commands/dev/runtime/EdgeDevRuntime';
 import { toSeedcordInstance } from '#core/modules/importInstance';
+import { ProjectFiles } from '#core/project/ProjectFiles';
+import { realPath } from '#core/project/realPath';
 import { StateFolder } from '#core/state/StateFolder';
 import { copyEdgeBot } from '#tests/commands/build/edgeBot';
 import { ED25519_KEY_BYTES, FAKE_TOKEN } from '#tests/commands/build/smoke';
@@ -27,21 +30,28 @@ import type { AddressInfo } from 'node:net';
 const ANY_PORT = 0;
 
 function edgeTarget(projectDir: string, port: number): ResolvedEdgeTarget {
-    return { kind: 'edge', cloudflareConfig: join(projectDir, 'cloudflare.config.ts'), viteRoot: projectDir, port };
+    return {
+        kind: 'edge',
+        cloudflareConfig: realPath(join(projectDir, 'cloudflare.config.ts')),
+        viteRoot: realPath(projectDir),
+        port
+    };
 }
 
 function configWith(
     projectDir: string,
     target: ResolvedEdgeTarget,
     viteMode: string,
-    vitePlugins = vitePluginsOf()
+    vitePlugins = vitePluginsOf(),
+    files: string[] = []
 ): ResolvedSeedcordConfig {
     return {
-        configFile: join(projectDir, 'seedcord.config.ts'),
-        root: join(projectDir, 'src'),
-        instance: join(projectDir, 'src/bot.ts'),
+        configFile: realPath(join(projectDir, 'seedcord.config.ts')),
+        root: realPath(join(projectDir, 'src')),
+        instance: realPath(join(projectDir, 'src/bot.ts')),
         target,
         build: {},
+        files: files.map((folder) => realPath(folder)),
         typecheck: { enabled: false },
         idleAnimation: true,
         viteMode,
@@ -164,45 +174,29 @@ export function captureLogs(): LogRecord[] {
     return capture.records;
 }
 
-const LOGS_DIR = join(process.cwd(), 'logs');
-
-async function logFiles(): Promise<string[]> {
-    return readdir(LOGS_DIR).catch(() => []);
-}
-
-interface DevelopmentMode extends AsyncDisposable {
-    // the text of every log file written after developmentMode() ran
-    createdLogs(): Promise<string>;
+// the text of every log file seedcord dev wrote beside the project's config
+export async function projectLogs(projectDir: string): Promise<string> {
+    const logs = logsFolderIn(projectDir);
+    const files = await readdir(logs).catch(() => []);
+    const texts = await Promise.all(files.map((file) => readFile(join(logs, file), 'utf8')));
+    return texts.join('');
 }
 
 // node defaults log at trace and add a combined file only in development
-// keep every caller in one test file. parallel files would delete each other's logs here
-export async function developmentMode(): Promise<DevelopmentMode> {
+export function developmentMode(): Disposable {
     const environment = Envapter.environment;
     Envapter.environment = Environment.Development;
-    const before = new Set(await logFiles());
-    const created = async (): Promise<string[]> => {
-        const files = await logFiles();
-        return files.filter((file) => !before.has(file));
-    };
     return {
-        createdLogs: async () => {
-            const files = await created();
-            const texts = await Promise.all(files.map((file) => readFile(join(LOGS_DIR, file), 'utf8')));
-            return texts.join('');
-        },
-        [Symbol.asyncDispose]: async () => {
+        [Symbol.dispose]: () => {
             Envapter.environment = environment;
             installNodeDefaults();
-            for (const file of await created()) await rm(join(LOGS_DIR, file));
         }
     };
 }
 
-export async function asDevelopment(): Promise<() => Promise<string>> {
-    const mode = await developmentMode();
-    onTestFinished(() => mode[Symbol.asyncDispose]());
-    return () => mode.createdLogs();
+export function asDevelopment(): void {
+    const mode = developmentMode();
+    onTestFinished(() => mode[Symbol.dispose]());
 }
 
 export const messagesOf = (records: LogRecord[]): string[] => records.map((record) => record.message);
@@ -214,13 +208,20 @@ interface StartedRuntime extends AsyncDisposable {
     port(): number;
 }
 
+interface RuntimeOptions {
+    devPort?: number;
+    viteMode?: string;
+    vitePlugins?: ReturnType<typeof vitePluginsOf>;
+    files?: string[];
+}
+
 export async function startedRuntime(
     projectDir: string,
     onEvent?: DevEventHandler,
-    { devPort = ANY_PORT, viteMode = 'development', vitePlugins = vitePluginsOf() } = {}
+    { devPort = ANY_PORT, viteMode = 'development', vitePlugins = vitePluginsOf(), files = [] }: RuntimeOptions = {}
 ): Promise<StartedRuntime> {
     const target = edgeTarget(projectDir, devPort);
-    const config = configWith(projectDir, target, viteMode, vitePlugins);
+    const config = configWith(projectDir, target, viteMode, vitePlugins, files);
     const runtime = new EdgeDevRuntime(target);
     let listening: number | undefined;
     const recordPort: DevEventHandler = (event) => {
@@ -229,7 +230,12 @@ export async function startedRuntime(
     };
     await using cleanup = new AsyncDisposableStack();
     cleanup.defer(() => runtime.stop());
-    await runtime.start({ config, state: new StateFolder(projectDir, silentLogger), onEvent: recordPort });
+    await runtime.start({
+        config,
+        files: new ProjectFiles(config),
+        state: new StateFolder(projectDir, silentLogger),
+        onEvent: recordPort
+    });
     const { module } = await runtime.loadEntry();
     const instance = toSeedcordInstance(await resolveDefaultExport(module), config.instance);
     const port = (): number => {

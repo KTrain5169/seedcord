@@ -94,10 +94,14 @@ export enum SeedcordErrorCode {
     CoreWebhookUrlInvalid = 1226,
     /** Reading from Discord with `DISCORD_BOT_TOKEN` failed, like the application, its public key, or its commands. */
     CoreDiscordReadFailed = 1227,
-    /** Two routes, commands, migrations, or customId fields have the same name. */
+    /** Two routes, commands, migrations, or customId fields have the same name, or two code files build to the same file. */
     CoreDuplicateName = 1228,
     /** A Vite plugin from `vitePlugins` threw while Vite started or loaded a file, or failed when seedcord called `vitePlugins`. */
     CoreVitePluginThrew = 1229,
+    /** `readFiles` read a folder that `files` in `seedcord.config.ts` leaves out. */
+    CoreDirectoryNotListed = 1230,
+    /** A folder is inside one that `seedcord build` skips, like a dot-folder, `node_modules`, `outDir` or the logs folder. */
+    CoreDirectorySkipped = 1231,
 
     /** A command class carries `@RegisterCommand` twice. */
     DecoratorCommandAlreadyRegistered = 1301,
@@ -177,6 +181,9 @@ export enum SeedcordErrorCode {
     UtilTableOptionInvalid = 1951,
     /** `assertNever` ran with a value that its types ruled out. */
     UtilUnhandledUnionMember = 1952,
+
+    /** `WinstonFileSink` got a `filename` with a folder in it. File logs always go in the logs folder. */
+    LoggerFileNameHasFolder = 1971,
 
     /** A plugin's constructor called `rejectOptions` on the options it got. */
     PluginOptionsRejected = 2001,
@@ -290,6 +297,8 @@ export enum SeedcordErrorCode {
     CliNotProjectInstall = 3138,
     /** Vite's environments leave out the one seedcord runs the bot in. */
     CliViteEnvironmentMissing = 3139,
+    /** A folder that `files` in `seedcord.config.ts` lists is missing or is a file. */
+    CliListedFolderUnusable = 3140,
 
     /** A flag answers a question that the earlier answers skip. */
     CreateFlagNotApplicable = 3201,

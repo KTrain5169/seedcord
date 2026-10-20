@@ -1,65 +1,43 @@
-import { readdir } from 'node:fs/promises';
-import { basename, dirname, isAbsolute, join, relative } from 'node:path';
+import { basename, dirname, relative } from 'node:path';
 
-import { SeedcordErrorCode } from '@seedcord/errors';
-import { SeedcordError } from '@seedcord/errors/internal';
-import { asError } from '@seedcord/utils/internal';
-import { isInside, posixRelative } from '@seedcord/utils/node/internal';
+import { logsFolderIn } from '@seedcord/logger/internal';
+import { BotLayout } from '@seedcord/utils/internal';
 
-// the bot writes its log files to logs/ in the folder it starts in
-const PROJECT_FOLDERS = ['logs'];
-const PROJECT_FILES = [
-    'seedcord.config.*',
-    'tsconfig*.json',
-    'package.json',
-    'pnpm-lock.yaml',
-    'package-lock.json',
-    'yarn.lock',
-    'bun.lock',
-    'bun.lockb'
-];
+import type { ResolvedSeedcordConfig } from '#core/config/schema';
+import type { BotEntry } from '@seedcord/utils/internal';
 
-function isSkippedName(name: string): boolean {
-    return name.startsWith('.') || name === 'node_modules';
-}
+type ProjectPaths = Pick<ResolvedSeedcordConfig, 'root' | 'configFile' | 'files' | 'target'>;
 
-// the shape vite gives import.meta.glob keys and root imports, root-relative with a leading slash
-export function viteKey(root: string, path: string): string {
-    return `/${posixRelative(root, path)}`;
-}
+function layoutOf({ root, configFile, files, target }: ProjectPaths): BotLayout {
+    const configDir = dirname(configFile);
+    const keysOf = (paths: string[]): string[] => paths.map((path) => BotLayout.keyUnder(root, path));
+    const outDir = target.kind === 'server' ? [target.outDir] : [];
 
-interface ProjectEntry {
-    path: string;
-    isFolder: boolean;
+    return new BotLayout({
+        root,
+        listed: keysOf(files),
+        skippedFolders: keysOf([...outDir, logsFolderIn(configDir)]),
+        configFile: BotLayout.keyUnder(root, configFile)
+    });
 }
 
 export class ProjectFiles {
-    private readonly skippedFolders: string[];
+    public readonly layout: BotLayout;
 
-    constructor(
-        private readonly root: string,
-        private readonly configDir: string,
-        outDir?: string
-    ) {
-        const projectFolders = this.rootIsConfigDir() ? PROJECT_FOLDERS.map((name) => join(root, name)) : [];
-        this.skippedFolders = outDir === undefined ? projectFolders : [outDir, ...projectFolders];
+    constructor(paths: ProjectPaths) {
+        this.layout = layoutOf(paths);
     }
 
-    // vite also passes virtual ids like \0seedcord:entry here
-    // isInside resolves a relative path against process.cwd()
-    public holds(path: string): boolean {
-        return isAbsolute(path) && isInside(this.root, path);
-    }
-
-    public keyOf(path: string): string {
-        return viteKey(this.root, path);
+    public async modulePaths(folder = this.layout.root): Promise<string[]> {
+        this.layout.assertBundled(folder);
+        return this.layout.modulesUnder(folder);
     }
 
     public async foldersIncludingEmpty(): Promise<string[]> {
         const entries = await this.entries();
         return entries
             .filter(({ isFolder }) => isFolder)
-            .map(({ path }) => this.keyOf(path))
+            .map(({ path }) => this.layout.keyOf(path))
             .toSorted();
     }
 
@@ -67,46 +45,11 @@ export class ProjectFiles {
         const entries = await this.entries();
         return entries
             .map(({ path }) => path)
-            .filter((path) => basename(path).includes('#') && !relative(this.root, dirname(path)).includes('#'))
+            .filter((path) => basename(path).includes('#') && !relative(this.layout.root, dirname(path)).includes('#'))
             .toSorted();
     }
 
-    // the built files globs use root as their base
-    public globExcludes(): string[] {
-        const folders = this.skippedFolders.filter((folder) => this.holds(folder));
-        const files = this.rootIsConfigDir() ? PROJECT_FILES : [];
-        return [
-            '!**/node_modules/**',
-            '!**/.*',
-            '!**/.*/**',
-            ...folders.map((folder) => `!.${this.keyOf(folder)}/**`),
-            ...files.map((file) => `!./${file}`)
-        ];
-    }
-
-    private entries(): Promise<ProjectEntry[]> {
-        return Array.fromAsync(this.entriesUnder(this.root));
-    }
-
-    private async *entriesUnder(dir: string): AsyncGenerator<ProjectEntry> {
-        const entries = await readdir(dir, { withFileTypes: true }).catch((error: unknown) => {
-            throw new SeedcordError(SeedcordErrorCode.CorePathUnreadable, [dir, asError(error).message], {
-                cause: error
-            });
-        });
-        for (const entry of entries) {
-            const path = join(dir, entry.name);
-            if (isSkippedName(entry.name) || this.skippedFolders.includes(path)) continue;
-            if (entry.isDirectory()) {
-                yield { path, isFolder: true };
-                yield* this.entriesUnder(path);
-            } else {
-                yield { path, isFolder: false };
-            }
-        }
-    }
-
-    private rootIsConfigDir(): boolean {
-        return this.root === this.configDir;
+    private entries(): Promise<BotEntry[]> {
+        return Array.fromAsync(this.layout.entriesUnder(this.layout.root));
     }
 }

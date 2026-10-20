@@ -1,24 +1,23 @@
 import { runInNewContext } from 'node:vm';
 
 import { BAKED_IDS_KEY } from '@seedcord/core/internal';
+import { BotLayout } from '@seedcord/utils/internal';
 import { describe, expect, it } from 'vitest';
 
 import { workerEntry } from '#commands/build/builder/workerEntry';
 
-import type { ProjectFiles } from '#core/project/ProjectFiles';
 import type { BakedIds } from '@seedcord/core/internal';
 
 function bakedIdsRun(ids: BakedIds): BakedIds {
-    const plugin = workerEntry({
-        // justified: the baked ids module reads nothing off the project files
-        files: { globExcludes: () => [] } as unknown as ProjectFiles,
+    const [plugin] = workerEntry({
+        layout: BotLayout.openAt('/bot'),
         folders: [],
         instanceKey: '/bot.ts',
         functionExports: () => Promise.resolve([]),
         rootKey: '/',
         mode: { kind: 'build', ids }
     });
-    // justified: the plugin's load hook is a plain function here
+    // justified: the entry plugin's load hook is a plain function here
     const load = plugin.load as (id: string) => string;
     const slot = `globalThis[Symbol.for(${JSON.stringify(BAKED_IDS_KEY)})]`;
     // justified: the module assigns a BakedIds object to that slot

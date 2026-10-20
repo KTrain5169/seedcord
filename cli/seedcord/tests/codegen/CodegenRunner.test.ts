@@ -12,23 +12,31 @@ import { assert, describe, expect, it, onTestFinished } from 'vitest';
 
 import { AugmentationBuilder } from '#commands/codegen/AugmentationBuilder';
 import { CodegenRunner } from '#commands/codegen/CodegenRunner';
-import { LoadedConfig } from '#core/config/LoadedConfig';
 import { quietSteps } from '#core/output/quietSteps';
 import { Project } from '#core/project/Project';
+import { ProjectFiles } from '#core/project/ProjectFiles';
+import { realPath } from '#core/project/realPath';
+import { loadedConfig } from '#tests/loadedConfig';
+import { silentLogger } from '#tests/silentLogger';
 import { vitePluginsOf } from '#tests/vitePluginsOf';
 
 import type { ProjectOpener } from '#core/config/openProjectWithSteps';
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { ModuleLoader } from '#core/modules/ModuleLoader';
+import type { RealPath } from '#core/project/realPath';
 import type { ILogger } from '@seedcord/types';
 import type { SeedcordInstance } from '@seedcord/types/internal';
 
 const OUTPUT = 'seedcord-gen.d.ts';
 
-async function tempDir(prefix: string): Promise<string> {
+async function tempDir(prefix: string): Promise<RealPath> {
     const dir = await mkdtempDisposable(join(tmpdir(), prefix));
     onTestFinished(() => dir.remove());
-    return dir.path;
+    return realPath(dir.path);
+}
+
+async function commandsUnder(root: string): Promise<string> {
+    return mkdir(join(root, 'commands')).then(() => join(root, 'commands'));
 }
 
 class BanCommand extends BuilderComponent<'command'> {
@@ -39,27 +47,18 @@ class BanCommand extends BuilderComponent<'command'> {
 }
 RegisterCommand('global')(BanCommand);
 
-function silentLogger(overrides: Partial<ILogger> = {}): ILogger {
-    return {
-        error: () => undefined,
-        warn: () => undefined,
-        info: () => undefined,
-        debug: () => undefined,
-        trace: () => undefined,
-        ...overrides
-    };
-}
-
 function configAt(root: string, instance: string): ResolvedSeedcordConfig {
     mkdirSync(dirname(instance), { recursive: true });
     writeFileSync(instance, '');
     onTestFinished(() => rmSync(instance, { force: true }));
+    const at = (path: string): RealPath => realPath(resolve(root, path));
     return {
-        root,
-        instance,
-        configFile: resolve(root, 'seedcord.config.ts'),
-        target: { kind: 'server', start: resolve(root, 'index.ts'), outDir: resolve(root, 'dist') },
+        root: at('.'),
+        instance: at(instance),
+        configFile: at('seedcord.config.ts'),
+        target: { kind: 'server', start: at('index.ts'), outDir: at('dist') },
         build: {},
+        files: [],
         typecheck: { enabled: false },
         idleAnimation: false,
         tunnel: { mode: 'off' },
@@ -70,8 +69,8 @@ function configAt(root: string, instance: string): ResolvedSeedcordConfig {
 
 function projectOpener(config: ResolvedSeedcordConfig, modules: ModuleLoader & AsyncDisposable): ProjectOpener {
     return {
-        readConfig: () => Promise.resolve(new LoadedConfig(config)),
-        openProject: (loaded) => Promise.resolve(new Project(loaded.config, modules))
+        readConfig: () => Promise.resolve(loadedConfig(config)),
+        openProject: (loaded) => Promise.resolve(new Project(loaded.config, loaded.files, modules))
     };
 }
 
@@ -142,7 +141,7 @@ function pluginRunner(root: string, instance: string, pluginKeys: readonly strin
 describe('CodegenRunner plugin capabilities', () => {
     it('augments Core from the attach keys and imports the bot entry', async () => {
         const root = await tempDir('codegen-');
-        await pluginRunner(root, resolve(root, 'bot.ts'), ['db'], silentLogger()).run(false);
+        await pluginRunner(root, resolve(root, 'bot.ts'), ['db'], silentLogger).run(false);
 
         const output = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(output).toContain("import type Bot from './bot';");
@@ -151,7 +150,7 @@ describe('CodegenRunner plugin capabilities', () => {
 
     it('writes a nested bot entry as a relative specifier with no extension', async () => {
         const root = await tempDir('codegen-');
-        await pluginRunner(root, resolve(root, 'app/bot.ts'), ['db'], silentLogger()).run(false);
+        await pluginRunner(root, resolve(root, 'app/bot.ts'), ['db'], silentLogger).run(false);
 
         const output = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(output).toContain("import type Bot from './app/bot';");
@@ -160,7 +159,7 @@ describe('CodegenRunner plugin capabilities', () => {
     it('writes a bot entry above the root as a parent specifier', async () => {
         const root = await tempDir('codegen-');
         const instance = resolve(root, '..', `${root.split('/').pop() ?? 'x'}-bot.ts`);
-        await pluginRunner(root, instance, ['db'], silentLogger()).run(false);
+        await pluginRunner(root, instance, ['db'], silentLogger).run(false);
 
         const output = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(output).toContain("import type Bot from '../");
@@ -168,7 +167,7 @@ describe('CodegenRunner plugin capabilities', () => {
 
     it('emits no import and no Core block when nothing is attached', async () => {
         const root = await tempDir('codegen-');
-        await pluginRunner(root, resolve(root, 'bot.ts'), [], silentLogger()).run(false);
+        await pluginRunner(root, resolve(root, 'bot.ts'), [], silentLogger).run(false);
 
         const output = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(output).not.toContain('import type');
@@ -179,11 +178,11 @@ describe('CodegenRunner plugin capabilities', () => {
 describe('CodegenRunner writeFrom', () => {
     it('scans with the loader it is given and never opens the project', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         await writeFile(join(cmdDir, 'ban.ts'), 'export {};', 'utf8');
         const notOpened = (): Promise<never> => Promise.reject(new Error('dev already loaded the bot'));
         const projectLoader: ProjectOpener = { readConfig: notOpened, openProject: notOpened };
-        const logger = silentLogger();
+        const logger = silentLogger;
         const runner = new CodegenRunner({
             steps: quietSteps,
             projectLoader,
@@ -193,8 +192,10 @@ describe('CodegenRunner writeFrom', () => {
 
         // justified: the scan treats every import as an export map
         const modules = { importModule: () => Promise.resolve({ BanCommand }) } as ModuleLoader;
+        const config = configAt(root, resolve(root, 'bot.ts'));
         await runner.writeFrom({
-            config: configAt(root, resolve(root, 'bot.ts')),
+            config,
+            files: new ProjectFiles(config),
             // justified: codegen reads only the brand keys and config.bot off the instance
             instance: brandedInstance(cmdDir) as SeedcordInstance,
             modules
@@ -208,7 +209,7 @@ describe('CodegenRunner writeFrom', () => {
 describe('CodegenRunner', () => {
     it('keeps the project open until the command scan finishes', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         await writeFile(join(cmdDir, 'ban.ts'), 'export {};', 'utf8');
         const instancePath = resolve(root, 'bot.ts');
         let closed = false;
@@ -225,7 +226,7 @@ describe('CodegenRunner', () => {
                 return Promise.resolve();
             }
         } as ModuleLoader & AsyncDisposable;
-        const logger = silentLogger();
+        const logger = silentLogger;
         const runner = new CodegenRunner({
             steps: quietSteps,
             projectLoader: projectOpener(configAt(root, instancePath), modules),
@@ -241,7 +242,7 @@ describe('CodegenRunner', () => {
 
     it('writes the rendered registry to the project root', async () => {
         const root = await tempDir('codegen-');
-        await makeRunner(root, silentLogger()).run(false);
+        await makeRunner(root, silentLogger).run(false);
 
         const written = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(written).toContain("declare module '@seedcord/gateway'");
@@ -251,7 +252,7 @@ describe('CodegenRunner', () => {
         const root = await tempDir('codegen-');
         await writeFile(resolve(root, OUTPUT), 'stale content', 'utf8');
 
-        const check = makeRunner(root, silentLogger()).run(true);
+        const check = makeRunner(root, silentLogger).run(true);
 
         await expect(check).rejects.toMatchObject({ code: SeedcordErrorCode.CliCodegenOutOfDate });
         await expect(check).rejects.toThrow(/seedcord codegen/);
@@ -259,9 +260,9 @@ describe('CodegenRunner', () => {
 
     it('--check resolves with the registry path when the registry matches', async () => {
         const root = await tempDir('codegen-');
-        await makeRunner(root, silentLogger()).run(false);
+        await makeRunner(root, silentLogger).run(false);
 
-        await expect(makeRunner(root, silentLogger()).run(true)).resolves.toEqual({
+        await expect(makeRunner(root, silentLogger).run(true)).resolves.toEqual({
             outputPath: resolve(root, OUTPUT),
             changed: false
         });
@@ -269,7 +270,7 @@ describe('CodegenRunner', () => {
 
     it('renders an empty registry when the instance declares no commands path', async () => {
         const root = await tempDir('codegen-');
-        await makeRunner(root, silentLogger()).run(false);
+        await makeRunner(root, silentLogger).run(false);
 
         const written = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(written).toContain('interface SlashRegistry {\n\n    }');
@@ -278,7 +279,7 @@ describe('CodegenRunner', () => {
 
     it('scans command classes and skips non-command exports', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         await writeFile(join(cmdDir, 'ban.ts'), 'export {};', 'utf8');
 
         class NotACommand {
@@ -288,7 +289,7 @@ describe('CodegenRunner', () => {
         }
         const NOT_A_FUNCTION = { hello: 'world' };
 
-        await scanRunner(root, cmdDir, () => ({ BanCommand, NotACommand, NOT_A_FUNCTION }), silentLogger()).run(false);
+        await scanRunner(root, cmdDir, () => ({ BanCommand, NotACommand, NOT_A_FUNCTION }), silentLogger).run(false);
 
         const written = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(written).toContain("ban: { options: {}; cache: 'cached' }");
@@ -296,12 +297,12 @@ describe('CodegenRunner', () => {
 
     it('scans a command once when a barrel re-exports it, instead of throwing a duplicate route', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         await writeFile(join(cmdDir, 'ban.ts'), 'export {};', 'utf8');
         await writeFile(join(cmdDir, 'index.ts'), 'export {};', 'utf8');
 
         // ban.ts and index.ts both yield the same class object, as a re-export would.
-        await scanRunner(root, cmdDir, () => ({ BanCommand }), silentLogger()).run(false);
+        await scanRunner(root, cmdDir, () => ({ BanCommand }), silentLogger).run(false);
 
         const written = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(written).toContain("ban: { options: {}; cache: 'cached' }");
@@ -313,7 +314,7 @@ describe('CodegenRunner', () => {
 
         let caught: unknown;
         try {
-            await scanRunner(root, missing, () => ({}), silentLogger()).run(false);
+            await scanRunner(root, missing, () => ({}), silentLogger).run(false);
         } catch (error: unknown) {
             caught = error;
         }
@@ -327,7 +328,7 @@ describe('CodegenRunner', () => {
         'throws CorePathUnreadable for a nested unreadable subdir',
         async () => {
             const root = await tempDir('codegen-');
-            const cmdDir = await tempDir('cmds-');
+            const cmdDir = await commandsUnder(root);
             await writeFile(join(cmdDir, 'ban.ts'), 'export {};', 'utf8');
             const locked = join(cmdDir, 'locked');
             await mkdir(locked);
@@ -335,7 +336,7 @@ describe('CodegenRunner', () => {
             await chmod(locked, 0o000);
             onTestFinished(() => chmod(locked, 0o755));
 
-            const run = scanRunner(root, cmdDir, () => ({ BanCommand }), silentLogger()).run(false);
+            const run = scanRunner(root, cmdDir, () => ({ BanCommand }), silentLogger).run(false);
 
             await expect(run).rejects.toMatchObject({ code: SeedcordErrorCode.CorePathUnreadable });
             await expect(run).rejects.toThrow(locked);
@@ -344,7 +345,7 @@ describe('CodegenRunner', () => {
 
     it('throws CliCommandNotACommand for a registered class whose component is not a command', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         await writeFile(join(cmdDir, 'confirm.ts'), 'export {};', 'utf8');
 
         class ConfirmButton extends BuilderComponent<'button'> {
@@ -356,7 +357,7 @@ describe('CodegenRunner', () => {
         // a cast or plain JS gets past RegisterCommand's types
         Reflect.defineMetadata(CommandMetadataKey, { scope: 'global' }, ConfirmButton);
 
-        const run = scanRunner(root, cmdDir, () => ({ ConfirmButton }), silentLogger()).run(false);
+        const run = scanRunner(root, cmdDir, () => ({ ConfirmButton }), silentLogger).run(false);
 
         await expect(run).rejects.toMatchObject({ code: SeedcordErrorCode.CliCommandNotACommand });
         await expect(run).rejects.toThrow('ConfirmButton');
@@ -368,7 +369,7 @@ describe('CodegenRunner', () => {
 
         let caught: unknown;
         try {
-            await scanRunner(root, relativePath, () => ({}), silentLogger()).run(false);
+            await scanRunner(root, relativePath, () => ({}), silentLogger).run(false);
         } catch (error: unknown) {
             caught = error;
         }
@@ -382,7 +383,7 @@ describe('CodegenRunner', () => {
 
         let caught: unknown;
         try {
-            await invalidRunner(root, silentLogger()).run(false);
+            await invalidRunner(root, silentLogger).run(false);
         } catch (error: unknown) {
             caught = error;
         }
@@ -392,7 +393,7 @@ describe('CodegenRunner', () => {
 
     it('accepts an instance exported as a promise', async () => {
         const root = await tempDir('codegen-');
-        await asyncInstanceRunner(root, silentLogger()).run(false);
+        await asyncInstanceRunner(root, silentLogger).run(false);
 
         const written = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(written).toContain("declare module '@seedcord/gateway'");
@@ -400,14 +401,14 @@ describe('CodegenRunner', () => {
 
     it('--check leaves a current registry untouched', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         await writeFile(join(cmdDir, 'ban.ts'), 'export {};', 'utf8');
 
         const exports = (): Record<string, unknown> => ({ BanCommand });
-        await scanRunner(root, cmdDir, exports, silentLogger()).run(false);
+        await scanRunner(root, cmdDir, exports, silentLogger).run(false);
         const written = await stat(resolve(root, OUTPUT));
 
-        await scanRunner(root, cmdDir, exports, silentLogger()).run(true);
+        await scanRunner(root, cmdDir, exports, silentLogger).run(true);
 
         const afterCheck = await stat(resolve(root, OUTPUT));
         expect(afterCheck.mtimeMs).toBe(written.mtimeMs);
@@ -416,20 +417,20 @@ describe('CodegenRunner', () => {
     it('reports whether a regular run changed the registry file', async () => {
         const root = await tempDir('codegen-');
 
-        const first = await makeRunner(root, silentLogger()).run(false);
-        const second = await makeRunner(root, silentLogger()).run(false);
+        const first = await makeRunner(root, silentLogger).run(false);
+        const second = await makeRunner(root, silentLogger).run(false);
 
         expect([first.changed, second.changed]).toStrictEqual([true, false]);
     });
 
     it('leaves an unchanged registry file untouched on a regular run', async () => {
         const root = await tempDir('codegen-');
-        await makeRunner(root, silentLogger()).run(false);
+        await makeRunner(root, silentLogger).run(false);
         const outputPath = resolve(root, OUTPUT);
         const longAgo = new Date('2020-01-01');
         await utimes(outputPath, longAgo, longAgo);
 
-        await makeRunner(root, silentLogger()).run(false);
+        await makeRunner(root, silentLogger).run(false);
 
         const { mtimeMs } = await stat(outputPath);
         expect(mtimeMs).toBe(longAgo.getTime());
@@ -437,7 +438,7 @@ describe('CodegenRunner', () => {
 
     it('emits context-menu commands into the user and message registries alongside slash routes', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         await writeFile(join(cmdDir, 'commands.ts'), 'export {};', 'utf8');
 
         class ViewProfile extends BuilderComponent<'context_menu'> {
@@ -456,7 +457,7 @@ describe('CodegenRunner', () => {
         }
         RegisterCommand('global')(ReportMessage);
 
-        await scanRunner(root, cmdDir, () => ({ BanCommand, ViewProfile, ReportMessage }), silentLogger()).run(false);
+        await scanRunner(root, cmdDir, () => ({ BanCommand, ViewProfile, ReportMessage }), silentLogger).run(false);
 
         const written = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(written).toContain("ban: { options: {}; cache: 'cached' }");
@@ -470,7 +471,7 @@ describe('CodegenRunner', () => {
 
     it('throws and names the command when a registered command constructor throws', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         await writeFile(join(cmdDir, 'broken.ts'), 'export {};', 'utf8');
 
         class BrokenCommand extends BuilderComponent<'command'> {
@@ -483,7 +484,7 @@ describe('CodegenRunner', () => {
 
         let caught: unknown;
         try {
-            await scanRunner(root, cmdDir, () => ({ BrokenCommand }), silentLogger()).run(false);
+            await scanRunner(root, cmdDir, () => ({ BrokenCommand }), silentLogger).run(false);
         } catch (error: unknown) {
             caught = error;
         }
@@ -496,7 +497,7 @@ describe('CodegenRunner', () => {
 
     it('reports every command whose constructor throws at once', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         await writeFile(join(cmdDir, 'ban.ts'), 'export {};', 'utf8');
         await writeFile(join(cmdDir, 'roll.ts'), 'export {};', 'utf8');
 
@@ -517,7 +518,7 @@ describe('CodegenRunner', () => {
         const moduleByPath = (path: string): Record<string, unknown> =>
             path.endsWith('ban.ts') ? { BanCommand } : { RollCommand };
 
-        const caught: unknown = await scanRunner(root, cmdDir, moduleByPath, silentLogger())
+        const caught: unknown = await scanRunner(root, cmdDir, moduleByPath, silentLogger)
             .run(false)
             .catch((error: unknown) => error);
 
@@ -536,7 +537,7 @@ describe('CodegenRunner', () => {
 
     it('reports the constructor problems found before a file that fails to import', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         for (const file of ['a-ban.ts', 'b-roll.ts', 'c-broken.ts'])
             await writeFile(join(cmdDir, file), 'export {};', 'utf8');
 
@@ -561,7 +562,7 @@ describe('CodegenRunner', () => {
             throw importFailure;
         };
 
-        const caught: unknown = await scanRunner(root, cmdDir, moduleByPath, silentLogger())
+        const caught: unknown = await scanRunner(root, cmdDir, moduleByPath, silentLogger)
             .run(false)
             .catch((error: unknown) => error);
 
@@ -575,7 +576,7 @@ describe('CodegenRunner', () => {
 
     it('skips a BuilderComponent subclass carrying no @RegisterCommand', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         await writeFile(join(cmdDir, 'base.ts'), 'export {};', 'utf8');
 
         class Undecorated extends BuilderComponent<'command'> {
@@ -585,7 +586,7 @@ describe('CodegenRunner', () => {
             }
         }
 
-        await scanRunner(root, cmdDir, () => ({ Undecorated }), silentLogger()).run(false);
+        await scanRunner(root, cmdDir, () => ({ Undecorated }), silentLogger).run(false);
 
         const written = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(written).not.toContain('undecorated');
@@ -593,7 +594,7 @@ describe('CodegenRunner', () => {
 
     it('skips an undecorated export whose constructor throws', async () => {
         const root = await tempDir('codegen-');
-        const cmdDir = await tempDir('cmds-');
+        const cmdDir = await commandsUnder(root);
         await writeFile(join(cmdDir, 'helpers.ts'), 'export {};', 'utf8');
 
         // the scan constructs with no arguments
@@ -606,7 +607,7 @@ describe('CodegenRunner', () => {
             }
         }
 
-        await scanRunner(root, cmdDir, () => ({ BanCommand, Formatter }), silentLogger()).run(false);
+        await scanRunner(root, cmdDir, () => ({ BanCommand, Formatter }), silentLogger).run(false);
 
         const written = await readFile(resolve(root, OUTPUT), 'utf8');
         expect(written).toContain("ban: { options: {}; cache: 'cached' }");

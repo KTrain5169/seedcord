@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -14,6 +15,13 @@ import type { BuildResult } from '#commands/build/BuildRunner';
 
 const HTTP_BOT = join(import.meta.dirname, '../../fixtures/http-bot');
 
+function builtFilesContaining(text: string): string[] {
+    const dist = join(HTTP_BOT, 'dist');
+    return readdirSync(dist, { recursive: true, encoding: 'utf8' })
+        .map((file) => join(dist, file))
+        .filter((file) => statSync(file).isFile() && readFileSync(file, 'utf8').includes(text));
+}
+
 describe('seedcord build on an http bot', () => {
     let output = '';
     let result: BuildResult;
@@ -25,8 +33,8 @@ describe('seedcord build on an http bot', () => {
 
     it('reports what it bundled for the summary', () => {
         expect(result.bundle).toEqual({
-            modules: 7,
-            textFiles: 4,
+            modules: 9,
+            listedFiles: 5,
             bytes: expect.any(Number) as number,
             entry: join(HTTP_BOT, 'dist/index.mjs')
         });
@@ -36,6 +44,12 @@ describe('seedcord build on an http bot', () => {
     it('loads its handlers and text files and answers an unsigned request', () => {
         expect(output).toContain('fixture:text hello from the text table');
         expect(output).toContain('fixture:text hello from the markdown twin');
+    });
+
+    it.each(['wordmark.webp', 'theme.css'])('reads %s from a listed folder byte for byte', (name) => {
+        const source = readFileSync(join(HTTP_BOT, 'src/assets', name));
+
+        expect(output).toContain(`fixture:bytes ${name} ${createHash('sha256').update(source).digest('hex')}`);
     });
 
     it('points import.meta.filename at the built file when a text file shares its name', () => {
@@ -57,6 +71,12 @@ describe('seedcord build on an http bot', () => {
         expect(output).toContain('fixture:js-handler-loaded');
     });
 
+    it('loads .tsx and .mts handlers as code and builds them to .js files', () => {
+        expect(output).toContain('fixture:mts-handler-loaded');
+        expect(readFileSync(join(HTTP_BOT, 'dist/handlers/Dice.js'), 'utf8')).toContain('fixture:tsx-handler-loaded');
+        expect(readFileSync(join(HTTP_BOT, 'dist/handlers/Coin.js'), 'utf8')).toContain('fixture:mts-handler-loaded');
+    });
+
     it('leaves import.meta inside a string as written', () => {
         expect(output).toContain('fixture:literal import.meta.dirname stays text');
     });
@@ -67,6 +87,21 @@ describe('seedcord build on an http bot', () => {
 
     it('bundles a source folder named logs', () => {
         expect(output).toContain('fixture:text a source folder named logs');
+    });
+
+    it('writes a listed text file as plain text, named by its path under root', () => {
+        const written = readdirSync(join(HTTP_BOT, 'dist'), { recursive: true, encoding: 'utf8' });
+        const greeting = readFileSync(join(HTTP_BOT, 'dist/_virtual/files/locales/greeting.md.js'), 'utf8');
+
+        expect(written.filter((path) => path.includes('"') || path.includes(HTTP_BOT.slice(1)))).toEqual([]);
+        expect(greeting).toContain('hello from the markdown twin');
+    });
+
+    it.each([
+        ['a folder outside files', 'fixture:unlisted'],
+        ['a dot-folder inside a listed folder', 'fixture:skipped']
+    ])('bundles no text from %s', (_, marker) => {
+        expect(builtFilesContaining(marker)).toEqual([]);
     });
 
     it.skipIf(!compilesBunBinaries())(

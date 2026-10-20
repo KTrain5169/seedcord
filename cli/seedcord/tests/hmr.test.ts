@@ -18,18 +18,21 @@ import {
 } from 'vitest';
 
 import { HmrPlugin } from '#commands/dev/runtime/HmrPlugin';
-import { ViteRestartFiles } from '#commands/dev/runtime/ViteRestartFiles';
+import { RestartFiles } from '#commands/dev/runtime/RestartFiles';
+import { ProjectFiles } from '#core/project/ProjectFiles';
+import { realPath } from '#core/project/realPath';
 import { StateFolder } from '#core/state/StateFolder';
 import { silentLogger } from '#tests/silentLogger';
 import { vitePluginsOf } from '#tests/vitePluginsOf';
 
 import type { DevEvent } from '#commands/dev/runtime/events';
+import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { EnvironmentModuleNode, HotUpdateOptions, ViteDevServer } from 'vite';
 
 const HMR_EVENT_NAME = 'seedcord:hmr';
 
 // the plugin turns a save of a missing file into a delete
-const projectRoot = mkdtempSync(join(tmpdir(), 'seedcord-hmr-'));
+const projectRoot = realPath(mkdtempSync(join(tmpdir(), 'seedcord-hmr-')));
 for (const saved of [
     'src/commands/ping.ts',
     'src/commands/Click.ts',
@@ -102,10 +105,12 @@ interface ConfiguredPlugin {
 // the last-deploy tests below write to their own folder
 const STATE = new StateFolder(process.cwd(), silentLogger);
 
-const NO_RESTART_FILES = new ViteRestartFiles(projectRoot, []);
+function restartFilesOf(config: ResolvedSeedcordConfig): RestartFiles {
+    return new RestartFiles(config, new ProjectFiles(config).layout, []);
+}
 
 function configuredPlugin(config: ConstructorParameters<typeof HmrPlugin>[0], state = STATE): ConfiguredPlugin {
-    const plugin = new HmrPlugin(config, state, 'seedcord', NO_RESTART_FILES);
+    const plugin = new HmrPlugin(config, state, 'seedcord', restartFilesOf(config));
     onTestFinished(() => plugin.close());
     const listeners = new Map<string, (data: unknown) => void>();
     // justified: spy on the private `hot` getter
@@ -131,20 +136,25 @@ function configuredPlugin(config: ConstructorParameters<typeof HmrPlugin>[0], st
 
 describe('HmrPlugin', () => {
     let hmrPlugin: HmrPlugin;
-    const mockConfig = {
-        root: '/test/root',
-        configFile: 'seedcord.config.ts',
-        target: { kind: 'server', start: 'src/index.ts', outDir: 'dist' } as const,
-        instance: 'src/Seedcord.ts',
+    const mockConfig: ResolvedSeedcordConfig = {
+        root: projectRoot,
+        configFile: realPath(join(projectRoot, 'seedcord.config.ts')),
+        target: {
+            kind: 'server',
+            start: realPath(join(projectRoot, 'src/index.ts')),
+            outDir: realPath(join(projectRoot, 'dist'))
+        },
+        instance: realPath(join(projectRoot, 'src/Seedcord.ts')),
         typecheck: { enabled: false } as const,
         idleAnimation: true,
         tunnel: { mode: 'quick' } as const,
         build: {},
+        files: [],
         viteMode: 'development',
         vitePlugins: vitePluginsOf()
     };
 
-    const srcRoot = join(projectRoot, 'src');
+    const srcRoot = realPath(join(projectRoot, 'src'));
     let trace: MockInstance<Logger['trace']>;
 
     beforeEach(() => {
@@ -152,7 +162,7 @@ describe('HmrPlugin', () => {
             vi.spyOn(Logger.prototype, level).mockImplementation(() => undefined);
         }
         trace = vi.spyOn(Logger.prototype, 'trace').mockImplementation(() => undefined);
-        hmrPlugin = new HmrPlugin(mockConfig, STATE, 'seedcord', NO_RESTART_FILES);
+        hmrPlugin = new HmrPlugin(mockConfig, STATE, 'seedcord', restartFilesOf(mockConfig));
     });
 
     afterEach(() => {
@@ -160,7 +170,12 @@ describe('HmrPlugin', () => {
     });
 
     it('carries the config rollback flag onto the hmr payload', () => {
-        const plugin = new HmrPlugin({ ...mockConfig, hmr: { rollback: false } }, STATE, 'seedcord', NO_RESTART_FILES);
+        const plugin = new HmrPlugin(
+            { ...mockConfig, hmr: { rollback: false } },
+            STATE,
+            'seedcord',
+            restartFilesOf(mockConfig)
+        );
         const hotSend = vi.fn();
         // justified: spy on the private `hot` getter
         const hotHost = plugin as unknown as { hot: { send: typeof hotSend; on: ReturnType<typeof vi.fn> } };
@@ -219,6 +234,17 @@ describe('HmrPlugin', () => {
             expect(events).toContainEqual({ type: 'restart-required' });
         }
     );
+
+    it('asks for a restart on a lockfile save beside the config of a bot rooted at ./src', () => {
+        const config = { ...mockConfig, root: srcRoot };
+        const lockfile = join(projectRoot, 'pnpm-lock.yaml');
+        writeFileSync(lockfile, '');
+        const { plugin, events } = configuredPlugin(config);
+
+        viteHotUpdate(plugin, 'update', lockfile);
+
+        expect(events).toContainEqual({ type: 'restart-required' });
+    });
 
     it('asks for a restart on a save matching a ./ pattern in hmr.restart', () => {
         const { plugin, events } = configuredPlugin({

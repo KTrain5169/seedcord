@@ -1,3 +1,4 @@
+import type { RealPath } from '#core/project/realPath';
 import type { EdgeTarget, ServerTarget } from './detectTarget';
 import type { VitePlugins } from './vitePlugins';
 import type { TypedOmit } from '@seedcord/types';
@@ -86,6 +87,13 @@ export interface SeedcordConfig {
      */
     instance: string;
     /**
+     * Folders whose non-code files `seedcord build` bundles for `readFiles` to read, like `['./locales']`.
+     * Each one includes its subfolders and resolves against `root`.
+     *
+     * @defaultValue `[]`
+     */
+    files?: string[];
+    /**
      * How `seedcord dev` exposes an http bot's interactions server. This has no effect on a gateway bot.
      *
      * `true` opens a cloudflared quick tunnel and writes the interactions endpoint on every run,
@@ -143,23 +151,25 @@ export type ResolvedTunnel = { mode: 'off' } | { mode: 'quick' } | { mode: 'url'
 
 export type ResolvedEdgeTarget = EdgeTarget & { port: number };
 
-export type ResolvedServerTarget = ServerTarget & { start: string | undefined; outDir: string };
+export type ResolvedServerTarget = ServerTarget & { start: RealPath | undefined; outDir: RealPath };
 
 export type ResolvedTarget = ResolvedServerTarget | ResolvedEdgeTarget;
 
-export type ResolvedTypecheck = { enabled: false } | { enabled: true; tsconfig?: string };
+export type ResolvedTypecheck = { enabled: false } | { enabled: true; tsconfig?: RealPath };
 
 export interface ResolvedSeedcordBuildConfig {
-    tsconfig?: string;
+    tsconfig?: RealPath;
 }
 
-// every path in here is absolute
 export interface ResolvedSeedcordConfig extends Required<
-    TypedOmit<SeedcordConfig, 'build' | 'hmr' | 'tunnel' | 'port' | 'vitePlugins'>
+    TypedOmit<SeedcordConfig, 'build' | 'hmr' | 'tunnel' | 'port' | 'vitePlugins' | 'root' | 'instance' | 'files'>
 > {
+    root: RealPath;
+    instance: RealPath;
+    files: RealPath[];
     tunnel: ResolvedTunnel;
     vitePlugins: VitePlugins;
-    configFile: string;
+    configFile: RealPath;
     target: ResolvedTarget;
     build: ResolvedSeedcordBuildConfig;
     typecheck: ResolvedTypecheck;

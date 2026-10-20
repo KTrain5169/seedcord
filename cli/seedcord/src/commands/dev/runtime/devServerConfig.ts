@@ -1,33 +1,34 @@
-import { dirname, resolve } from 'node:path';
+import { dirname } from 'node:path';
 
-import { isInside, moduleGlobs, posixRelative } from '@seedcord/utils/node/internal';
+import { posixRelative, toPosixPath } from '@seedcord/utils/internal';
+import { minimatch } from 'minimatch';
 
 import { BOT_ENVIRONMENT } from '#core/modules/botEnvironment';
 import { mergeViteConfig, NODE_CONDITIONS, userCodeBase, userCodeConfig } from '#core/modules/userCodeConfig';
-import { watchedPath } from '#core/project/watchedPath';
 import { STATE_FOLDER } from '#core/state/StateFolder';
 
 import { workerLogger } from './workerLogger';
 
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
+import type { BotLayout } from '@seedcord/utils/internal';
 import type { InlineConfig, ServerOptions, UserConfig } from 'vite';
 
-type DevConfigPaths = Pick<ResolvedSeedcordConfig, 'root' | 'configFile'>;
+// a linked workspace package lives outside root
+const OUTSIDE_ROOT_IGNORES = ['node_modules', 'dist', '.git', STATE_FOLDER].map((folder) => `**/${folder}{,/**}`);
 
-// a **/logs/** glob would also swallow a source directory named logs
-// WinstonFileSink writes logs/ under the cwd
-function logsIgnore(cwd: string): (path: string) => boolean {
-    const logs = resolve(watchedPath(cwd), 'logs');
-
-    return (path) => isInside(logs, path);
-}
-
-export function devWatchOptions(cwd: string): NonNullable<ServerOptions['watch']> {
-    return { ignored: ['**/node_modules/**', '**/dist/**', '**/.git/**', `**/${STATE_FOLDER}/**`, logsIgnore(cwd)] };
+export function devWatchOptions(layout: BotLayout): NonNullable<ServerOptions['watch']> {
+    const ignored = (file: string): boolean => {
+        // HmrPlugin asks for a restart when one changes
+        if (layout.isProjectFile(file)) return false;
+        if (layout.isSkipped(file)) return true;
+        const posix = toPosixPath(file);
+        return !layout.holds(file) && OUTSIDE_ROOT_IGNORES.some((pattern) => minimatch(posix, pattern, { dot: true }));
+    };
+    return { ignored };
 }
 
 // vite writes resolved options back into the config object it receives
-function devViteConfig(base: UserConfig, cwd: string): InlineConfig {
+function devViteConfig(base: UserConfig, layout: BotLayout): InlineConfig {
     return mergeViteConfig(base, {
         // vite searches its own root for a config file
         configFile: false,
@@ -36,21 +37,24 @@ function devViteConfig(base: UserConfig, cwd: string): InlineConfig {
             middlewareMode: true,
             // no browser connects to vite's hmr socket on port 24678
             ws: false,
-            watch: devWatchOptions(cwd)
+            watch: devWatchOptions(layout)
         }
     });
 }
 
-export function serverViteConfig(config: DevConfigPaths, cwd: string): InlineConfig {
-    const configDir = dirname(config.configFile);
-    return mergeViteConfig(devViteConfig(userCodeConfig(NODE_CONDITIONS, configDir), cwd), {
+export function serverViteConfig(
+    { configFile }: Pick<ResolvedSeedcordConfig, 'configFile'>,
+    layout: BotLayout
+): InlineConfig {
+    const configDir = dirname(configFile);
+    return mergeViteConfig(devViteConfig(userCodeConfig(NODE_CONDITIONS, configDir), layout), {
         root: configDir,
         logLevel: 'error'
     });
 }
 
-export function edgeViteConfig(config: DevConfigPaths, viteRoot: string, cwd: string): InlineConfig {
-    return mergeViteConfig(devViteConfig(userCodeBase(), cwd), {
+export function edgeViteConfig(layout: BotLayout, viteRoot: string): InlineConfig {
+    return mergeViteConfig(devViteConfig(userCodeBase(), layout), {
         root: viteRoot,
         customLogger: workerLogger(),
         // discord's POST arrives under the tunnel's hostname. the endpoint blocks every other request
@@ -59,7 +63,7 @@ export function edgeViteConfig(config: DevConfigPaths, viteRoot: string, cwd: st
         environments: {
             [BOT_ENVIRONMENT]: {
                 // a glob reads a windows separator as an escape
-                optimizeDeps: { entries: moduleGlobs(posixRelative(viteRoot, config.root) || '.') }
+                optimizeDeps: { entries: layout.moduleGlobs(posixRelative(viteRoot, layout.root) || '.') }
             }
         }
     });

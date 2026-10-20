@@ -1,8 +1,8 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { SeedcordErrorCode, isSeedcordError } from '@seedcord/errors';
-import { toPosixPath } from '@seedcord/utils/node/internal';
+import { toPosixPath } from '@seedcord/utils/internal';
 import { assert, describe, it, expect, onTestFinished, vi } from 'vitest';
 
 import { ProjectLoader } from '#core/config/ProjectLoader';
@@ -41,6 +41,24 @@ describe('ProjectLoader', () => {
             outDir: resolve(projectDir, 'dist')
         });
         expect(resolved.build.tsconfig).toBeUndefined();
+    });
+
+    it('resolves every path under a symlinked root to the folder the link points at', async () => {
+        const projectDir = tempProject();
+        writeFileSync(join(projectDir, 'seedcord.config.ts'), '');
+        const source = join(projectDir, 'source');
+        mkdirSync(source);
+        symlinkSync(source, join(projectDir, 'src'), 'dir');
+        const { open } = stubModulesExporting({ ...MINIMAL, root: './src', files: ['./locales'] });
+
+        await using loaded = await new ProjectLoader(open, new ShellMode()).readConfig(projectDir);
+
+        expect(loaded.config).toMatchObject({
+            root: source,
+            instance: join(source, 'bot.ts'),
+            files: [join(source, 'locales')],
+            target: { start: join(source, 'index.ts') }
+        });
     });
 
     it.each([
@@ -422,13 +440,51 @@ describe('ProjectLoader validation', () => {
             message: expect.stringContaining('() => [yaml()]') as string
         });
     });
+});
 
-    // dev and codegen never write outDir
-    it('loads a build.outDir that holds root', async () => {
-        const { projectDir, load } = projectWith({ ...MINIMAL, root: './src', build: { outDir: '.' } });
+describe('ProjectLoader files', () => {
+    it('lists no folders when the config leaves files out', async () => {
+        const { files } = await projectWith(MINIMAL).load();
 
-        const { target } = await load();
+        expect(files).toEqual([]);
+    });
 
-        expect(target).toMatchObject({ outDir: projectDir });
+    it('resolves a relative folder against root and keeps an absolute one', async () => {
+        const projectDir = tempProject();
+        writeFileSync(join(projectDir, 'seedcord.config.ts'), '');
+        const tags = join(projectDir, 'src', 'tags');
+        const { open } = stubModulesExporting({ ...MINIMAL, root: './src', files: ['./locales', tags] });
+
+        await using loaded = await new ProjectLoader(open, new ShellMode()).readConfig(projectDir);
+
+        expect(loaded.config.files).toEqual([join(projectDir, 'src', 'locales'), tags]);
+    });
+
+    it('throws CorePathOutsideRoot for a folder outside root', async () => {
+        const load = projectWith({ ...MINIMAL, root: './src', files: ['../shared'] }).load();
+
+        await expect(load).rejects.toMatchObject({
+            code: SeedcordErrorCode.CorePathOutsideRoot,
+            message: expect.stringContaining('shared') as string
+        });
+    });
+
+    it('throws CliConfigOutDirDeletesRoot for an outDir that holds root, the way seedcord dev loads it', async () => {
+        const load = projectWith({ ...MINIMAL, root: './src', build: { ...MINIMAL.build, outDir: '.' } }).load();
+
+        await expect(load).rejects.toMatchObject({ code: SeedcordErrorCode.CliConfigOutDirDeletesRoot });
+    });
+
+    it('throws CoreDirectorySkipped for a folder inside a dot-folder', async () => {
+        const load = projectWith({ ...MINIMAL, files: ['./.drafts/locales'] }).load();
+
+        await expect(load).rejects.toMatchObject({ code: SeedcordErrorCode.CoreDirectorySkipped });
+    });
+
+    it.each([['./locales'], [['./locales', 3]]])('rejects files set to %j', async (files) => {
+        await expect(projectWith({ ...MINIMAL, files }).load()).rejects.toMatchObject({
+            code: SeedcordErrorCode.CliConfigInvalidField,
+            message: expect.stringContaining('files in the seedcord config') as string
+        });
     });
 });

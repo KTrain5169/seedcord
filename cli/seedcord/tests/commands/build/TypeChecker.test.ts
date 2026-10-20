@@ -7,6 +7,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { TypeChecker } from '#commands/build/builder/TypeChecker';
 import { Project } from '#core/project/Project';
+import { ProjectFiles } from '#core/project/ProjectFiles';
+import { realPath } from '#core/project/realPath';
 
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 
@@ -18,19 +20,25 @@ beforeEach(async () => {
     return () => tmp.remove();
 });
 
-// justified: the type checker reads only configFile and build
 function projectFor(tsconfig?: string): Project {
-    const config = {
-        root: projectDir,
-        configFile: join(projectDir, 'seedcord.config.ts'),
-        target: { kind: 'server', start: join(projectDir, 'index.ts'), outDir: join(projectDir, 'dist') },
-        build: tsconfig === undefined ? {} : { tsconfig }
-    } as ResolvedSeedcordConfig;
+    const read: Pick<ResolvedSeedcordConfig, 'root' | 'configFile' | 'files' | 'target' | 'build'> = {
+        root: realPath(projectDir),
+        configFile: realPath(join(projectDir, 'seedcord.config.ts')),
+        files: [],
+        target: {
+            kind: 'server',
+            start: realPath(join(projectDir, 'index.ts')),
+            outDir: realPath(join(projectDir, 'dist'))
+        },
+        build: tsconfig === undefined ? {} : { tsconfig: realPath(tsconfig) }
+    };
+    // justified: the type checker and Project read only the fields above
+    const config = read as ResolvedSeedcordConfig;
     const loader = {
         importModule: () => Promise.reject(new Error('the type checker loads no modules')),
         [Symbol.asyncDispose]: () => Promise.resolve()
     };
-    return new Project(config, loader);
+    return new Project(config, new ProjectFiles(config), loader);
 }
 
 describe('TypeChecker', () => {

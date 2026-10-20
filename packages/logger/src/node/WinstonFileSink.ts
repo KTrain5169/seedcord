@@ -1,7 +1,11 @@
 import * as path from 'node:path';
 
-import { builtConfigDir } from '@seedcord/utils/node/internal';
+import { SeedcordErrorCode } from '@seedcord/errors';
+import { SeedcordTypeError } from '@seedcord/errors/internal';
+import { botConfigDir } from '@seedcord/utils/internal';
 import { createLogger, transports } from 'winston';
+
+import { logsFolderIn } from '#src/logsFolderIn';
 
 import { ensureDir, fileFormat, NODE_LEVELS, preFormat, resolveFilename, toInfo } from './winston';
 
@@ -22,8 +26,12 @@ export class WinstonFileSink implements ILogSink {
     private winston?: Winston;
 
     constructor(options?: { filename?: string; format?: SinkFormat; maxSize?: number; maxFiles?: number }) {
-        const filename = resolveFilename(options?.filename ?? 'logs/combined-{timestamp}.log');
-        this.filename = path.resolve(builtConfigDir() ?? process.cwd(), filename);
+        const logsFolder = logsFolderIn(botConfigDir() ?? process.cwd());
+        const filename = options?.filename ?? 'combined-{timestamp}.log';
+        if (/[\\/]/.test(filename)) {
+            throw new SeedcordTypeError(SeedcordErrorCode.LoggerFileNameHasFolder, [filename, logsFolder]);
+        }
+        this.filename = path.join(logsFolder, resolveFilename(filename));
         this.format = options?.format ?? 'pretty';
         this.maxSize = options?.maxSize;
         this.maxFiles = options?.maxFiles;
