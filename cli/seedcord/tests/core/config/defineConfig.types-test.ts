@@ -9,3 +9,9 @@ defineConfig({ instance: './bot.ts', build: { start: './index.ts' } });
 
 defineServerConfig({ instance: './bot.ts', build: { start: './index.ts', outDir: './out' } });
 defineServerConfig({ instance: './bot.ts' });
+
+// @ts-expect-error entry moved to build.start
+defineServerConfig({ instance: './bot.ts', entry: './index.ts' });
+
+// @ts-expect-error build.bootstrap is gone, the entry is always index.mjs
+defineServerConfig({ instance: './bot.ts', build: { bootstrap: './boot.ts' } });

@@ -2,4 +2,4 @@
 'create-seedcord': minor
 ---
 
-Creates a .gitattributes template and marks seedcord-gen.d.ts as generated.
+A new project now gets a `.gitattributes` that marks `seedcord-gen.d.ts` as generated and checks text files out with LF line endings.

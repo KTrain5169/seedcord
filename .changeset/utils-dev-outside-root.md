@@ -1,5 +1,6 @@
 ---
-'@seedcord/utils': patch
+'@seedcord/utils': minor
+'seedcord': minor
 ---
 
-Under `seedcord dev`, `importFiles` now throws `CorePathOutsideRoot` for a folder outside `root`, the same as a built bot. It used to import the folder in dev and fail only once the bot was built.
+**BREAKING:** Under `seedcord dev` and in a built bot, `importFiles` and `readFiles` now throw `CorePathOutsideRoot` for a folder outside `root`, and `CoreDirectorySkipped` for a folder that `seedcord build` leaves out of the bot, like `./locales/.cache`. `seedcord codegen`, `build` and `commands` run the same checks on the folders in your config.

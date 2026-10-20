@@ -1,4 +1,5 @@
 ---
+'@seedcord/utils': patch
 '@seedcord/core': patch
 '@seedcord/gateway': patch
 '@seedcord/http': patch

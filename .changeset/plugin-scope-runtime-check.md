@@ -2,7 +2,7 @@
 '@seedcord/core': minor
 '@seedcord/errors': minor
 '@seedcord/gateway': patch
-'@seedcord/http': patch
+'@seedcord/http': minor
 '@seedcord/plugin-mongoose': patch
 '@seedcord/plugin-kysely-postgres': patch
 ---

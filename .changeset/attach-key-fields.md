@@ -4,4 +4,4 @@
 '@seedcord/http': patch
 ---
 
-Fixed `attach` rejecting a few unused keys as already taken, like `seedcord.attach('token', MyPlugin)` on an http bot.
+Fixed `attach` rejecting a free key like `token` as already taken, as in `seedcord.attach('token', MyPlugin)` on an http bot.

@@ -1,5 +1,5 @@
 ---
-'seedcord': patch
+'seedcord': minor
 ---
 
-`seedcord dev` and `codegen` now throw `CliConfigOutDirDeletesRoot` for an `outDir` that holds `root`, the same as `seedcord build`.
+**BREAKING:** `seedcord dev`, `codegen` and `commands` now throw `CliConfigOutDirDeletesRoot` for an `outDir` that holds `root`, the same as `seedcord build`.

@@ -1,6 +1,5 @@
 ---
-'@seedcord/errors': patch
 '@seedcord/utils': patch
 ---
 
-Error messages and `formatFilePath` now print paths with forward slashes on Windows, like `src/bot.ts`.
+Fixed `formatFilePath` printing backslashes on Windows. It now prints `./src/bot.ts` where it printed `.\src\bot.ts`.

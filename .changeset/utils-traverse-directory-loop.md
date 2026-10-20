@@ -2,4 +2,4 @@
 '@seedcord/utils': minor
 ---
 
-**BREAKING:** `importFiles` takes only the folder now and returns files for a `for await` loop, sorted by path. A plugin that wrote `await traverseDirectory(dir, (fullPath, relativePath, imported) => {})` writes `for await (const { fullPath, relativePath, imported } of importFiles(dir)) {}` instead.
+**BREAKING:** `@seedcord/utils/node` is gone, and its `traverseDirectory` is now `importFiles` from `@seedcord/utils` (#410). It takes only the folder and returns files for a `for await` loop, sorted by path. A plugin that wrote `await traverseDirectory(dir, (fullPath, relativePath, imported) => {})` should now write `for await (const { fullPath, relativePath, imported } of importFiles(dir)) {}`.
