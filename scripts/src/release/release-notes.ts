@@ -5,7 +5,7 @@ import process from 'node:process';
 import { promisify } from 'node:util';
 
 import { CliFlags } from '#src/lib/CliFlags';
-import { PUBLISHED_FLAGS, readPublished } from '#src/lib/published-packages';
+import { PUBLISHED_FLAGS, readPublished, readStatusReleases } from '#src/lib/published-packages';
 import { Workspace } from '#src/lib/Workspace';
 import { isStable } from '#src/release/changelog-format';
 import { resolvePackages } from '#src/release/release-packages';
@@ -36,7 +36,10 @@ async function main(): Promise<void> {
 
     const parsed = flags.parse(argv);
     const repo = parsed.repo ?? 'seedcord/seedcord';
-    const published = await resolvePackages(await Workspace.load(import.meta.dirname), await readPublished(parsed));
+    const workspace = await Workspace.load(import.meta.dirname);
+    const flagged = parsed.published !== undefined || parsed['published-file'] !== undefined;
+    const entries = flagged ? await readPublished(parsed) : await readStatusReleases(workspace);
+    const published = await resolvePackages(workspace, entries);
 
     const tags = await releaseTags();
     const [onCommit] = await releaseTags('--points-at', 'HEAD');

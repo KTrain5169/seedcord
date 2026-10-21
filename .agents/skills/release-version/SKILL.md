@@ -22,6 +22,12 @@ description: Release seedcord's packages through changesets pre mode. Cut a prer
 - It reads only git-tracked changeset files, so `git add .changeset` first or a new `.md` is invisible to it.
 - On the `next` line, run `pnpm cs:status --since next` so the baseline is the prerelease tip. The config `baseBranch` is `main`, so the default compares against stable.
 
+## Preview the GitHub release post
+
+`pnpm release:preview` writes the post for the stable release on `main` to `release.md`, and `pnpm release:preview --pre` writes the one for the next prerelease. It checks `HEAD` out into a temporary worktree, then runs `pnpm install`, `cs:status`, `cs:version` and `release:notes` there, so it doesn't mess with your active checkout. It skips uncommitted changesets.
+
+`release:notes` on its own reads `.changeset/status.json` when it gets no `--published` flag. CI passes `--published` with the packages `changeset publish` reported.
+
 ## Pushing to `main` and `next`
 
 The `Require PR for main or next` ruleset covers both branches. It requires a pull request, linear history and signed commits, and it lets admins bypass all three. Every direct `git push` below, and every `git merge` that makes a merge commit, needs that bypass.

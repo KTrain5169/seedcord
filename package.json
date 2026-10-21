@@ -40,6 +40,7 @@
         "cs:version": "cross-env-shell \"NODE_OPTIONS='--import tsx'\" \"changeset version && pnpm tsx scripts/src/release/tidy-changelogs.ts && prettier --write '**/CHANGELOG.md'\"",
         "release": "pnpm build && pnpm cs:publish",
         "release:notes": "tsx scripts/src/release/release-notes.ts",
+        "release:preview": "tsx scripts/src/release/preview-release.ts",
         "deps:check": "taze major",
         "deps:bump": "taze major -w -i",
         "docs:extract": "pnpm tsx scripts/src/docs/extract-docs.ts -o ./generated --project-folder-url https://github.com/seedcord/seedcord --ref next",

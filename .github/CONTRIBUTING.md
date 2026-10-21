@@ -139,6 +139,8 @@ Run `pnpm prePush` before you open the PR. It checks the packages your branch ch
 
 3. **Add a changeset** with `pnpm cs` for any change to a published package. Read [`skills/changeset-guidelines`](../.agents/skills/changeset-guidelines/SKILL.md) before you write it. A breaking change is a minor bump while seedcord is pre-1.0. `pnpm lint:changesets` checks the format, and CI runs it.
 
+    To see your changeset as the GitHub release post, commit it and run `pnpm release:preview`. It writes the post for the stable release on `main` to `release.md` in the repo root, and `--pre` writes the one for the next prerelease. It versions a temporary copy of `HEAD`, so it doesn't mess with your checkout.
+
 4. **Write the failing test first.** Watch it fail, then fix the code. A regression test that passes before your change proves nothing. Tests live in `<package>/tests/`, mirroring `src/`, and `pnpm -C <package> test:watch` reruns them as you work.
 
 5. **Say which transport you tested on.** Gateway and http share most of their surface and differ in places. If a change touches both, say so.

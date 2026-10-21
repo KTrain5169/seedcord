@@ -89,6 +89,23 @@ The other way a verb goes missing is a split sentence, where one clause becomes 
 
 <!--prettier-ignore-end-->
 
+### Every verb gets its actor
+
+Passive voice is banned, and so is a sentence that reports a state with nobody causing it. Both hide who does the thing, so the reader has to work out what acted and whether they need to do anything. Find the actor, make it the subject, and hand it an active verb.
+
+<!--prettier-ignore-start-->
+
+| Actor-less | Actor and verb |
+|---|---|
+| the checkout you run it from stays untouched | it doesn't mess with your checkout |
+| uncommitted changesets are left out | it skips uncommitted changesets |
+| your checkout stays as it was, because the versioning runs in a temporary copy | it versions a temporary copy of `HEAD`, so it doesn't mess with your checkout |
+| the token is refreshed on expiry | the client refreshes the token when it expires |
+
+<!--prettier-ignore-end-->
+
+The tell is a form of `be`, `stay`, `get`, or `remain` followed by a past participle, as in `is sent`, `stays untouched`, `gets skipped`, or `remains unchanged`. A participle working as a plain adjective with the actor already in the sentence is fine, as in "the bot reads the cached value".
+
 ### Keep the subject next to its verb
 
 A noun made from a verb can take the subject slot, and then a clause slips in between that subject and its own verb. The reader reaches the end, finds they attached the object to the wrong verb, and has to go back and parse the sentence a second time. This is a garden path sentence. Put the action back in a verb and the sentence reads in one pass.

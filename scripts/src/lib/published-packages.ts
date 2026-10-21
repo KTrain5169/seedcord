@@ -1,4 +1,8 @@
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+
+import type { Workspace } from '#src/lib/Workspace';
 
 export interface PublishedPackage {
     name: string;
@@ -29,4 +33,21 @@ export async function readPublished(values: {
 
         return { name, version };
     });
+}
+
+export async function readStatusReleases(workspace: Workspace): Promise<PublishedPackage[]> {
+    const file = path.join(workspace.rootDir, '.changeset', 'status.json');
+    if (!existsSync(file)) {
+        throw new Error(`${file} does not exist. Run \`pnpm cs:status\` first, or pass --published.`);
+    }
+
+    // justified: changesets writes this file
+    const { releases } = JSON.parse(await readFile(file, 'utf8')) as {
+        releases: { name: string; newVersion: string }[];
+    };
+    const isPublic = new Set(workspace.published().map((pkg) => pkg.packageJson.name));
+
+    return releases
+        .filter(({ name }) => isPublic.has(name))
+        .map(({ name, newVersion }) => ({ name, version: newVersion }));
 }
