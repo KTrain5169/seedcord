@@ -1,4 +1,4 @@
-import { Seedcord } from '@seedcord/http';
+import { Seedcord, WinstonConsoleSink, WinstonFileSink } from '@seedcord/http';
 
 import { PingCounter } from './plugins/PingCounter';
 import { Uptime } from './plugins/Uptime';
@@ -17,7 +17,10 @@ export const seedcord = new Seedcord({
         path: null
     },
     botColor: '#fe565a',
-    port: 6967
+    port: 6967,
+    logger: {
+        sinks: [new WinstonConsoleSink(), new WinstonFileSink({ filename: 'http-mock-{timestamp}.log' })]
+    }
 })
     .attach('stats.uptime', Uptime)
     .attach('stats.pings', PingCounter);

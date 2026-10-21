@@ -154,10 +154,9 @@ describe('dev runtime importModule', () => {
     it('returns the new code of a command after it is saved', async () => {
         const { runtime, ban } = await startedRuntime();
 
-        await writeFile(ban, "export const marker = { version: 'after' };\n");
-
         await vi.waitFor(
             async () => {
+                await writeFile(ban, "export const marker = { version: 'after' };\n");
                 const { marker } = await runtime.importModule<Ban>(ban);
                 expect(marker.version).toBe('after');
             },

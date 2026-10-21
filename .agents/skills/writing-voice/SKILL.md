@@ -195,7 +195,11 @@ Aim for a spread in length, in how sentences open, and in what each one is doing
 6. Give the condition, never the smoothness. Replace "no manual wiring" with "on a 429 the client waits `Retry-After` seconds before the next attempt".
 7. Prefer the concrete noun over the promised benefit. "Throws `TimeoutError` when no response arrives within `timeout` ms" beats any adjective.
 8. Count a list only when the set is closed. "The four lifecycle phases" is right when there are four. A sample of three out of thirty reads as all thirty unless the sentence says otherwise.
-9. Say what is. Write what the thing does or what is true. A sentence built on no, not, never, or no longer makes the reader picture the opposite first and then flip it.
+9. Say what is. Write what the thing does or what is true.
+
+Negation is normal English. "The CLI doesn't write a log file" is a fine sentence. Three shapes make a negation read badly.
+
+**It describes a thing by what it lacks, when a positive fact says more.** The reader pictures the opposite first and then flips it. Write the positive fact.
 
 <!--prettier-ignore-start-->
 
@@ -207,7 +211,21 @@ Aim for a spread in length, in how sentences open, and in what each one is doing
 
 <!--prettier-ignore-end-->
 
-Keep a negation only when the absence is the fact itself, as in "throws when the file does not exist". There, use "not" over "no". "Does not throw" reads faster than "throws no error".
+**It puts the "no" on the object of an action verb.** The verb reads like something happens, then the "no" takes it back. Negate the verb with "not" or "doesn't".
+
+<!--prettier-ignore-start-->
+
+| Negated object | Negated verb |
+|---|---|
+| writes no log file | doesn't write a log file |
+| throws no error | doesn't throw |
+| makes no request until you call `start()` | doesn't make a request until you call `start()` |
+
+<!--prettier-ignore-end-->
+
+**It repeats the sentence before it in reverse.** "Installs only the console sink. It never writes a log file." The first sentence already said it, so delete the second.
+
+Swapping "not" for "no", "never", or "alone" to get past this rule hides the negation without fixing the sentence.
 
 Rule of thumb: if an adjective cannot be replaced by a measurable fact or a code reference, delete it.
 
