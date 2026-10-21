@@ -79,7 +79,7 @@ And finally select Cloudflare Workers.
 
 Make sure to fill in the remaining details as requested, and then your bot should now be scaffolded.
 
-> [!TIP]
+> Note: The runtime option will only appear for edge bots.
 
 Now, `cd` into your project directory:
 
@@ -100,6 +100,34 @@ pnpx cf deploy --prebuilt
 ```
 
 Make sure you link your Cloudflare account, and voila! Now you've got a seedcord edge bot deployed to Cloudflare.
+
+---
+
+## Command management via CLI
+
+If you've ever deployed any bot to Discord (not just seedcord ones), you'll know that command management is a bit of a pain. There's no way to delete your registered commands in your console, neither for globally-registered or guild-registered commands.
+
+That pain is no more for seedcord bots! Starting with this version, the framework CLI now has a `commands` subcommand, which is your home for managing command deployments.
+
+Running `seedcord commands` gives you the following options:
+
+![Command manager](./command-manager.webp)
+
+- `Deploy the commands in your code` - seedcord will read your code, compile a list of commands, and deploy them according to how you configured your command (`guild` commands are deployed to a server of your choosing, `global` commands are deployed to the bot itself).
+- `List the commands Discord has` - Obtains the list of commands that your bot has deployed in servers or globally.
+- `Delete guild commands that duplicate a global command` - Dedupes any guild commands with the same name as any deployed global commands.
+- `Delete every command globally or in guilds` - Deletes every command your bot has registered, glbally and/or in guilds. **This is very destructive, ensure that you are using the correct bot and targeting the correct guild!**
+
+Each of these can also be accessed with subcommands:
+
+- `deploy [options]`
+- `list [options]`
+- `clean [options]`
+- `purge [options]`
+
+This allows you to have simplified command management while building and maintaining your seedcord bot!
+
+For a wider usage of the guide
 
 ---
 
@@ -134,18 +162,6 @@ For Gateway bots, start them using the `start` method:
 await bot.start();
 ```
 
-Your bot can now be used like a library in your app.
+Your bot can now be used like a library in another app.
 
 ---
-
-## Command management via CLI
-
-If you've ever deployed any bot to Discord (not just seedcord ones), you'll know that command management is a bit of a pain. There's no way to delete your registered commands in your console, neither for globally-registered or guild-registered commands.
-
-That pain is no more for seedcord bots! Starting with this version, the framework CLI now has a `commands` subcommand, which is your home for managing command deployments.
-
-Running `seedcord commands` gives you the following options:
-
-![Command manager](./command-manager.webp)
-
--
