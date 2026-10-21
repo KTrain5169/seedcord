@@ -36,14 +36,16 @@ export function StatusBand(props: StatusBandProps): ReactElement {
                         {state.status ? <Text dimColor> · {state.status}</Text> : null}
                     </Text>
                 </Box>
-                {canToggleRail ? (
+                <Box flexShrink={0}>
+                    {canToggleRail ? (
+                        <KeySlot>
+                            <RailKey shown={false} />
+                        </KeySlot>
+                    ) : null}
                     <KeySlot>
-                        <RailKey shown={false} />
+                        <DetailsKey mode={details} />
                     </KeySlot>
-                ) : null}
-                <KeySlot>
-                    <DetailsKey mode={details} />
-                </KeySlot>
+                </Box>
             </Box>
             <Box justifyContent="space-between">
                 <Box flexShrink={1} overflow="hidden">
