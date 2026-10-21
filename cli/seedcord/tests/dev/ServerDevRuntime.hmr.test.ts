@@ -2,11 +2,12 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { afterAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 
 import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
 
 import { devContextFor } from './devConfigFor';
+import { saveUntil } from './saveUntil';
 
 import type { DevEvent } from '#commands/dev/runtime/events';
 
@@ -43,9 +44,7 @@ describe('dev runtime hot reload', () => {
         const url = pathToFileURL(handler).href;
         expect(await read(url)).toBe('before');
 
-        await writeFile(handler, "export const value = 'after';\n");
-
-        await vi.waitFor(async () => expect(await read(url)).toBe('after'), { timeout: 10_000, interval: 200 });
+        await saveUntil(handler, "export const value = 'after';\n", async () => expect(await read(url)).toBe('after'));
     }, 60_000);
 
     it('imports the new code of a helper when its handler is imported again', async () => {
@@ -70,9 +69,7 @@ describe('dev runtime hot reload', () => {
         const url = pathToFileURL(handler).href;
         expect(await read(url)).toBe('before');
 
-        await writeFile(helper, "export const value = 'after';\n");
-
-        await vi.waitFor(async () => expect(await read(url)).toBe('after'), { timeout: 10_000, interval: 200 });
+        await saveUntil(helper, "export const value = 'after';\n", async () => expect(await read(url)).toBe('after'));
     }, 60_000);
 
     async function startedProject(
@@ -96,20 +93,8 @@ describe('dev runtime hot reload', () => {
         return { src, runtime, events };
     }
 
-    async function expectRestartRequired(events: DevEvent[]): Promise<void> {
-        await vi.waitFor(() => expect(events).toContainEqual({ type: 'restart-required' }), { timeout: 10_000 });
-    }
-
-    // chokidar 3 to 5 emit ready before they watch nested folders when one of their paths is missing.
-    // vite passes it every env file for the mode, existing or not
     async function saveUntilRestartRequired(file: string, text: string, events: DevEvent[]): Promise<void> {
-        await vi.waitFor(
-            async () => {
-                await writeFile(file, text);
-                expect(events).toContainEqual({ type: 'restart-required' });
-            },
-            { timeout: 10_000, interval: 200 }
-        );
+        await saveUntil(file, text, () => expect(events).toContainEqual({ type: 'restart-required' }));
     }
 
     it('asks for a restart when a file the entry imports is saved', async () => {
@@ -119,9 +104,7 @@ describe('dev runtime hot reload', () => {
         });
         await runtime.loadEntry();
 
-        await writeFile(join(src, 'plugin.ts'), "export const greeting = 'after';\n");
-
-        await expectRestartRequired(events);
+        await saveUntilRestartRequired(join(src, 'plugin.ts'), "export const greeting = 'after';\n", events);
     }, 60_000);
 
     it('asks for a restart when a file two imports below the entry is saved', async () => {
@@ -132,9 +115,7 @@ describe('dev runtime hot reload', () => {
         });
         await runtime.loadEntry();
 
-        await writeFile(join(src, 'greeting.ts'), "export const greeting = 'after';\n");
-
-        await expectRestartRequired(events);
+        await saveUntilRestartRequired(join(src, 'greeting.ts'), "export const greeting = 'after';\n", events);
     }, 60_000);
 
     it('asks for a restart when a file that an hmr.restart match imports is saved', async () => {
@@ -148,9 +129,7 @@ describe('dev runtime hot reload', () => {
         );
         await runtime.importModule(join(src, 'schema', 'user.ts'));
 
-        await writeFile(join(src, 'field.ts'), "export const field = 'after';\n");
-
-        await expectRestartRequired(events);
+        await saveUntilRestartRequired(join(src, 'field.ts'), "export const field = 'after';\n", events);
     }, 60_000);
 
     it('asks for a restart when a file that no module imports matches hmr.restart', async () => {
@@ -191,8 +170,7 @@ describe('dev runtime hot reload', () => {
         async (envFile) => {
             const { src, runtime, events } = await startedProject({ 'index.ts': 'export const ready = true;\n' });
 
-            await writeFile(join(dirname(src), envFile), 'GREETING=after\n');
-            await expectRestartRequired(events);
+            await saveUntilRestartRequired(join(dirname(src), envFile), 'GREETING=after\n', events);
 
             await expect(runtime.importModule(join(src, 'index.ts'))).resolves.toMatchObject({ ready: true });
         },

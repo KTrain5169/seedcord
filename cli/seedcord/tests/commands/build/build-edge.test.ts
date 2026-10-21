@@ -244,6 +244,8 @@ describe('seedcord build on an edge bot with files it never loads', () => {
         const projectDir = await copyEdgeBotForTest();
         const config = { root: '..', instance: `./${basename(projectDir)}/src/bot.ts` };
         await writeFile(join(projectDir, 'seedcord.config.ts'), `export default ${JSON.stringify(config)};\n`);
+        // assertNoHashPaths throws CliPathHasHash on this folder
+        await mkdir(join(projectDir, 'a#b'));
 
         await expect(edgeBuildRunner().run(projectDir)).rejects.toMatchObject({
             code: SeedcordErrorCode.CliEdgeRootHoldsConfig

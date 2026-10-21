@@ -121,7 +121,7 @@ A noun made from a verb can take the subject slot, and then a clause slips in be
 
 <!--prettier-ignore-end-->
 
-The tell is a sentence that starts with `a` plus a verb-derived noun, then puts more than three words before the verb. Examples non-exhaustively include `a read`, `a write`, `a fetch`, `a lookup`, and `a connect`. Read the draft once at speed. If you stop and start over, rewrite the sentence.
+The tell is a subject that is an action, a noun made from a verb, like "a scan of the root throws" or "a save that early never reaches vite". Find who does the action and make that the subject. In a code comment that is usually a function, so name it: "assertNoHashPaths throws on this folder". Then read the draft once at speed. If you stop and start over, rewrite the sentence.
 
 ---
 

@@ -137,7 +137,7 @@ Run `pnpm prePush` before you open the PR. It checks the packages your branch ch
     feat!: move errors out of core
     ```
 
-3. **Add a changeset** with `pnpm cs` for any change to a published package. Read [`skills/changeset-guidelines`](../.agents/skills/changeset-guidelines/SKILL.md) before you write it. A breaking change is a minor bump while seedcord is pre-1.0. `pnpm lint:changesets` checks the format, and CI runs it.
+3. **Add a changeset** with `pnpm cs` when you change a published package in a way that someone on the latest release will notice. Skip it when you fix code that isn't on `main` yet. Read [`skills/changeset-guidelines`](../.agents/skills/changeset-guidelines/SKILL.md) before you write it. A breaking change is a minor bump while seedcord is pre-1.0. `pnpm lint:changesets` checks the format, and CI runs it.
 
     To see your changeset as the GitHub release post, commit it and run `pnpm release:preview`. It writes the post for the stable release on `main` to `release.md` in the repo root, and `--pre` writes the one for the next prerelease. It versions a temporary copy of `HEAD`, so it doesn't mess with your checkout.
 
