@@ -2,4 +2,4 @@
 '@seedcord/core': patch
 ---
 
-Health checks now report a configured port conflict as `PortInUse` while preserving the underlying listen error as its cause.
+Fixed the health check rejecting with node's raw `EADDRINUSE` when its port is taken. It now throws `PortInUse`.

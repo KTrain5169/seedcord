@@ -45,11 +45,9 @@ describe('HealthCheck', () => {
     });
 
     it('throws PortInUse when another process holds the port', async () => {
-        // 0 is any free port
         await using server = createServer().listen(0);
-        // wait for it to be listening to prevent race condition?
-        // i haven't had race conditions, but it could happen probably
         await once(server, 'listening');
+        // a listening TCP server always has an AddressInfo
         const { port } = server.address() as AddressInfo;
         const hc = new HealthCheck(shutdownStub, { port });
 
