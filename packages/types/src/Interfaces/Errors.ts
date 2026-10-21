@@ -17,9 +17,10 @@ export interface RenderableNotice {
  */
 export interface ErrorsConfig {
     /**
-     * Whether to show the error stack trace in the terminal for an unknown fault.
+     * Whether to show the error stack trace in the terminal for an unknown fault. With `false`, the
+     * terminal only shows the tracking uuid, the message, and the first line of its `cause`.
      *
-     * @defaultValue `false`
+     * @defaultValue `true`
      */
     errorStack?: boolean;
     /**

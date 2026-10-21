@@ -22,7 +22,7 @@ The error's `cause` is a second error, such as `reply() acknowledged this intera
     frame="thin"
 />
 
-The top stack ends at `Ban.ts:7`, the second `reply()`. The `AckTrace` under it ends at `Ban.ts:6`, the reply that went out first. Your terminal prints both stacks when [`errorStack`](/replying/error-behavior) is on.
+The top stack ends at `Ban.ts:7`, the second `reply()`. The `AckTrace` under it ends at `Ban.ts:6`, the reply that went out first. With [`errorStack`](/replying/error-behavior) at its default, your terminal prints both stacks.
 
 ## The states
 

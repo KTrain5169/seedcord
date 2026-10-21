@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { Logger } from '@seedcord/logger';
 import { asError } from '@seedcord/utils/internal';
 
+import { logUnknownFault } from '#src/notices/logUnknownFault';
 import { PublishDefault } from '#subscribers/publishDefault';
 
 import type { CoreBase } from '#interfaces/CoreBase';
@@ -16,8 +17,7 @@ export function registerProcessErrors(core: CoreBase, shutdown: CoordinatedShutd
         const error = asError(caught);
         const uuid = crypto.randomUUID();
 
-        if (core.config.errors?.errorStack ?? false) logger.error(uuid, error);
-        else logger.error(`${uuid} | ${error.message}`);
+        logUnknownFault(logger, uuid, error, core.config.errors);
 
         core.bus[PublishDefault]('unknownException', { uuid, dispatchId: null, error, origin });
     }

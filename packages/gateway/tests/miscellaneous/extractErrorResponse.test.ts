@@ -1,5 +1,6 @@
 import { DispatchContext, Fault } from '@seedcord/core';
 import { PublishDefault } from '@seedcord/core/internal';
+import { LoggerChannelRegistry } from '@seedcord/logger';
 import { describe, expect, it, vi } from 'vitest';
 
 import { extractErrorResponse } from '#miscellaneous/extractErrorResponse';
@@ -9,6 +10,7 @@ import { TestNotice } from '#tests/utils/TestNotice';
 import type { Core } from '#interfaces/Core';
 import type { Repliables } from '#src/handlers/interactionTypes';
 import type { SubscriptionData } from '@seedcord/core';
+import type { LogRecord } from '@seedcord/types';
 import type { Guild, User } from 'discord.js';
 
 const dispatch = new DispatchContext('slash:probe');
@@ -58,9 +60,12 @@ describe('extractErrorResponse', () => {
         expect(cardJson(result.response)).toContain(result.uuid);
     });
 
-    it('publishes unknownException for a raw, non-denial throw', () => {
+    it('publishes unknownException for a raw, non-denial throw and logs its stack', () => {
         const publish = vi.fn();
-        const result = extractErrorResponse(new Error('a bug'), mockCore(publish), {
+        const logged: LogRecord[] = [];
+        using _capture = LoggerChannelRegistry.instance.installSink({ kind: 'capture', onLog: (r) => logged.push(r) });
+        const thrown = new Error('a bug');
+        const result = extractErrorResponse(thrown, mockCore(publish), {
             origin: 'autocomplete:raw-probe',
             dispatch,
             guild: null,
@@ -68,6 +73,7 @@ describe('extractErrorResponse', () => {
         });
 
         expect(publish).toHaveBeenCalledWith('unknownException', expect.objectContaining({ uuid: result.uuid }));
+        expect(logged.at(-1)?.args).toEqual([thrown]);
     });
 
     it('publishes the origin it was given, so a subscriber can group faults by route', () => {

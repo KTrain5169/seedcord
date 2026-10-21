@@ -1,7 +1,7 @@
 import * as crypto from 'node:crypto';
 
 import { Notice, Fault } from '@seedcord/core';
-import { PublishDefault } from '@seedcord/core/internal';
+import { logUnknownFault, PublishDefault } from '@seedcord/core/internal';
 import { Logger } from '@seedcord/logger';
 
 import { slashRouteOf } from '#bot/utilities/miscellaneous/slashRouteOf';
@@ -92,17 +92,8 @@ function reportFault(denial: Notice, core: Core, fault: ErrorOrigin, uuid: UUID)
     }
 }
 
-function causeLine(error: Error): string {
-    const { cause } = error;
-    if (!Error.isError(cause)) return '';
-    const [first] = cause.message.split('\n');
-    return `\ncaused by ${cause.name}: ${first ?? cause.message}`;
-}
-
 function reportRawFault(error: Error, core: Core, fault: ErrorOrigin, uuid: UUID): void {
-    const showStack = core.config.errors?.errorStack ?? false;
-    if (showStack) logger.error(uuid, error);
-    else logger.error(`${uuid} | ${error.message}${causeLine(error)}`);
+    logUnknownFault(logger, uuid, error, core.config.errors);
 
     core.bus[PublishDefault]('unknownException', {
         uuid,
