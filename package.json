@@ -4,7 +4,7 @@
     "description": "A TypeScript framework for Discord bots, typed end to end",
     "private": true,
     "type": "module",
-    "packageManager": "pnpm@12.4.2",
+    "packageManager": "pnpm@12.14.0",
     "scripts": {
         "build": "turbo build --filter='!./apps/*' --filter='!@seedcord/mock-edge'",
         "build:all": "turbo build --filter='!@seedcord/mock-edge'",
