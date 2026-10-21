@@ -49,6 +49,41 @@ function PostHeader({ post }: { post: PostSummary }): ReactNode {
     );
 }
 
+function PostCover({ cover }: { cover: NonNullable<PostSummary['cover']> }): ReactNode {
+    return (
+        <figure className={cn('mb-4 flex flex-col gap-3')}>
+            <Image
+                src={cover.src}
+                width={cover.width}
+                height={cover.height}
+                alt={cover.alt}
+                preload
+                className={cn('rule blk-rind h-auto w-full rounded-sm')}
+            />
+            {cover.credit ? (
+                <figcaption className={cn('text-center text-sm font-medium text-(--seed-dark)/70')}>
+                    {cover.credit}
+                </figcaption>
+            ) : null}
+        </figure>
+    );
+}
+
+function PostFooter({ post }: { post: PostSummary }): ReactNode {
+    return (
+        <footer
+            className={cn('mx-auto flex max-w-3xl flex-wrap justify-between gap-4 px-5 pb-16 text-sm font-semibold')}
+        >
+            <Link href={BLOG_PATH} className={cn('hover:text-(--flesh-deep)')}>
+                ← all posts
+            </Link>
+            <SiteLink href={post.editUrl} className={cn('hover:text-(--flesh-deep)')}>
+                Edit this post on GitHub
+            </SiteLink>
+        </footer>
+    );
+}
+
 export const generateStaticParams = postParams;
 
 export async function generateMetadata(route: PostParams): Promise<Metadata> {
@@ -74,30 +109,10 @@ export default async function PostPage(route: PostParams): Promise<ReactNode> {
                 <article>
                     <PostHeader post={post} />
                     <div className={cn('mx-auto flex max-w-3xl flex-col gap-6 px-5 py-12 lg:py-16')}>
-                        {post.cover ? (
-                            <Image
-                                src={post.cover.src}
-                                width={post.cover.width}
-                                height={post.cover.height}
-                                alt={post.cover.alt}
-                                preload
-                                className={cn('rule blk-rind mb-4 h-auto w-full rounded-sm')}
-                            />
-                        ) : null}
+                        {post.cover ? <PostCover cover={post.cover} /> : null}
                         <Body components={mdxComponents} />
                     </div>
-                    <footer
-                        className={cn(
-                            'mx-auto flex max-w-3xl flex-wrap justify-between gap-4 px-5 pb-16 text-sm font-semibold'
-                        )}
-                    >
-                        <Link href={BLOG_PATH} className={cn('hover:text-(--flesh-deep)')}>
-                            ← all posts
-                        </Link>
-                        <SiteLink href={post.editUrl} className={cn('hover:text-(--flesh-deep)')}>
-                            Edit this post on GitHub
-                        </SiteLink>
-                    </footer>
+                    <PostFooter post={post} />
                 </article>
             </main>
             <Footer />
