@@ -1,7 +1,9 @@
 import { createServer } from 'node:http';
 
-import { paint } from '@seedcord/errors';
+import { paint, SeedcordErrorCode } from '@seedcord/errors';
+import { SeedcordError } from '@seedcord/errors/internal';
 import { Logger } from '@seedcord/logger';
+import { isPortInUse } from '@seedcord/utils/internal';
 
 import { ShutdownPhase } from '#src/lifecycle/phases';
 
@@ -59,7 +61,17 @@ export class HealthCheck {
             });
             this.server = server;
 
-            const onListenError = (err: Error): void => reject(err);
+            const onListenError = (error: Error): void => {
+                if (isPortInUse(error)) {
+                    reject(
+                        new SeedcordError(SeedcordErrorCode.PortInUse, [this._port, 'healthCheck.port'], {
+                            cause: error
+                        })
+                    );
+                    return;
+                }
+                reject(error);
+            };
             server.on('error', onListenError);
 
             server.once('listening', () => {
