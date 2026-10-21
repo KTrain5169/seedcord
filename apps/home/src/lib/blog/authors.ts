@@ -6,7 +6,8 @@ export interface Author {
 }
 
 export const AUTHORS_BY_HANDLE = {
-    materwelonDhruv: { name: 'Dhruv', site: AUTHOR_URL }
+    materwelonDhruv: { name: 'Dhruv', site: AUTHOR_URL },
+    ktrain5169: { name: 'KTrain' }
 } as const satisfies Record<string, Author>;
 
 export type AuthorHandle = keyof typeof AUTHORS_BY_HANDLE;
