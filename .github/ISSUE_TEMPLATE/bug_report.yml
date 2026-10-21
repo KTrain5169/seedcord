@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in seedcord behaves in a way you did not expect
+description: Something in seedcord isn't working the way you expected
 type: Bug
 labels:
   - '🔍 triage'

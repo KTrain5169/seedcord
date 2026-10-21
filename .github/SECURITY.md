@@ -2,11 +2,11 @@
 
 ## Reporting a vulnerability
 
-Report it privately through [GitHub's advisory form](https://github.com/seedcord/seedcord/security/advisories/new). We can talk it through, fix it in a private fork, and publish the advisory from the same thread.
+Thanks for taking the time to report it! Report it privately through [GitHub's advisory form](https://github.com/seedcord/seedcord/security/advisories/new). We can talk it through, fix it in a private fork, and publish the advisory from the same thread.
 
 If you can't use GitHub, email <materwelonDhruv@gmail.com> or message `@materwelon` on Discord.
 
-Keep it out of public issues, pull requests, and the Discord server until a fix is out. I aim to reply within a week.
+Keep it out of public issues, pull requests, and the Discord server until a fix is out. I'll try to get back to you within a week.
 
 Tell me:
 
@@ -16,13 +16,13 @@ Tell me:
 
 ## What counts
 
-A way for someone outside a bot to make seedcord do something the bot's author did not allow. For example:
+A way for someone outside a bot to make seedcord do something the bot's author didn't allow. For example:
 
 - an interaction whose signature fails verification still reaches a handler on the http transport
 - a crafted custom id reaches a handler or a value that its route should reject
 - the bot token or an environment value ends up in a log, a reply, or an error report
 
-## What does not count
+## What doesn't count
 
 - A bot misconfigured by its own author, such as a token committed to a repository
 - Anything that needs access to the machine the bot already runs on
