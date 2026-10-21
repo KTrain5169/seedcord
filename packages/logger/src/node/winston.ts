@@ -14,7 +14,7 @@ type WinstonInfo = LogEntry & Logform.TransformableInfo;
 const SPLAT = Symbol.for('splat');
 const LEVEL = Symbol.for('level');
 
-// winston has no `trace` in its npm levels, so the node sinks pass this scale to createLogger
+// winston's default npm levels have no `trace`
 export const NODE_LEVELS: Record<LogLevel, number> = { error: 0, warn: 1, info: 2, debug: 3, trace: 4 };
 
 export type SinkFormat = 'pretty' | 'json';
@@ -50,7 +50,7 @@ function firstErrorStack(args?: unknown[]): string | undefined {
     return error?.stack;
 }
 
-// winston's vararg path pre-sets info.stack from an Error arg, while the info-object path does not
+// winston sets info.stack for logger.error('msg', err), but logger.log(info) leaves it unset
 export function toInfo(record: LogRecord): WinstonInfo {
     const stack = firstErrorStack(record.args);
     return {
@@ -60,9 +60,8 @@ export function toInfo(record: LogRecord): WinstonInfo {
         channel: record.channel,
         timestamp: new Date(record.timestamp).toISOString(),
         ...(stack !== undefined && { stack }),
-        [LEVEL]: record.level, // formatPretty bypasses createLogger, so set the level symbol here
-        // format.splat edits this array in place
-        [SPLAT]: [...(record.args ?? [])]
+        [LEVEL]: record.level, // createLogger normally sets this. formatPretty never calls it.
+        [SPLAT]: record.args ?? []
     };
 }
 

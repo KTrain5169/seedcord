@@ -198,7 +198,7 @@ describe('DevApp tiers', () => {
         const fresh = renderOnScreen(app(), FULL);
         const expected = await stableFrame(fresh.screen);
         expect(expected).toContain('○ offline');
-        expect(await stableFrame(widened.screen)).toBe(expected);
+        await settled(async () => expect(await widened.screen()).toBe(expected));
 
         widened.unmount();
         fresh.unmount();

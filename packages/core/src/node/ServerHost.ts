@@ -1,6 +1,7 @@
 import { SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 import { LoggerChannelRegistry } from '@seedcord/logger';
+import { installNodeConsole, installNodeDefaults } from '@seedcord/logger/node';
 import { HostShutdown, HostStartup } from '@seedcord/types/internal';
 
 import { assertDeclaredRuntime } from '#node/assertRuntimeVersion';
@@ -42,6 +43,9 @@ export abstract class ServerHost<BotT extends Transport> extends PluginHost<BotT
 
         if (ServerHost.#isInstantiated) throw new SeedcordError(SeedcordErrorCode.CoreSingletonViolation);
 
+        // init() opens the log file
+        installNodeConsole();
+
         ServerHost.#isInstantiated = true;
         ServerHost.#liveHost = this;
         ServerHost.#liveShutdown = shutdown;
@@ -68,6 +72,7 @@ export abstract class ServerHost<BotT extends Transport> extends PluginHost<BotT
         // a rerun after a failed startup would re-init the rolled-back plugins
         if (this.#startFailed) throw new SeedcordError(SeedcordErrorCode.LifecycleRestartAfterFailure);
 
+        installNodeDefaults(this.config.logger);
         sealAttachments(this);
         this.#lifecycle.register(attachmentsOf(this));
 

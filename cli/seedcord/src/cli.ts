@@ -1,6 +1,6 @@
 import { Command } from '@commander-js/extra-typings';
 import { isSeedcordError } from '@seedcord/errors';
-import { installNodeDefaults } from '@seedcord/logger/node';
+import { installNodeConsole } from '@seedcord/logger/node';
 
 import { BuildCommand } from '#commands/build/BuildCommand';
 import { CodegenCommand } from '#commands/codegen/CodegenCommand';
@@ -15,7 +15,7 @@ import { addVerboseOption, isVerbose } from '#core/verbose';
 import { version } from '.';
 
 async function main(): Promise<void> {
-    installNodeDefaults();
+    installNodeConsole();
 
     const program = addVerboseOption(new Command().name('seedcord').description('seedcord CLI').version(version));
     program.hook('preAction', () => {

@@ -1,6 +1,6 @@
 import { ShutdownPhase, shutdownOf, StartupPhase } from '@seedcord/core/node/internal';
 import { SeedcordErrorCode } from '@seedcord/errors';
-import { LoggerChannelRegistry } from '@seedcord/logger';
+import { Logger, LoggerChannelRegistry } from '@seedcord/logger';
 import { HostShutdown, HostStartup } from '@seedcord/types/internal';
 import { Events } from 'discord.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -10,6 +10,7 @@ import { Seedcord } from '#src/Seedcord';
 
 import { testConfig } from './utils/test-config';
 
+import type { ILogSink } from '@seedcord/types';
 import type { Client } from 'discord.js';
 
 function reset(): void {
@@ -97,7 +98,20 @@ describe('Seedcord host', () => {
         const settled = await Promise.allSettled([seedcord.start(), seedcord.start()]);
 
         expect(settled.map((result) => result.status)).toEqual(['rejected', 'rejected']);
-        expect(configure).toHaveBeenCalledTimes(1);
+        // one install of config.logger at start, one reset at teardown
+        expect(configure).toHaveBeenCalledTimes(2);
+    });
+
+    it("sends logs to config.logger's sinks once it starts, and not while only constructed", async () => {
+        const seen: string[] = [];
+        const sinks: ILogSink[] = [{ kind: 'console', onLog: (record) => void seen.push(record.message) }];
+        const seedcord = new Seedcord({ ...testConfig(), logger: { sinks } });
+
+        new Logger('probe').info('constructed');
+        await seedcord.start().catch(() => undefined);
+
+        expect(seen).not.toContain('constructed');
+        expect(seen).not.toEqual([]);
     });
 
     it('disposes a plugin whose init() finishes after startup was aborted', async () => {

@@ -35,7 +35,12 @@ export abstract class MongooseService<Doc extends MongooseDocument = MongooseDoc
     public constructor(
         protected readonly db: Mongoose,
         protected readonly core: CoreBase,
-        public readonly model: mongoose.Model<Doc>
+        public readonly model: mongoose.Model<
+            Doc,
+            {},
+            {},
+            mongoose.ObtainSchemaGeneric<mongoose.Schema<Doc>, 'TVirtuals'>
+        >
     ) {
         const ctor = this.constructor;
 

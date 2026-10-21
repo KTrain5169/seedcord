@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { stripVTControlCharacters } from 'node:util';
 
 import { isSeedcordError, SeedcordErrorCode } from '@seedcord/errors';
-import { assert, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { assert, describe, expect, it, onTestFinished } from 'vitest';
 
 import { ServerDevRuntime } from '#commands/dev/runtime/ServerDevRuntime';
 import { realPath } from '#core/project/realPath';
@@ -12,6 +12,7 @@ import { GREETING, GREETING_PROBE, greetingPlugin } from '#tests/greetingPlugin'
 import { vitePluginsOf } from '#tests/vitePluginsOf';
 
 import { devContextFor } from './devConfigFor';
+import { saveUntil } from './saveUntil';
 
 // the entry loads ban.ts the way importFiles loads a command file
 async function writeProject(dir: string): Promise<void> {
@@ -154,15 +155,10 @@ describe('dev runtime importModule', () => {
     it('returns the new code of a command after it is saved', async () => {
         const { runtime, ban } = await startedRuntime();
 
-        await writeFile(ban, "export const marker = { version: 'after' };\n");
-
-        await vi.waitFor(
-            async () => {
-                const { marker } = await runtime.importModule<Ban>(ban);
-                expect(marker.version).toBe('after');
-            },
-            { timeout: 10_000, interval: 200 }
-        );
+        await saveUntil(ban, "export const marker = { version: 'after' };\n", async () => {
+            const { marker } = await runtime.importModule<Ban>(ban);
+            expect(marker.version).toBe('after');
+        });
     }, 60_000);
 
     it('rejects an import once the bot stops', async () => {

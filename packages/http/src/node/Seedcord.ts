@@ -7,7 +7,6 @@ import { DRAIN_TASK_TIMEOUT_MS, ShutdownPhase, StartupPhase } from '@seedcord/co
 import { paint, SeedcordErrorCode } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 import { Logger } from '@seedcord/logger';
-import { installNodeDefaults } from '@seedcord/logger/node';
 import { HostAugmentTarget, HostListenHost, HostVersion, SeedcordBrand } from '@seedcord/types/internal';
 import { isPortInUse } from '@seedcord/utils/internal';
 import { Envapter } from 'envapt';
@@ -77,7 +76,6 @@ export class Seedcord extends ServerHost<'http'> implements SeedcordInstance {
         super('http', new CoordinatedShutdown(config.lifecycle?.shutdownDeadline), new CoordinatedStartup());
         this.config = config;
 
-        installNodeDefaults(config.logger);
         bindBotColor(() => this.config.botColor);
 
         this.#service = new InteractionsService(this, config, config.bot.restOptions);

@@ -1,4 +1,5 @@
-import { Seedcord } from '@seedcord/http';
+import { Seedcord, WinstonConsoleSink, WinstonFileSink } from '@seedcord/http';
+import { Converters, Envapter } from 'envapt';
 
 import { PingCounter } from './plugins/PingCounter';
 import { Uptime } from './plugins/Uptime';
@@ -10,14 +11,18 @@ export const seedcord = new Seedcord({
             middlewares: './handlers/middlewares'
         },
         commands: {
-            path: './commands'
+            path: './commands',
+            guilds: Envapter.getAs('TEST_GUILD_IDS', Converters.array(), [])
         }
     },
     subscribers: {
         path: null
     },
     botColor: '#fe565a',
-    port: 6967
+    port: 6967,
+    logger: {
+        sinks: [new WinstonConsoleSink(), new WinstonFileSink({ filename: 'http-mock-{timestamp}.log' })]
+    }
 })
     .attach('stats.uptime', Uptime)
     .attach('stats.pings', PingCounter);

@@ -1,3 +1,5 @@
+import util from 'node:util';
+
 import { paint } from '@seedcord/errors';
 import { filterCirculars, stripAnsi } from '@seedcord/utils';
 import { pluralize } from '@seedcord/utils/internal';
@@ -10,16 +12,15 @@ import type { Logform } from 'winston';
 
 const DEFAULT_PADDING = 5;
 const CAUSE_DEPTH_CAP = 4;
-// authored, never measured. ObjectConsoleSink caps at the same number, change both.
+// picked by hand. if you change it, change ObjectConsoleSink's MEMBER_CAP too
 const MEMBER_CAP = 5;
-// six reaches past the framework frames to the plugin or driver that threw
+// six frames usually gets past seedcord's own frames to the plugin or driver that threw
 const MEMBER_FRAME_CAP = 6;
 const STACK_FRAME = /^\s+at /;
-const SPLAT = Symbol.for('splat'); // winston triple-beam splat key
-// local symbols keep this internal state out of the global Symbol.for registry
-const HAD_FORMAT_KEY = Symbol('seedcord:logger:had-format-specifiers');
-const SAVED_SPLAT_KEY = Symbol('seedcord:logger:saved-splat');
-// %% takes no arg. ObjectConsoleSink matches %% because it substitutes it inline.
+const SPLAT = Symbol.for('splat'); // winston keeps the extra log args under this key
+// Symbol() keeps this key out of the global Symbol.for registry
+const SPECIFIER_COUNT_KEY = Symbol('seedcord:logger:specifier-count');
+// %% takes no arg. ObjectConsoleSink's pattern has %% because it prints it as %.
 const FORMAT_SPECIFIERS = /%[sdifjoO]/gu;
 
 interface PrettyFormatOptions {
@@ -35,7 +36,7 @@ interface JsonFormatOptions {
 
 /** @internal */
 export class LogFormatter {
-    // WeakMap keeps framework state off the Error object
+    // a WeakMap so we never add fields to the user's Error
     private readonly errorNames = new WeakMap<Error, { formatted: string; plain: string }>();
 
     private safeString(value: unknown): string {
@@ -49,7 +50,7 @@ export class LogFormatter {
         return members.map((member, index) => (index < MEMBER_CAP ? this.sanitizeAnsi(member, seen) : member));
     }
 
-    // an aggregate can hold itself as a member, and a cause chain can loop
+    // an AggregateError can contain itself. a cause can also point back to an earlier error.
     private sanitizeAnsi(value: unknown, seen = new Set<Error>(), causeDepth = 0): unknown {
         if (typeof value === 'string') return stripAnsi(value);
         if (Error.isError(value)) {
@@ -65,7 +66,7 @@ export class LogFormatter {
                     : new Error(message);
             sanitized.name = error.name;
             if (typeof error.stack === 'string') sanitized.stack = stripAnsi(error.stack);
-            // carry the cause so a cause block still renders on the stripped copy
+            // the Caused by: lines read the cause from this copy
             if (!looped && causeDepth < CAUSE_DEPTH_CAP && Error.isError(error.cause))
                 sanitized.cause = this.sanitizeAnsi(error.cause, seen, causeDepth + 1);
             return sanitized;
@@ -78,7 +79,7 @@ export class LogFormatter {
         return Array.isArray(raw) ? raw : [];
     }
 
-    // an Error stack already carries its own name and message
+    // an Error's stack already starts with its name and message
     private causeBlock(error: Error, strip: boolean): string {
         const heading = strip ? 'Caused by:' : paint.mute('Caused by:');
         const seen = new Set<Error>([error]);
@@ -93,7 +94,7 @@ export class LogFormatter {
         return blocks;
     }
 
-    // every member's stack repeats the same framework tail
+    // each AggregateError member's stack ends in the same seedcord frames
     private trimFrames(stack: string): string {
         const lines = stack.split('\n');
         const start = lines.findIndex((line) => STACK_FRAME.test(line));
@@ -134,18 +135,28 @@ export class LogFormatter {
     private markFormatSpecifiers(): Logform.Format {
         return format((info) => {
             const msg = typeof info.message === 'string' ? info.message : '';
-            const extras = this.getExtras(info);
-            const matches = msg.match(FORMAT_SPECIFIERS);
-            const formatCount = matches ? matches.length : 0;
-            info[HAD_FORMAT_KEY] = formatCount;
-            // snapshot before format.splat consumes args, so renderExtras's specifier-index filter stays aligned
-            info[SAVED_SPLAT_KEY] = [...extras];
+            info[SPECIFIER_COUNT_KEY] = msg.match(FORMAT_SPECIFIERS)?.length ?? 0;
             return info;
         })();
     }
 
     public createPreFormat(): Logform.Format {
         return this.markFormatSpecifiers();
+    }
+
+    private specifierCount(info: Logform.TransformableInfo): number {
+        const count = info[SPECIFIER_COUNT_KEY];
+        return typeof count === 'number' ? count : 0;
+    }
+
+    // format.splat copies unused args onto the log object as fields
+    private interpolate(): Logform.Format {
+        return format((info) => {
+            const count = this.specifierCount(info);
+            if (count > 0 && typeof info.message === 'string')
+                info.message = util.format(info.message, ...this.getExtras(info).slice(0, count));
+            return info;
+        })();
     }
 
     private preserveErrorFormatting(): Logform.Format {
@@ -173,16 +184,15 @@ export class LogFormatter {
     }
 
     private renderLevel(level: string, padding: number, strip: boolean): string {
-        const padded = level.padEnd(padding); // pad before colorizing, because an ansi-wrapped level breaks padEnd
+        const padded = level.padEnd(padding); // padEnd counts color codes as characters
         if (strip) return padded;
         const palette: Partial<Record<string, string>> = LEVEL_COLOR;
         const hex = palette[level];
-        // truecolor, winston colorize only maps 16-color @colors/colors names
+        // winston's colorize only knows the 16 basic color names
         return hex ? chalk.hex(hex)(padded) : padded;
     }
 
     private assembleBase(prefix: boolean, ts: string, lvl: string, lbl: string, msg: string): string {
-        // a multi-line block nests under the heading
         return prefix ? `${ts} [${lvl}]: ${lbl} - ${msg.replaceAll('\n', '\n  ')}` : msg;
     }
 
@@ -192,7 +202,7 @@ export class LogFormatter {
             this.preserveErrorFormatting(),
             format.errors({ stack: true }),
             this.restoreErrorFormatting(),
-            format.splat(),
+            this.interpolate(),
             format.timestamp({ format: 'D MMM, hh:mm:ss a' }),
 
             format.printf((info: Logform.TransformableInfo) => {
@@ -209,9 +219,7 @@ export class LogFormatter {
 
                 const lvl = this.renderLevel(levelName, padding, options.stripExtras === true);
                 const base = this.assembleBase(options.prefix ?? true, ts, lvl, lbl, msg);
-                const savedExtras = info[SAVED_SPLAT_KEY];
-                // Array.isArray widens to any[]
-                const extras: unknown[] = Array.isArray(savedExtras) ? savedExtras : this.getExtras(info);
+                const extras = this.getExtras(info);
 
                 let rendered = base;
                 const append = (separator: string, text: string): void => {
@@ -221,7 +229,7 @@ export class LogFormatter {
                 if (typeof info.stack === 'string') {
                     let stack = this.safeString(info.stack);
                     if (options.stripExtras) stack = stripAnsi(stack);
-                    // the stringified info.stack dropped the cause, re-derive it from the Error
+                    // info.stack is plain text with no cause in it
                     const firstError = extras.find((entry): entry is Error => Error.isError(entry));
                     append(
                         '\n',
@@ -229,12 +237,10 @@ export class LogFormatter {
                     );
                 }
 
-                const rawFormatCount = info[HAD_FORMAT_KEY];
-                const formatSpecifierCount = typeof rawFormatCount === 'number' ? rawFormatCount : 0;
                 const { inline, block } = this.renderExtras(
                     extras,
                     typeof info.stack === 'string',
-                    formatSpecifierCount,
+                    this.specifierCount(info),
                     options.stripExtras === true
                 );
                 append(' ', inline);
@@ -255,14 +261,14 @@ export class LogFormatter {
         const filtered = cleaned.filter((x, index) => {
             if (x === null || x === undefined || x === '') return false;
             if (Error.isError(x)) {
-                // the first Error's stack already renders as info.stack. skip it
+                // the first Error already printed above as info.stack
                 if (hasStack && !firstErrorDropped) {
                     firstErrorDropped = true;
                     return false;
                 }
                 return true;
             }
-            // a value at a format-specifier position was already interpolated into the message
+            // a specifier like %s already put this arg into the message
             if (index < formatSpecifierCount) return false;
             if (typeof x !== 'object') return true;
             return Object.keys(x).length > 0;
@@ -286,20 +292,27 @@ export class LogFormatter {
         return { inline: primitives.join(' '), block: objects.join('\n') };
     }
 
+    // JSON.stringify skips an Error's message and stack
+    private jsonExtra(entry: unknown): unknown {
+        const clean = this.sanitizeAnsi(entry);
+        return Error.isError(clean) ? { name: clean.name, message: clean.message, stack: clean.stack } : clean;
+    }
+
     public json(options: JsonFormatOptions = {}): Logform.Format[] {
-        const base = [format.errors({ stack: true })];
+        const base = [format.errors({ stack: true }), this.interpolate()];
 
         if (options.stripAnsi) {
             base.push(
                 format((info) => {
                     info.message = typeof info.message === 'string' ? stripAnsi(info.message) : info.message;
-                    const extras = this.getExtras(info);
+                    const args = this.getExtras(info);
                     if (typeof info.stack === 'string') {
-                        // the stringified info.stack dropped the cause, re-derive it from the Error
-                        const firstError = extras.find((entry): entry is Error => Error.isError(entry));
+                        // info.stack is plain text with no cause in it
+                        const firstError = args.find((entry): entry is Error => Error.isError(entry));
                         info.stack = stripAnsi(info.stack) + (firstError ? this.detailBlock(firstError, true) : '');
                     }
-                    if (extras.length > 0) info.extras = extras.map((entry) => this.sanitizeAnsi(entry));
+                    const extras = args.slice(this.specifierCount(info));
+                    if (extras.length > 0) info.extras = extras.map((entry) => this.jsonExtra(entry));
                     return info;
                 })()
             );

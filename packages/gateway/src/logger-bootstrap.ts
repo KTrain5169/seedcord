@@ -1,4 +1,4 @@
-import { installNodeDefaults } from '@seedcord/logger/node';
+import { installNodeConsole } from '@seedcord/logger/node';
 
-// the gateway runs on node so install the winston sinks before any logging
-installNodeDefaults();
+// lines logged before a bot exists print through winston
+installNodeConsole();

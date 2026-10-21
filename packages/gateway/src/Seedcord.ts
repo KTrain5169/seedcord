@@ -9,7 +9,6 @@ import {
 } from '@seedcord/core/internal';
 import { CoordinatedShutdown, CoordinatedStartup, ServerHost } from '@seedcord/core/node';
 import { HealthCheck, shutdownOf, StartupPhase } from '@seedcord/core/node/internal';
-import { installNodeDefaults } from '@seedcord/logger/node';
 import { MemoryRateLimiter } from '@seedcord/rate-limiter';
 import { HostAugmentTarget, HostVersion, SeedcordBrand } from '@seedcord/types/internal';
 import { Envapter } from 'envapt';
@@ -66,7 +65,6 @@ export class Seedcord extends ServerHost<'gateway'> implements SeedcordInstance 
     constructor(public readonly config: GatewayConfig) {
         super('gateway', new CoordinatedShutdown(config.lifecycle?.shutdownDeadline), new CoordinatedStartup());
 
-        installNodeDefaults(config.logger);
         bindBotColor(() => this.config.botColor);
 
         this.#hmrManager = new HmrManager();

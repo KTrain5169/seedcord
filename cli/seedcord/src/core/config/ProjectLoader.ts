@@ -69,9 +69,9 @@ export class ProjectLoader {
         const config = await this.resolveConfig(configModules, configPath, target, mode);
         const project = new Project(config, new ProjectFiles(config), configModules);
         assertPathsBundled(project);
+        await check?.(project);
         await assertNoHashPaths(project);
         await assertTargetMatchesTsconfig(project);
-        await check?.(project);
         const loaded = new LoadedConfig(config, project.files);
         return loaded.hasVitePlugins ? new LoadedConfig(config, project.files, stack.move()) : loaded;
     }

@@ -1,11 +1,14 @@
+import { once } from 'node:events';
 import { request as httpRequest } from 'node:http';
 import { createServer } from 'node:net';
 
+import { SeedcordErrorCode } from '@seedcord/errors';
 import { describe, it, expect } from 'vitest';
 
 import { HealthCheck } from '#node/HealthCheck';
 
 import type { CoordinatedShutdown } from '#node/Lifecycle/CoordinatedShutdown';
+import type { AddressInfo } from 'node:net';
 
 // fixture: HealthCheck only calls shutdown.addTask, so a stub avoids constructing a real
 // CoordinatedShutdown (which registers process signal handlers).
@@ -39,6 +42,19 @@ describe('HealthCheck', () => {
     it('resolves stop() immediately when never initialized', async () => {
         const hc = new HealthCheck(shutdownStub);
         await expect(hc.stop()).resolves.toBeUndefined();
+    });
+
+    it('throws PortInUse when another process holds the port', async () => {
+        await using server = createServer().listen(0);
+        await once(server, 'listening');
+        // a listening TCP server always has an AddressInfo
+        const { port } = server.address() as AddressInfo;
+        const hc = new HealthCheck(shutdownStub, { port });
+
+        await expect(hc.init()).rejects.toMatchObject({
+            code: SeedcordErrorCode.PortInUse,
+            cause: { code: 'EADDRINUSE' }
+        });
     });
 
     it('serves 200 on the health path and 404 elsewhere, then stops without hanging', async () => {

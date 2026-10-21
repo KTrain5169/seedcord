@@ -4,7 +4,7 @@ Rules for anyone working in this repo with an AI coding tool. `CLAUDE.md` symlin
 
 Two things live elsewhere. [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md) covers setup, PR mechanics, and where AI-generated code stands. Each package's `README.md` describes that package.
 
-seedcord is pre-1.0. Breaking changes go in minor versions. Pick the cleanest design and break things to get it right. Add a changeset for every change to a published package.
+seedcord is pre-1.0. Breaking changes go in minor versions. Pick the cleanest design and break things to get it right. Add a changeset by the rules in [`packages/AGENTS.md`](packages/AGENTS.md#changesets).
 
 ---
 

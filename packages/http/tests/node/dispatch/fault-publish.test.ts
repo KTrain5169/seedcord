@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import { InteractionKind, Notice } from '@seedcord/core';
 import { interactionMiddleware, MiddlewareRegistry } from '@seedcord/core/internal';
+import { LoggerChannelRegistry } from '@seedcord/logger';
 import { Envapter, PortableSource } from 'envapt';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -17,7 +18,7 @@ import type { ValidInteractionTypes } from '#handlers/interactionTypes';
 import type { Core } from '#interfaces/Core';
 import type { ResolvedRoute } from '#src/dispatch/resolve';
 import type { SubscriptionData } from '@seedcord/core';
-import type { ReplyResponse } from '@seedcord/types';
+import type { LogRecord, ReplyResponse } from '@seedcord/types';
 
 class Reported extends Notice {
     public override report = true;
@@ -111,12 +112,15 @@ describe('http fault publishing', () => {
         });
     });
 
-    it('publishes unknownException for a raw throw', async () => {
+    it('publishes unknownException for a raw throw and logs its stack', async () => {
+        const logged: LogRecord[] = [];
+        using _capture = LoggerChannelRegistry.instance.installSink({ kind: 'capture', onLog: (r) => logged.push(r) });
         const { handled, unknown } = await faultsFor(BoomHandler);
 
         expect(handled).toHaveLength(0);
         expect(unknown).toHaveLength(1);
         expect(unknown[0]?.error.message).toBe('handler exploded');
+        expect(logged.find((record) => record.args?.includes(unknown[0]?.error))).toBeDefined();
     });
 
     it('names the dispatch route as the fault origin, so a subscriber can group faults', async () => {

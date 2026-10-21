@@ -121,7 +121,7 @@ function createConfig(options: CreateConfigOptions = {}): FlatConfig {
 
         {
             files: [...JS_FILES],
-            languageOptions: merge({}, JAVASCRIPT_LANGUAGE_OPTIONS),
+            languageOptions: merge({}, JAVASCRIPT_LANGUAGE_OPTIONS, { parser: tseslint.parser }),
             linterOptions: COMMON_LINTER_OPTIONS
         },
 

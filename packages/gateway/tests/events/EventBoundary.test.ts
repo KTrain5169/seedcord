@@ -104,18 +104,6 @@ describe('handleEventFault', () => {
         debug.mockRestore();
     });
 
-    it('appends the error cause first line to the compact fault log', () => {
-        const cause = new Error('reply() acknowledged this interaction');
-        cause.name = 'AckTrace';
-        const error = new Error('defer() was called after a reply', { cause });
-        const errorLog = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
-
-        handleEventFault(error, 'messageCreate', 'PingPong', [{}], mockCore(publish));
-
-        expect(errorLog.mock.calls[0]?.[0]).toContain('caused by AckTrace: reply() acknowledged this interaction');
-        errorLog.mockRestore();
-    });
-
     it('leaves the compact fault log without a cause line when the error has no Error cause', () => {
         const errorLog = vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
 

@@ -57,6 +57,11 @@ function workingFolder(): Disposable & { logs: string } {
     };
 }
 
+function inDevelopment(): Disposable {
+    const spy = vi.spyOn(Envapter, 'isDevelopment', 'get').mockReturnValue(true);
+    return { [Symbol.dispose]: () => spy.mockRestore() };
+}
+
 // the slot the entry of a built bot fills before anything imports seedcord
 function asBuiltBot({ root, configFile }: { root: string; configFile: string }): Disposable {
     return setBuiltFiles({
@@ -320,35 +325,23 @@ describe('installNodeDefaults', () => {
     });
 
     it('skips the default file sink when overrides provide sinks', () => {
-        const devSpy = vi.spyOn(Envapter, 'isDevelopment', 'get').mockReturnValue(true);
-        const cwd = process.cwd();
-        using dir = mkdtempDisposableSync(join(tmpdir(), 'seedcord-logger-'));
-        process.chdir(dir.path);
-        try {
-            installNodeDefaults({ sinks: [{ kind: 'console', onLog: () => undefined }] });
-            expect(readdirSync(dir.path)).not.toContain('logs');
-        } finally {
-            process.chdir(cwd);
-            devSpy.mockRestore();
-        }
+        using _dev = inDevelopment();
+        using folder = workingFolder();
+
+        installNodeDefaults({ sinks: [{ kind: 'console', onLog: () => undefined }] });
+
+        expect(existsSync(folder.logs)).toBe(false);
     });
 
     it('creates no log file until a record is logged, so repeated bootstraps leave no orphans', async () => {
-        const devSpy = vi.spyOn(Envapter, 'isDevelopment', 'get').mockReturnValue(true);
-        const cwd = process.cwd();
-        using dir = mkdtempDisposableSync(join(tmpdir(), 'seedcord-logger-'));
-        process.chdir(dir.path);
-        try {
-            installNodeDefaults();
-            installNodeDefaults();
-            // the eager File transport opens its stream on the next tick, so wait past it before asserting
-            await new Promise((resolve) => setTimeout(resolve, 100));
-            const logsDir = join(dir.path, 'logs');
-            const files = existsSync(logsDir) ? readdirSync(logsDir) : [];
-            expect(files).toEqual([]);
-        } finally {
-            process.chdir(cwd);
-            devSpy.mockRestore();
-        }
+        using _dev = inDevelopment();
+        using folder = workingFolder();
+
+        installNodeDefaults();
+        installNodeDefaults();
+        // the eager File transport opens its stream on the next tick, so wait past it before asserting
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        expect(existsSync(folder.logs) ? readdirSync(folder.logs) : []).toEqual([]);
     });
 });
