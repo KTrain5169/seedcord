@@ -148,7 +148,7 @@ describe('handleInteractionFault', () => {
         await handleInteractionFault(new Error('db down'), asInteraction(mock), core);
         await handleInteractionFault(new Error('db down'), asInteraction(mockInteraction()), core);
 
-        const lines = errorLog.mock.calls.map(([message]) => String(message));
+        const lines = errorLog.mock.calls.map((call) => String(call.at(-1)));
         expect(lines.filter((line: string) => line.includes('db down'))).toHaveLength(2);
         errorLog.mockRestore();
     });

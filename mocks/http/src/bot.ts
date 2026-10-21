@@ -1,4 +1,5 @@
 import { Seedcord, WinstonConsoleSink, WinstonFileSink } from '@seedcord/http';
+import { Converters, Envapter } from 'envapt';
 
 import { PingCounter } from './plugins/PingCounter';
 import { Uptime } from './plugins/Uptime';
@@ -10,7 +11,8 @@ export const seedcord = new Seedcord({
             middlewares: './handlers/middlewares'
         },
         commands: {
-            path: './commands'
+            path: './commands',
+            guilds: Envapter.getAs('TEST_GUILD_IDS', Converters.array(), [])
         }
     },
     subscribers: {

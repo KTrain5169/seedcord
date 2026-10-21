@@ -1,6 +1,7 @@
 import { DiscordAPIError } from '@discordjs/rest';
 import { DispatchContext, Fault, InteractionKind, Notice, Silence } from '@seedcord/core';
 import {
+    logUnknownFault,
     outcomeFor,
     queuedMsFor,
     reportDispatch,
@@ -103,8 +104,7 @@ async function handleNotice(notice: Notice, uuid: RenderContext['uuid'], scope: 
 async function handleRawFault(error: Error, uuid: RenderContext['uuid'], scope: FaultScope): Promise<void> {
     const { core, sender } = scope;
 
-    if (core.config.errors?.errorStack ?? false) logger().error(paint.mute(uuid), error);
-    else logger().error(`${paint.mute(uuid)} | ${error.message}`);
+    logUnknownFault(logger(), paint.mute(uuid), error, core.config.errors);
 
     reportFault(error, uuid, scope.dispatch, scope.payload, core);
 
