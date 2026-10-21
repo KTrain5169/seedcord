@@ -9,9 +9,8 @@ import type {
     VersionedDocsEngine
 } from '@seedcord/docs-engine';
 import type { EntityTone } from '@seedcord/docs-engine/client';
-import type { RenameKey } from '@seedcord/types';
 import type { CodeRepresentation } from '@seedcord/ui';
-import type { Except } from 'type-fest';
+import type { Except, RenameKeys } from 'type-fest';
 
 export interface FormatContext {
     engine: VersionedDocsEngine;
@@ -244,8 +243,7 @@ export type EnumModel = Extract<EntityModel, { kind: 'enum' }>;
 export type TypeModel = Extract<EntityModel, { kind: 'type' }>;
 export type FunctionModel = Extract<EntityModel, { kind: 'function' }>;
 
-export type WithParentDeprecationStatus = RenameKey<
+export type WithParentDeprecationStatus = RenameKeys<
     WithDeprecationStatus,
-    'deprecationStatus',
-    'parentDeprecationStatus'
+    { deprecationStatus: 'parentDeprecationStatus' }
 >;
