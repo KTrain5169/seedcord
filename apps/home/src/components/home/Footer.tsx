@@ -1,5 +1,7 @@
 import { cn } from '@seedcord/ui';
 import { Materwelon } from '@seedcord/ui/Materwelon';
+import { skillUrl } from '@seedcord/ui/skills';
+import { SEEDCORD_SKILL } from '@seedcord/ui/skills/seedcord';
 import Link from 'next/link';
 
 import { SiteLink } from '#components/ui/SiteLink';
@@ -22,6 +24,7 @@ const COLUMNS = [
         title: 'Documentation',
         links: [
             { label: 'API reference', href: DOCS_URL },
+            { label: 'Agent skill', href: skillUrl(SEEDCORD_SKILL) },
             { label: 'Guide', href: GUIDE_URL }
         ]
     },
@@ -36,11 +39,11 @@ const COLUMNS = [
     {
         title: 'Project',
         links: [
-            { label: 'Blog', href: BLOG_PATH },
-            { label: 'Roadmap', href: ROADMAP_URL },
             { label: 'Releases', href: `${REPO_URL}/releases` },
+            { label: 'Roadmap', href: ROADMAP_URL },
             { label: 'License', href: `${REPO_URL}/blob/main/LICENSE` },
-            { label: 'Issues', href: `${REPO_URL}/issues` }
+            { label: 'Issues', href: `${REPO_URL}/issues` },
+            { label: 'Blog', href: BLOG_PATH }
         ]
     }
 ] as const;
