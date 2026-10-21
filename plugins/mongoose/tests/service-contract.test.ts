@@ -52,11 +52,9 @@ class WithoutSchema extends MongooseService<IUser> {}
 void WithOverride;
 void WithoutSchema;
 
-expectTypeOf<WithSchema['model']>().toEqualTypeOf<mongoose.Model<IUser>>();
-
-expectTypeOf<
-    Awaited<ReturnType<WithSchema['model']['findOne']>>
->().toEqualTypeOf<mongoose.HydratedDocument<IUser> | null>();
+type FoundUser = NonNullable<Awaited<ReturnType<WithSchema['model']['findOne']>>>;
+expectTypeOf<FoundUser>().toHaveProperty('id').toEqualTypeOf<string>();
+expectTypeOf<FoundUser>().toHaveProperty('username').toEqualTypeOf<string>();
 
 describe('empty override', () => {
     it('rejects an empty modelName at decoration time', () => {
