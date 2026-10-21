@@ -11,14 +11,18 @@ function urlFor(port: number): string {
     return `https://p${String(port)}.trycloudflare.com`;
 }
 
-function deps(overrides: Partial<CoordinatorDeps> = {}): CoordinatorDeps {
+type DepsOverrides = Partial<Omit<CoordinatorDeps, 'endpoint'>> & {
+    endpoint?: Partial<CoordinatorDeps['endpoint']>;
+};
+
+function deps({ endpoint, ...overrides }: DepsOverrides = {}): CoordinatorDeps {
     return {
         makeTunnel: () => ({
             open: (_signal, port) => Promise.resolve(urlFor(port)),
             stop: () => undefined
         }),
         kind: 'quick',
-        endpoint: { set: () => Promise.resolve(), clear: () => Promise.resolve() },
+        endpoint: { set: () => Promise.resolve(), clear: () => Promise.resolve(), holds: () => true, ...endpoint },
         onStatus: () => undefined,
         logger: silentLogger,
         ...overrides
@@ -214,6 +218,25 @@ describe('TunnelCoordinator', () => {
         await coordinator.onPort(3000);
 
         expect(open).toHaveBeenCalledOnce();
+    });
+
+    it('sets the same url again when a restart leaves the endpoint without it', async () => {
+        const open = vi.fn<CoordinatorTunnel['open']>().mockResolvedValue(urlFor(3000));
+        const set = vi.fn<CoordinatorDeps['endpoint']['set']>().mockResolvedValue();
+        let holds = true;
+        const coordinator = new TunnelCoordinator(
+            deps({
+                makeTunnel: () => ({ open, stop: () => undefined }),
+                endpoint: { set, holds: () => holds }
+            })
+        );
+
+        await coordinator.onPort(3000);
+        holds = false;
+        await coordinator.onPort(3000);
+
+        expect(open).toHaveBeenCalledOnce();
+        expect(set.mock.calls.map(([url]) => url)).toEqual([urlFor(3000), urlFor(3000)]);
     });
 
     it('replaces a tunnel on the same port that never went live', async () => {

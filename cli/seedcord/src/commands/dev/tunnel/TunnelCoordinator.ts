@@ -18,7 +18,7 @@ export interface CoordinatorDeps {
     readonly makeTunnel: (onLost: () => void) => CoordinatorTunnel;
     // a quick hostname lasts only as long as this process, so quit clears the endpoint
     readonly kind: 'quick' | 'configured';
-    readonly endpoint: Pick<InteractionsEndpoint, 'set' | 'clear'>;
+    readonly endpoint: Pick<InteractionsEndpoint, 'set' | 'clear' | 'holds'>;
     readonly onStatus: (status: TunnelStatus | null) => void;
     readonly logger: ILogger;
 }
@@ -32,19 +32,28 @@ function opening(kind: CoordinatorDeps['kind']): string {
     return kind === 'quick' ? 'Requesting a cloudflared tunnel to port' : 'Checking if your tunnel reaches port';
 }
 
+interface LiveTunnel {
+    readonly port: number;
+    readonly url: string;
+    readonly attempt: AbortController;
+}
+
+function elapsedSince(startedAt: number): () => string {
+    return () => paint.mute(`+${formatUptime(Date.now() - startedAt)}`);
+}
+
 export class TunnelCoordinator {
-    private livePort: number | undefined;
+    private live: LiveTunnel | undefined;
     private current: AbortController | undefined;
 
     constructor(private readonly deps: CoordinatorDeps) {}
 
     public async onPort(port: number): Promise<void> {
-        if (this.livePort === port) return;
+        if (this.live?.port === port) return this.registerAgain(this.live);
 
-        this.livePort = undefined;
+        this.live = undefined;
         const attempt = this.begin();
-        const startedAt = Date.now();
-        const since = (): string => paint.mute(`+${formatUptime(Date.now() - startedAt)}`);
+        const since = elapsedSince(Date.now());
         const tunnel = this.deps.makeTunnel(() => this.reportLost(attempt));
         // a later onPort has no handle on this tunnel. the abort is the only way back to stop it.
         attempt.signal.addEventListener('abort', () => tunnel.stop(), { once: true });
@@ -57,14 +66,8 @@ export class TunnelCoordinator {
             if (superseded(attempt)) return;
             this.deps.logger.info(`Reachable at ${paint.sky.bold(url)} ${since()}`);
 
-            this.deps.onStatus('registering');
             patched = true;
-            await this.deps.endpoint.set(url, attempt.signal);
-            if (superseded(attempt)) return;
-
-            this.livePort = port;
-            this.deps.onStatus('live');
-            this.deps.logger.info(`Interactions endpoint set on the dev dashboard ${since()}`);
+            await this.register({ port, url, attempt }, since);
         } catch (error: unknown) {
             if (superseded(attempt)) return;
             // discord will refuse the same hostname again
@@ -73,10 +76,31 @@ export class TunnelCoordinator {
         }
     }
 
+    private async registerAgain(live: LiveTunnel): Promise<void> {
+        if (this.deps.endpoint.holds(live.url)) return;
+
+        try {
+            await this.register(live, elapsedSince(Date.now()));
+        } catch (error: unknown) {
+            if (superseded(live.attempt)) return;
+            this.reportFailure(error, false);
+        }
+    }
+
+    private async register(live: LiveTunnel, since: () => string): Promise<void> {
+        this.deps.onStatus('registering');
+        await this.deps.endpoint.set(live.url, live.attempt.signal);
+        if (superseded(live.attempt)) return;
+
+        this.live = live;
+        this.deps.onStatus('live');
+        this.deps.logger.info(`Interactions endpoint set on the dev dashboard ${since()}`);
+    }
+
     private reportLost(attempt: AbortController): void {
         if (superseded(attempt)) return;
 
-        this.livePort = undefined;
+        this.live = undefined;
         this.deps.onStatus('lost');
         this.deps.logger.error('cloudflared exited, so the bot has no public endpoint');
     }
@@ -91,7 +115,7 @@ export class TunnelCoordinator {
     public async stop(): Promise<void> {
         if (!this.current) return;
 
-        this.livePort = undefined;
+        this.live = undefined;
         this.current.abort();
         this.current = undefined;
         this.deps.onStatus(null);

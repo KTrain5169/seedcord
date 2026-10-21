@@ -30,7 +30,7 @@ export function createTunnelCoordinator(
     if (tunnel.mode === 'off') return undefined;
 
     const deps = systemTunnelDeps();
-    const endpoint = InteractionsEndpoint.create(() => readBotToken().value);
+    const endpoint = InteractionsEndpoint.create(readBotToken);
 
     if (tunnel.mode === 'url') {
         return new TunnelCoordinator({
