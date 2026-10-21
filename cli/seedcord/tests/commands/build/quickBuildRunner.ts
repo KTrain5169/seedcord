@@ -2,7 +2,7 @@ import { targetBuildFor } from '#commands/build/builder/targetBuildFor';
 import { TypeChecker } from '#commands/build/builder/TypeChecker';
 import { BuildRunner } from '#commands/build/BuildRunner';
 import { quietSteps } from '#core/output/quietSteps';
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 
 import type { Build } from '#commands/build/builder/targetBuildFor';
 import type { BuildStep } from '#commands/build/BuildRunner';

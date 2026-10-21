@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { targetBuildFor } from '#commands/build/builder/targetBuildFor';
 import { runProjectTsc } from '#core/modules/runProjectTsc';
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 import httpBotConfig from '#tests/fixtures/http-bot/seedcord.config';
 
 import { fixtureCopy, GATEWAY_BOT, HTTP_BOT } from './fixtureCopy';

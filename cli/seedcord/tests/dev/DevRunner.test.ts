@@ -13,7 +13,7 @@ import { ProjectLoader } from '#core/config/ProjectLoader';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
 import { DevLock } from '#core/state/DevLock';
 import { StateFolder } from '#core/state/StateFolder';
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 import { bindEnv } from '#tests/bindEnv';
 import { APP_ID, FAKE_TOKEN } from '#tests/commands/build/smoke';
 import { loadedConfig } from '#tests/loadedConfig';

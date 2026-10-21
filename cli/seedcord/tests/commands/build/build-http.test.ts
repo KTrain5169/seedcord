@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 
 import { BuildRunner } from '#commands/build/BuildRunner';
 import { quietSteps } from '#core/output/quietSteps';
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 
 import { compilesBunBinaries, smokeBunBinary } from './bun';
 import { smoke } from './smoke';

@@ -7,7 +7,7 @@ import { Routes } from 'discord-api-types/v10';
 import { onTestFinished } from 'vitest';
 
 import { EdgeBuild } from '#commands/build/builder/EdgeBuild';
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 
 import { quickBuildRunner } from './quickBuildRunner';
 import { APP_ID, ED25519_KEY_BYTES, FAKE_TOKEN } from './smoke';

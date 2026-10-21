@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it, onTestFinished, vi } from 'vitest';
 
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 
 import { builtSource, copyFixture, FLAT_BOT, GATEWAY_BOT } from './fixtureCopy';
 import { quickBuildRunner } from './quickBuildRunner';

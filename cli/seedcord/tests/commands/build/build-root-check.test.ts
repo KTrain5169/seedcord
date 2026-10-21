@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import { BuildRunner } from '#commands/build/BuildRunner';
 import { quietSteps } from '#core/output/quietSteps';
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 
 const OUTSIDE_ROOT_BOT = join(import.meta.dirname, '../../fixtures/outside-root-bot');
 

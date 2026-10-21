@@ -8,7 +8,7 @@ import { assert, describe, expect, it, onTestFinished } from 'vitest';
 import { openProjectWithSteps } from '#core/config/openProjectWithSteps';
 import { ProjectLoader } from '#core/config/ProjectLoader';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 import { configWithGreetingPlugin, GREETING, GREETING_PROBE } from '#tests/greetingPlugin';
 
 const SERVER_FIELDS = "root: './src', instance: './bot.ts', build: { start: './index.ts' }";

@@ -15,7 +15,7 @@ import { quietSteps } from '#core/output/quietSteps';
 import { deployedCommandsFile } from '#core/state/deployedCommands';
 import { DevLock } from '#core/state/DevLock';
 import { StateFolder } from '#core/state/StateFolder';
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 import { READ_IN_WORKERD, writeCloudflareConfig } from '#tests/commands/build/edgeBot';
 import { ED25519_KEY_BYTES, FAKE_TOKEN } from '#tests/commands/build/smoke';
 import { fakeDiscordApi } from '#tests/fakeDiscordApi';

@@ -2,7 +2,7 @@ import { cliLogger } from '#core/cliLogger';
 import { ProjectLoader } from '#core/config/ProjectLoader';
 import { restOf } from '#core/discord/restOf';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
-import { startupShell } from '#core/viteMode';
+import { startupShell } from '#src/core/ShellMode';
 
 import type { ProjectOpener } from '#core/config/openProjectWithSteps';
 import type { REST } from '@discordjs/rest';

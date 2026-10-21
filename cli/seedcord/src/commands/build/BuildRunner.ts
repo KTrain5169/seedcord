@@ -5,7 +5,7 @@ import { ProjectLoader } from '#core/config/ProjectLoader';
 import { importInstance } from '#core/modules/importInstance';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
 import { printResolvedConfig } from '#core/output/printResolvedConfig';
-import { startupShell } from '#core/viteMode';
+import { startupShell } from '#src/core/ShellMode';
 
 import { assertFoldersBundled } from './builder/assertFoldersBundled';
 import { checkBuildTarget, targetBuildFor } from './builder/targetBuildFor';

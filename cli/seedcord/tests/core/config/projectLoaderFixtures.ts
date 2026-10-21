@@ -6,7 +6,7 @@ import { onTestFinished } from 'vitest';
 
 import { ProjectLoader } from '#core/config/ProjectLoader';
 import { realPath } from '#core/project/realPath';
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 
 import type { ResolvedSeedcordConfig } from '#core/config/schema';
 import type { OpenModules } from '#core/modules/ModuleLoader';

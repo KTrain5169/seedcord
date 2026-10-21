@@ -6,7 +6,7 @@ import { ProjectLoader } from '#core/config/ProjectLoader';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
 import { quietSteps } from '#core/output/quietSteps';
 import { DevLock } from '#core/state/DevLock';
-import { startupShell } from '#core/viteMode';
+import { startupShell } from '#src/core/ShellMode';
 import { resetChannelColors } from '#ui/channelColor';
 import { profileMark } from '#ui/profile';
 

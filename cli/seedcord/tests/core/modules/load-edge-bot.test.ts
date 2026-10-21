@@ -10,7 +10,7 @@ import { ProjectLoader } from '#core/config/ProjectLoader';
 import { importInstance } from '#core/modules/importInstance';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
 import { quietSteps } from '#core/output/quietSteps';
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 import { copyEdgeBotForTest, writeCloudflareConfig } from '#tests/commands/build/edgeBot';
 
 const EDGE_BOT = join(import.meta.dirname, '../../fixtures/edge-bot');
