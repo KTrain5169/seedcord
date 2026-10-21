@@ -6,6 +6,10 @@ import { TunnelCoordinator } from '#commands/dev/tunnel/TunnelCoordinator';
 import { silentLogger } from '#tests/silentLogger';
 
 import type { CoordinatorDeps, CoordinatorTunnel } from '#commands/dev/tunnel/TunnelCoordinator';
+import type { SeedcordInstance } from '@seedcord/types/internal';
+
+// justified: the coordinator passes the instance through to the endpoint untouched
+const INSTANCE = {} as SeedcordInstance;
 
 function urlFor(port: number): string {
     return `https://p${String(port)}.trycloudflare.com`;
@@ -22,7 +26,7 @@ function deps({ endpoint, ...overrides }: DepsOverrides = {}): CoordinatorDeps {
             stop: () => undefined
         }),
         kind: 'quick',
-        endpoint: { set: () => Promise.resolve(), clear: () => Promise.resolve(), holds: () => true, ...endpoint },
+        endpoint: { set: () => Promise.resolve(), clear: () => Promise.resolve(), reuse: () => true, ...endpoint },
         onStatus: () => undefined,
         logger: silentLogger,
         ...overrides
@@ -51,7 +55,7 @@ describe('TunnelCoordinator', () => {
             })
         );
 
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
 
         expect(order).toEqual(['open', 'set']);
     });
@@ -60,7 +64,7 @@ describe('TunnelCoordinator', () => {
         const info = vi.fn();
         const coordinator = new TunnelCoordinator(deps({ logger: { ...silentLogger, info } }));
 
-        await coordinator.onPort(4321);
+        await coordinator.onPort(4321, INSTANCE);
 
         expect(info.mock.calls[0]?.[0]).toContain('4321');
     });
@@ -85,7 +89,7 @@ describe('TunnelCoordinator', () => {
             })
         );
 
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
 
         expect(order[0]).toBe('url');
     });
@@ -105,7 +109,7 @@ describe('TunnelCoordinator', () => {
             })
         );
 
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
 
         expect(stop).toHaveBeenCalledOnce();
         expect(info.mock.calls.at(-1)?.[0]).toContain('Restart');
@@ -126,7 +130,7 @@ describe('TunnelCoordinator', () => {
             })
         );
 
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
 
         expect(set).not.toHaveBeenCalled();
         expect(stop).not.toHaveBeenCalled();
@@ -143,7 +147,7 @@ describe('TunnelCoordinator', () => {
                 })
             })
         );
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
         expect(stop).not.toHaveBeenCalled();
 
         await coordinator.stop();
@@ -163,9 +167,9 @@ describe('TunnelCoordinator', () => {
             })
         );
 
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
         lose();
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
 
         expect(open).toHaveBeenCalledTimes(2);
     });
@@ -182,7 +186,7 @@ describe('TunnelCoordinator', () => {
                 onStatus
             })
         );
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
 
         lose();
 
@@ -194,7 +198,7 @@ describe('TunnelCoordinator', () => {
         const coordinator = new TunnelCoordinator(
             deps({ kind: 'configured', endpoint: { set: () => Promise.resolve(), clear } })
         );
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
 
         await coordinator.stop();
 
@@ -205,35 +209,40 @@ describe('TunnelCoordinator', () => {
         const set = vi.fn<CoordinatorDeps['endpoint']['set']>().mockResolvedValue();
         const coordinator = new TunnelCoordinator(deps({ endpoint: { set, clear: () => Promise.resolve() } }));
 
-        await coordinator.onPort(4321);
+        await coordinator.onPort(4321, INSTANCE);
 
-        expect(set).toHaveBeenCalledExactlyOnceWith(urlFor(4321), expect.any(AbortSignal));
+        expect(set).toHaveBeenCalledExactlyOnceWith(urlFor(4321), expect.any(AbortSignal), INSTANCE);
     });
 
     it('leaves the tunnel alone when the port is unchanged', async () => {
         const open = vi.fn<CoordinatorTunnel['open']>().mockResolvedValue(urlFor(3000));
         const coordinator = new TunnelCoordinator(deps({ makeTunnel: () => ({ open, stop: () => undefined }) }));
 
-        await coordinator.onPort(3000);
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
+        await coordinator.onPort(3000, INSTANCE);
 
         expect(open).toHaveBeenCalledOnce();
     });
 
-    it('sets the same url again when a restart leaves the endpoint without it', async () => {
+    it('hands a restarted bot to the endpoint it kept, and sets the url again once the endpoint lost it', async () => {
         const open = vi.fn<CoordinatorTunnel['open']>().mockResolvedValue(urlFor(3000));
         const set = vi.fn<CoordinatorDeps['endpoint']['set']>().mockResolvedValue();
-        let holds = true;
+        const reuse = vi.fn<CoordinatorDeps['endpoint']['reuse']>().mockReturnValue(true);
         const coordinator = new TunnelCoordinator(
             deps({
                 makeTunnel: () => ({ open, stop: () => undefined }),
-                endpoint: { set, holds: () => holds }
+                endpoint: { set, reuse }
             })
         );
+        // justified: the coordinator passes the instance through to the endpoint untouched
+        const restarted = {} as SeedcordInstance;
 
-        await coordinator.onPort(3000);
-        holds = false;
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
+        await coordinator.onPort(3000, restarted);
+        expect(reuse).toHaveBeenLastCalledWith(urlFor(3000), restarted);
+
+        reuse.mockReturnValue(false);
+        await coordinator.onPort(3000, restarted);
 
         expect(open).toHaveBeenCalledOnce();
         expect(set.mock.calls.map(([url]) => url)).toEqual([urlFor(3000), urlFor(3000)]);
@@ -255,8 +264,8 @@ describe('TunnelCoordinator', () => {
             })
         );
 
-        void coordinator.onPort(3000);
-        await coordinator.onPort(3000);
+        void coordinator.onPort(3000, INSTANCE);
+        await coordinator.onPort(3000, INSTANCE);
 
         expect(made).toBe(2);
         expect(stopped).toEqual(['t1']);
@@ -267,8 +276,8 @@ describe('TunnelCoordinator', () => {
         const stop = vi.fn();
         const coordinator = new TunnelCoordinator(deps({ makeTunnel: () => ({ open, stop }) }));
 
-        await coordinator.onPort(3000);
-        await coordinator.onPort(3001);
+        await coordinator.onPort(3000, INSTANCE);
+        await coordinator.onPort(3001, INSTANCE);
 
         expect(stop).toHaveBeenCalledOnce();
         expect(open).toHaveBeenCalledTimes(2);
@@ -292,8 +301,8 @@ describe('TunnelCoordinator', () => {
             })
         );
 
-        const stale = coordinator.onPort(3000);
-        await coordinator.onPort(3001);
+        const stale = coordinator.onPort(3000, INSTANCE);
+        await coordinator.onPort(3001, INSTANCE);
         slow.resolve(urlFor(3000));
         await stale;
 
@@ -308,7 +317,7 @@ describe('TunnelCoordinator', () => {
             deps({ makeTunnel: () => ({ open: () => slow.promise, stop: () => stopped.push('t1') }) })
         );
 
-        const opening = coordinator.onPort(3000);
+        const opening = coordinator.onPort(3000, INSTANCE);
         await coordinator.stop();
         slow.resolve(urlFor(3000));
         await opening;
@@ -325,7 +334,7 @@ describe('TunnelCoordinator', () => {
             })
         );
 
-        await expect(coordinator.onPort(3000)).resolves.toBeUndefined();
+        await expect(coordinator.onPort(3000, INSTANCE)).resolves.toBeUndefined();
         expect(error).toHaveBeenCalledOnce();
     });
 
@@ -342,8 +351,8 @@ describe('TunnelCoordinator', () => {
             })
         );
 
-        await coordinator.onPort(3000);
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
+        await coordinator.onPort(3000, INSTANCE);
 
         expect(open).toHaveBeenCalledTimes(2);
     });
@@ -352,7 +361,7 @@ describe('TunnelCoordinator', () => {
         const onStatus = vi.fn();
         const coordinator = new TunnelCoordinator(deps({ onStatus }));
 
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
         expect(onStatus.mock.calls.flat()).toEqual(['opening', 'registering', 'live']);
 
         await coordinator.stop();
@@ -374,7 +383,7 @@ describe('TunnelCoordinator', () => {
             })
         );
 
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
 
         expect(onStatus.mock.calls.flat()).toEqual(['opening', 'resolving', 'registering', 'live']);
     });
@@ -388,7 +397,7 @@ describe('TunnelCoordinator', () => {
             })
         );
 
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
 
         expect(onStatus.mock.calls.flat()).toEqual(['opening', 'registering', null]);
     });
@@ -402,7 +411,7 @@ describe('TunnelCoordinator', () => {
                 endpoint: { set: () => Promise.resolve(), clear }
             })
         );
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
 
         await coordinator.stop();
 
@@ -418,7 +427,7 @@ describe('TunnelCoordinator', () => {
                 logger: { ...silentLogger, warn }
             })
         );
-        await coordinator.onPort(3000);
+        await coordinator.onPort(3000, INSTANCE);
 
         await expect(coordinator.stop()).resolves.toBeUndefined();
         expect(warn).toHaveBeenCalledOnce();
