@@ -10,9 +10,7 @@ export const createImportSettings = (rootDir: string) => ({
             project: [path.join(rootDir, 'tsconfig.json')]
         })
     ],
-    'import-x/parsers': {
-        '@typescript-eslint/parser': ['.ts', '.tsx']
-    },
+    'import-x/extensions': ['.js', '.mjs', '.cjs', '.ts', '.tsx'],
     // workerd provides it. no file exists on disk
     'import-x/core-modules': ['cloudflare:workers'],
     'import-x/internal-regex': '^(src/|@/)',
