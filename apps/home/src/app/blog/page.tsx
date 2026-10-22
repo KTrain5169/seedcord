@@ -44,11 +44,11 @@ function PostRow({ post }: { post: PostSummary }): ReactNode {
                 <p className={cn('text-base/relaxed text-(--seed-dark)/75 sm:text-lg/relaxed')}>{post.description}</p>
                 <Byline authors={post.authors} className={cn('relative z-10 w-fit text-sm')} />
             </div>
-            {post.cover ? (
+            {post.thumbnail ? (
                 <Image
-                    src={post.cover.src}
-                    width={post.cover.width}
-                    height={post.cover.height}
+                    src={post.thumbnail.src}
+                    width={post.thumbnail.width}
+                    height={post.thumbnail.height}
                     alt=""
                     className={cn('rule hidden aspect-video w-full rounded-sm object-cover md:block')}
                 />

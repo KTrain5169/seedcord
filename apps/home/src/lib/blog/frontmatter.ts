@@ -19,15 +19,16 @@ const isoDate = z.iso.date({ error: (issue) => `${String(issue.input)} is not a 
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type, @typescript-eslint/explicit-module-boundary-types -- defineDocs infers the frontmatter type from the returned schema
 export function postSchema({ path: postFile }: MacroSchemaContext) {
-    const cover = z
-        .object({ src: z.string(), alt: z.string().min(1), credit: z.string().min(1).optional() })
-        .transform(({ src, ...fields }, context) => {
-            const read = readPostImage(src, postFile);
-            if (read.ok) return { ...read.image, ...fields };
+    const image = z.string().transform((src, context) => {
+        const read = readPostImage(src, postFile);
+        if (read.ok) return read.image;
 
-            context.addIssue({ code: 'custom', path: ['src'], message: read.reason });
-            return z.NEVER;
-        });
+        context.addIssue({ code: 'custom', message: read.reason });
+        return z.NEVER;
+    });
+    const cover = z
+        .object({ src: image, alt: z.string().min(1), credit: z.string().min(1).optional() })
+        .transform(({ src, ...fields }) => ({ ...src, ...fields }));
 
     return pageSchema
         .extend({
@@ -47,6 +48,7 @@ export function postSchema({ path: postFile }: MacroSchemaContext) {
             created: isoDate,
             edited: isoDate.optional(),
             cover: cover.optional(),
+            thumbnail: image.optional(),
             keywords: z.array(z.string().min(1)).min(1).optional(),
             unlisted: z.boolean().default(false)
         })

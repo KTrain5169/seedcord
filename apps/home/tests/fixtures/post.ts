@@ -18,5 +18,6 @@ export const POST: PostSummary = {
     unlisted: false,
     minutes: 6,
     cover: undefined,
+    thumbnail: undefined,
     editUrl: 'https://github.com/seedcord/seedcord/edit/next/apps/home/content/blog/typed-custom-ids/index.mdx'
 };

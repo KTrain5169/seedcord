@@ -55,4 +55,12 @@ describe('post frontmatter', () => {
             height: 3
         });
     });
+
+    it('parses a webp thumbnail into its url and size', () => {
+        using post = new PostFolder().webp('thumbnail.webp');
+
+        const result = parse({ ...VALID, thumbnail: './thumbnail.webp' }, post.file);
+
+        expect(result.data?.thumbnail).toEqual({ src: `/blog/${POST_SLUG}/thumbnail.webp`, width: 4, height: 3 });
+    });
 });
