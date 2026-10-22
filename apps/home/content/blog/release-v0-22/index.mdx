@@ -33,7 +33,7 @@ Curious what seedcord does and why? [Start here!](https://seedcord.org/guide/)
 
 Here are some things from this release we'd like to highlight:
 
-## Static builds with Vite
+## Static builds with Vite & Vite plugin support
 
 As mentioned above, this release features Vite builds for production (`seedcord build`). Before, only `seedcord dev` was using Vite, which meant we had two different bundlers for dev and prod. As an additional pain point, the previous production build was more of a "transpilation", meaning that at runtime, your modules were still being dynamically read from the filesystem instead of statically imported.
 
@@ -47,11 +47,13 @@ import { foo } from 'vite-plugin-foo';
 
 export default defineConfig({
     // ...
-    vitePlugins: [foo()]
+    vitePlugins: () => [foo()]
 });
 ```
 
 Make sure that any environment-aware plugins target the `seedcord` environment, since that's the environment that seedcord is set up in.
+
+You'll find other information about using Vite plugins, and when to use seedcord plugins vs Vite plugins, on [this guide page](http://seedcord.org/guide/build/vite-plugins/)
 
 This upgrade, whilst already solving the bundling problems we had, also allows us to do something else that's pretty cool:
 
@@ -89,7 +91,7 @@ cd edge-bot # replace with your bot's directory
 
 And run `seedcord dev` with your package manager. Your bot will now be running and ready for you to iterate on. Edit a relevant file, and your bot will have hot module replacement (HMR) activating to swap out the module you just edited, faster than you can blink!
 
-The bot is running inside `workerd` during this, the same runtime used by Cloudflare Workers. This ensures that there is minimal differences between your local testing and the production runtime. This is possible thanks to us moving to use Vite for both dev and build, allowing us to fully utilise the [Vite Environment API](https://vite.dev/guide/api-environment). This system allows us to coordinate dev and build in a separate runtime like this and accurately map the `seedcord` application. Huge thanks to the Vite team for making this!
+In dev, the bot is running inside `workerd`, the same runtime used by Cloudflare Workers. This ensures that there is minimal differences between your local testing and the production runtime. This is possible thanks to us moving to use Vite for both dev and build, allowing us to fully utilise the [Vite Environment API](https://vite.dev/guide/api-environment). This system allows us to coordinate dev and build in a separate runtime like this and accurately map the `seedcord` application. Huge thanks to the Vite team for making this!
 
 Once you're ready to deploy, you can simply run this:
 
@@ -100,6 +102,8 @@ pnpx cf deploy --prebuilt
 ```
 
 Make sure you link your Cloudflare account, and voila! Now you've got a seedcord edge bot deployed to Cloudflare.
+
+Read up on this in [the guide page](http://localhost:3001/guide/build/workers/).
 
 ---
 
@@ -127,7 +131,7 @@ Each of these can also be accessed with subcommands:
 
 This allows you to have simplified command management while building and maintaining your seedcord bot!
 
-For a wider usage of the guide
+To learn more about the subcommands, visit [this guide page](http://seedcord.org/guide/tooling/commands/).
 
 ---
 
@@ -135,23 +139,23 @@ For a wider usage of the guide
 
 seedcord bots can be built (and published) as libraries! This allows you to write your bots using the framework, and export them for use as part of a larger application. This will be most useful to bots on HTTP transports, as you can easily integrate them into backend frameworks like Hono, H3, Elysia, or even full-stack frameworks like Nitro, TanStack Start, Astro, and more.
 
-To build library bots, set the `library` configuration to `true`:
+To build library bots, omit `build.start` from your seedcord config:
 
 ```ts
 import { defineConfig } from 'seedcord/config';
 
 export default defineConfig({
-    // ...
-    library: true
+    root: './src',
+    instance: './bot.ts'
 });
 ```
 
-And now, your bot will be built as a library, ready for you to reuse it elsewhere.
+And now, your bot will be packaged as a library, ready for you to reuse it elsewhere.
 
 To use library bots, simply import them from their bot entrypoint:
 
 ```ts
-import bot from '../bot';
+import bot from '../bot'; // Change the entrypoint to your bot package entrypoint
 ```
 
 HTTP bots comply with the `export default { fetch }` standard used by Cloudflare Workers, Bun, Hono, H3, Elysia, and more. This means that you can simply pass in one `Request` object and get the `Response` from the bot.
@@ -163,5 +167,19 @@ await bot.start();
 ```
 
 Your bot can now be used like a library in another app.
+
+See [the guide](http://seedcord.org/guide/build/package/) to learn more. There's also [a guide page on integrating with web servers](http://seedcord.org/guide/build/embed/).
+
+---
+
+## Session lock files
+
+Do you ever forget about when you've already had a dev server started? Well, as a small new addition to this update, we've added a session lock file.
+
+When you start a dev session, a lock file will be written to `{global temp folder}/seedcord-dev/<user-id>-<uuid>`, with the application ID that is being used. If another dev session starts with the same application ID, the CLI will throw an error, and letting you know that a dev session is already connected to that application.
+
+![lockfile dev error](./session-lock.webp)
+
+This will not trigger if bots are using different applications, so it won't get in your way if you are developing several distinct bots.
 
 ---
