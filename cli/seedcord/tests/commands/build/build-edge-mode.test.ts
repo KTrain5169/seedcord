@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { readBuildOutput } from '@cloudflare/build-output-utils';
 import { describe, expect, it } from 'vitest';
 
-import { ShellMode } from '#core/viteMode';
+import { ShellMode } from '#src/core/ShellMode';
 
 import { copyEdgeBotForTest, edgeBuildRunner, fakeDiscord } from './edgeBot';
 

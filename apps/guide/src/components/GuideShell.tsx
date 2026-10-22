@@ -28,6 +28,7 @@ import { DocsSidebar } from './DocsSidebar';
 import { GuideSearch, SEARCH_LABEL } from './GuideSearch';
 import { MobileNav } from './MobileNav';
 import { PageActions } from './PageActions';
+import { StarCard } from './StarCard';
 import { TableOfContents } from './TableOfContents';
 import { TocBar } from './TocBar';
 
@@ -112,6 +113,7 @@ function ContentsColumn({
             {actions === undefined ? null : <PageActions {...actions} className={cn(ghostRow)} />}
             <TableOfContents items={items} activeIds={activeIds} className={cn('min-h-0')} />
             <ScrollToTopButton variant="inline" className={cn(ghostRow, 'justify-start')} />
+            <StarCard />
         </div>
     );
 }

@@ -16,7 +16,7 @@ import { rethrowVitePluginError, VitePlugins } from './vitePlugins';
 
 import type { ModuleLoader, OpenModules } from '#core/modules/ModuleLoader';
 import type { RealPath } from '#core/project/realPath';
-import type { DefaultMode, ShellMode } from '#core/viteMode';
+import type { DefaultMode, ShellMode } from '#src/core/ShellMode';
 import type { CheckedConfig } from './ConfigValidator';
 import type { BuildTarget } from './detectTarget';
 import type {

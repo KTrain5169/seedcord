@@ -1,4 +1,3 @@
-import { readBotToken } from '@seedcord/core/internal';
 import { SeedcordErrorCode, paint } from '@seedcord/errors';
 import { SeedcordError } from '@seedcord/errors/internal';
 
@@ -30,7 +29,7 @@ export function createTunnelCoordinator(
     if (tunnel.mode === 'off') return undefined;
 
     const deps = systemTunnelDeps();
-    const endpoint = InteractionsEndpoint.create(readBotToken);
+    const endpoint = InteractionsEndpoint.create();
 
     if (tunnel.mode === 'url') {
         return new TunnelCoordinator({

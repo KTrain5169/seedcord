@@ -58,6 +58,7 @@ export class Post {
             unlisted: data.unlisted,
             minutes: readingMinutes(await this.text()),
             cover: data.cover,
+            keywords: data.keywords,
             editUrl: `${CONTENT_SOURCE}/${this.page.path}`
         };
     }

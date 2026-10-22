@@ -263,7 +263,7 @@ catalogs:
       specifier: ^4.23.15
       version: 4.23.15
     type-fest:
-      specifier: ^5.8.0
+      specifier: ^5.9.0
       version: 5.10.0
     unist-util-visit:
       specifier: ^5.1.0
@@ -1550,6 +1550,9 @@ importers:
 
   packages/types:
     dependencies:
+      '@discordjs/rest':
+        specifier: catalog:deps
+        version: 2.6.3
       discord-api-types:
         specifier: ^0.38.52
         version: 0.38.56

@@ -51,6 +51,7 @@ export function postMetadata(post: PostSummary): Metadata {
     return {
         title: post.title,
         description: post.description,
+        keywords: post.keywords ?? null,
         robots: visibility.robots,
         authors: post.authors.map(({ name, url: authorUrl }) => ({ name, url: authorUrl })),
         alternates: { canonical: url, types: visibility.types },

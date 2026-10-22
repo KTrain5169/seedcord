@@ -12,7 +12,7 @@ type Frontmatter = BlogPost['data'];
 
 export interface PostSummary extends Pick<
     Frontmatter,
-    'title' | 'description' | 'created' | 'edited' | 'cover' | 'unlisted'
+    'title' | 'description' | 'created' | 'edited' | 'cover' | 'keywords' | 'unlisted'
 > {
     slug: string;
     url: string;

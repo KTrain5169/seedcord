@@ -6,7 +6,7 @@ import { ProjectLoader } from '#core/config/ProjectLoader';
 import { openModuleLoader } from '#core/modules/openModuleLoader';
 import { quietSteps } from '#core/output/quietSteps';
 import { DevLock } from '#core/state/DevLock';
-import { startupShell } from '#core/viteMode';
+import { startupShell } from '#src/core/ShellMode';
 import { resetChannelColors } from '#ui/channelColor';
 import { profileMark } from '#ui/profile';
 
@@ -26,7 +26,7 @@ import type { TypedOmit } from '@seedcord/types';
 
 const TUNNEL_TEARDOWN_MS = 3000;
 
-export interface DevRunnerDeps extends TypedOmit<DevSessionDeps, 'onEvent'> {
+export interface DevRunnerDeps extends TypedOmit<DevSessionDeps, 'onListening'> {
     readonly projectLoader: Pick<ProjectLoader, 'readConfig'>;
     readonly tunnel: TunnelRouter;
     readonly runtime: (target: ResolvedTarget) => DevRuntime;
@@ -114,7 +114,7 @@ export class DevRunner {
         store.setIdleAnimation(config.idleAnimation);
         this.currentSession = new DevSession(config, files, this.deps.runtime(config.target), {
             ...this.deps,
-            onEvent: (event) => void tunnel.route(config.tunnel, event)
+            onListening: (port, instance) => void tunnel.route(config.tunnel, port, instance)
         });
 
         try {
@@ -145,6 +145,7 @@ export class DevRunner {
 
     public async restart(): Promise<void> {
         if (this.next === 'quit') return;
+        this.deps.store.beginRestart();
         this.next = 'session';
         this.restarts++;
         await this.currentSession?.stop();
@@ -161,6 +162,7 @@ export class DevRunner {
     }
 
     public refreshCommands(shouldRefresh: boolean): void {
+        this.deps.store.clearPrompt();
         this.currentSession?.refreshCommands(shouldRefresh);
     }
 

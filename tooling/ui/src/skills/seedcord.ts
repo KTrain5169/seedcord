@@ -3,13 +3,13 @@ import { DOCS_URL, GUIDE_URL as GUIDE } from '#src/sites';
 import type { Skill } from '#src/skills';
 
 const DESCRIPTION =
-    'Build a Discord bot with seedcord, a TypeScript framework for gateway and http bots, typed end to end. Covers picking a transport, declaring slash commands with generated option types, replying, gates, components, and the CLI.';
+    'Build a Discord bot with seedcord, a TypeScript framework for gateway and http bots, typed end to end. Covers picking a transport, declaring slash commands with generated option types, replying, components, gates, events, plugins, the CLI, and building for a server or Cloudflare Workers.';
 
 const BODY = `---
 name: seedcord
 description: ${DESCRIPTION}
 license: Apache-2.0
-compatibility: TypeScript projects on Node 24.11 or newer.
+compatibility: TypeScript projects on Node 24.11 or newer, or Bun 1.4.2 or newer.
 metadata:
     documentation: ${GUIDE}
     reference: ${DOCS_URL}
@@ -37,6 +37,10 @@ Run \`seedcord codegen\` after you add or change a command. The handler generics
 ## 5. Check every claim before you write it
 
 Fetch the page for the surface you are using. Every page answers at its own url plus \`.md\`, so ${GUIDE}/checks/gates.md is the Gates page.
+
+## 6. Build for production
+
+Read ${GUIDE}/build.md before you run \`seedcord build\`. It covers a node server and Cloudflare Workers.
 `;
 
 export const SEEDCORD_SKILL: Skill = { name: 'seedcord', description: DESCRIPTION, body: BODY };
