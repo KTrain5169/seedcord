@@ -34,9 +34,9 @@ Then head over to [our first bot guide](https://seedcord.org/guide/first-bot/).
 
 Curious what seedcord does and why? [Start here!](https://seedcord.org/guide/)
 
----
-
 Here are some things from this release we'd like to highlight:
+
+---
 
 ## Static builds with Vite & Vite plugin support
 
@@ -125,7 +125,7 @@ Running `seedcord commands` gives you the following options:
 - `Deploy the commands in your code` - seedcord will read your code, compile a list of commands, and deploy them according to how you configured your command (`guild` commands are deployed to a server of your choosing, `global` commands are deployed to the bot itself).
 - `List the commands Discord has` - Obtains the list of commands that your bot has deployed in servers or globally.
 - `Delete guild commands that duplicate a global command` - Dedupes any guild commands with the same name as any deployed global commands.
-- `Delete every command globally or in guilds` - Deletes every command your bot has registered, globally and/or in guilds. ****This is very destructive, ensure that you are using the correct bot and targeting the correct guild!****
+- `Delete every command globally or in guilds` - Deletes every command your bot has registered, globally and/or in guilds. \***\*This is very destructive, ensure that you are using the correct bot and targeting the correct guild!\*\***
 
 Each of these can also be accessed with subcommands:
 
@@ -190,6 +190,14 @@ This will not trigger if bots are using different applications, so it won't get 
 
 ---
 
-For more information about the new release, [read the release changelog](https://github.com/seedcord/seedcord/releases/latest).
+## Other fixes
+
+- ~40 bug fixes were included in this release
+- `create-seedcord` got a refreshed look, and it now asks if you want to install dependencies + initialize a git repo, and now comes with a sample uptime plugin.
+- The TUI is now more responsive for narrower screens (such as mobile or split screen on computers)
+- Certain layout and filter preferences for dev sessions are now saved across sessions.
+- The bot health check was revamped and now orrectly says ready when the bot is actually ready on both HTTP and Node.
+
+For the rest of the release information, [read the release changelog](https://github.com/seedcord/seedcord/releases/latest).
 
 Join our [Discord server](https://seedcord.org/chat) to chat with others about seedcord!
