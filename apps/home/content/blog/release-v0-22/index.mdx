@@ -181,7 +181,7 @@ See [the guide](https://seedcord.org/guide/build/package/) to learn more. There'
 
 Do you ever forget about when you've already had a dev server started? Well, as a small new addition to this update, we've added a session lock file.
 
-When you start a dev session, a lock file will be written to `{global temp folder}/seedcord-dev/<user-id>-<uuid>`, with the application ID that is being used. If another dev session starts with the same application ID, the CLI will throw an error, and letting you know that a dev session is already connected to that application.
+When you start a dev session, a lock file will be written to `{global temp folder}/seedcord-dev/<user-id>-<uuid>`, with the application ID that is being used. If another dev session starts with the same application ID, the CLI will throw an error, letting you know that a dev session is already connected to that application.
 
 ![lockfile dev error](./session-lock.webp)
 
