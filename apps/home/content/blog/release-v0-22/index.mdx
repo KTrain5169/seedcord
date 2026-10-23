@@ -1,6 +1,6 @@
 ---
 title: seedcord v0.22 release
-description: Vite builds for all!
+description: v0.22 has released, bringing us exciting features like Vite builds and edge bots. Read on!
 authors: [ktrain5169]
 created: 2026-10-20
 cover:
@@ -10,14 +10,14 @@ thumbnail: ./thumbnail.webp
 keywords: [release, vite, edge, cloudflare-workers]
 ---
 
-As of release v0.22 of the seedcord framework, Vite is now used as the build tool for both dev and production builds. In addition to bringing faster production builds with the usage of Vite 8 (Rolldown), this also ensures consistency between development and production. (Previously, we have been using `tsc-alias` for both type-checking and building bots)
+As of release v0.22 of the seedcord framework, Vite is now used as the build tool for both dev and build. In addition to bringing faster builds with the usage of Vite 8 (Rolldown), this also ensures consistency between development and production. (Previously, we have been using `tsc-alias` for both type-checking and building bots)
 
 To upgrade your bot, run your package manager's upgrade command:
 
 ```sh
+pnpm upgrade --latest seedcord
 npm upgrade --latest seedcord
 yarn upgrade --latest seedcord
-pnpm upgrade --latest seedcord
 
 # Do the same with your transport package (i.e. @seedcord/gateway or @seedcord/http)
 ```
@@ -25,9 +25,9 @@ pnpm upgrade --latest seedcord
 New to seedcord? Scaffold your first bot with our `create-seedcord` CLI:
 
 ```sh
+pnpm create seedcord@latest
 npm init seedcord@latest
 yarn create seedcord@latest
-pnpm create seedcord@latest
 ```
 
 Then head over to [our first bot guide](https://seedcord.org/guide/first-bot/).
@@ -71,9 +71,9 @@ You can now write HTTP bots that run on the edge (Cloudflare Workers)! Previousl
 To get started, run either of these commands (depending on your package manager):
 
 ```sh
+pnpm create seedcord
 npm init seedcord
 yarn create seedcord
-pnpm create seedcord
 ```
 
 Then select the HTTP bots option.
@@ -86,7 +86,7 @@ And finally select Cloudflare Workers.
 
 Make sure to fill in the remaining details as requested, and then your bot should now be scaffolded.
 
-> Note: The runtime option will only appear for edge bots.
+> Note: The runtime option will only appear for HTTP bots.
 
 Now, `cd` into your project directory:
 
@@ -101,12 +101,12 @@ In dev, the bot is running inside `workerd`, the same runtime used by Cloudflare
 Once you're ready to deploy, you can simply run this:
 
 ```sh
+pnpm exec cf deploy --prebuilt
 npx cf deploy --prebuilt
 yarn exec cf deploy --prebuilt
-pnpx cf deploy --prebuilt
 ```
 
-Make sure you link your Cloudflare account, and voila! Now you've got a seedcord edge bot deployed to Cloudflare.
+Make sure you link your Cloudflare account (`cf auth login`), and voila! Now you've got a seedcord edge bot deployed to Cloudflare.
 
 Read up on this in [the guide page](https://seedcord.org/guide/build/workers/).
 
@@ -125,7 +125,7 @@ Running `seedcord commands` gives you the following options:
 - `Deploy the commands in your code` - seedcord will read your code, compile a list of commands, and deploy them according to how you configured your command (`guild` commands are deployed to a server of your choosing, `global` commands are deployed to the bot itself).
 - `List the commands Discord has` - Obtains the list of commands that your bot has deployed in servers or globally.
 - `Delete guild commands that duplicate a global command` - Dedupes any guild commands with the same name as any deployed global commands.
-- `Delete every command globally or in guilds` - Deletes every command your bot has registered, globally and/or in guilds. **This is very destructive, ensure that you are using the correct bot and targeting the correct guild!**
+- `Delete every command globally or in guilds` - Deletes every command your bot has registered, globally and/or in guilds. ****This is very destructive, ensure that you are using the correct bot and targeting the correct guild!****
 
 Each of these can also be accessed with subcommands:
 
@@ -152,6 +152,7 @@ import { defineConfig } from 'seedcord/config';
 export default defineConfig({
     root: './src',
     instance: './bot.ts'
+    // do not set build.start
 });
 ```
 
@@ -160,7 +161,7 @@ And now, your bot will be packaged as a library, ready for you to reuse it elsew
 To use library bots, simply import them from their bot entrypoint:
 
 ```ts
-import bot from '../bot'; // Change the entrypoint to your bot package entrypoint
+import bot from '@mypkg/bot'; // Change the entrypoint to your bot package entrypoint
 ```
 
 HTTP bots comply with the `export default { fetch }` standard used by Cloudflare Workers, Bun, Hono, H3, Elysia, and more. This means that you can simply pass in one `Request` object and get the `Response` from the bot.
@@ -179,7 +180,7 @@ See [the guide](https://seedcord.org/guide/build/package/) to learn more. There'
 
 ## Session lock files
 
-Do you ever forget about when you've already had a dev server started? Well, as a small new addition to this update, we've added a session lock file.
+Did you ever start a dev server and forget about it? Well, as a small new addition to this update, we've added a session lock file.
 
 When you start a dev session, a lock file will be written to `{global temp folder}/seedcord-dev/<user-id>-<uuid>`, with the application ID that is being used. If another dev session starts with the same application ID, the CLI will throw an error, letting you know that a dev session is already connected to that application.
 
