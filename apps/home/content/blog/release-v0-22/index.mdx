@@ -1,7 +1,7 @@
 ---
 title: seedcord v0.22 release
 description: Vite builds, edge bots, and a CLI for managing Discord commands. Here’s what’s new in seedcord v0.22.
-authors: [ktrain5169]
+authors: [ktrain5169, materwelon]
 created: 2026-10-20
 cover:
     src: ./cover.webp
@@ -101,7 +101,7 @@ And run `seedcord dev` with your package manager. Your bot will now be running a
 
 In dev, the bot is running inside `workerd`, the same runtime used by Cloudflare Workers. This ensures there are few differences between your local testing and the production runtime. This is possible thanks to us moving to use Vite for both dev and build, allowing us to fully utilise the [Vite Environment API](https://vite.dev/guide/api-environment). This system allows us to coordinate dev and build in a separate runtime like this and accurately map the `seedcord` application. Huge thanks to the Vite team for making this!
 
-Before your first deploy, log in to Cloudflare and deploy your commands. The build reads their ids from Discord:
+Before your first deploy, log in to Cloudflare and deploy your commands. The build reads their IDs from Discord:
 
 ```sh
 pnpm exec cf auth login
