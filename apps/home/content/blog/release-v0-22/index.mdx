@@ -110,7 +110,7 @@ pnpm build
 pnpm exec cf deploy --prebuilt --secrets-file .secrets.env
 ```
 
-Make sure `DISCORD_BOT_TOKEN` is available in your shell or `.env` when you build. Put it in `.secrets.env` too for the first deploy, and keep that file out of git. After the first deploy, the scaffold's `deploy` script builds and deploys without the secrets file. With Bun, use `bunx` for each `pnpm exec` command and `bun run build` for `pnpm build`. And voila! Now you've got a seedcord edge bot deployed to Cloudflare.
+Make sure `DISCORD_BOT_TOKEN` is available in your shell or `.env` when you build. For the first deploy, put every secret declared in `cloudflare.config.ts` in `.secrets.env`, not just the bot token. Keep that file out of git. After the first deploy, the scaffold's `deploy` script builds and deploys without the secrets file. With Bun, use `bunx` for each `pnpm exec` command and `bun run build` for `pnpm build`. And voila! Now you've got a seedcord edge bot deployed to Cloudflare.
 
 Set Discord's **Interactions Endpoint URL** to your Worker URL in the developer portal.
 

@@ -177,7 +177,7 @@ The whole first deploy, in order:
 1. Log in to Cloudflare once: `pnpm exec cf auth login`.
 2. Deploy your commands, since the build reads their ids from Discord: `pnpm exec seedcord commands deploy`.
 3. Build: `pnpm build`.
-4. Deploy with the secrets: `pnpm exec cf deploy --prebuilt --secrets-file .secrets.env`, where `.secrets.env` holds a line like `DISCORD_BOT_TOKEN=...`.
+4. Deploy with the secrets: `pnpm exec cf deploy --prebuilt --secrets-file .secrets.env`. Add an entry to `.secrets.env` for every secret declared in `cloudflare.config.ts`.
 5. Point Discord at the worker. Cloudflare serves a new worker at `https://<name>.<your-subdomain>.workers.dev`, with `name` from `cloudflare.config.ts` ([workers.dev](https://developers.cloudflare.com/workers/configuration/routing/workers-dev/) has the details). Paste that URL into **Interactions Endpoint URL** on your app's **General Information** page in the [developer portal](https://discord.com/developers/applications), then save.
 
 After that the secrets are configured on the worker, so `pnpm run deploy` works on its own. When you add or rename a command, deploy your commands again before `pnpm run deploy`, since the worker holds the ids from its last build.
