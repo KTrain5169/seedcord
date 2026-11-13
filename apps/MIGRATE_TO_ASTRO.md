@@ -12,7 +12,7 @@ Run Astro through the workspace CLI: `vp run dev` starts `astro dev`, and `vp de
 
 Do this once, before the first site moves.
 
-- [ ] Add `astro`, `@astrojs/react`, `@astrojs/cloudflare`, `@astrojs/mdx`, `eslint-plugin-astro`, and `@fumadocs/astro` to the catalogs in `pnpm-workspace.yaml`.
+- [ ] Add `astro`, `@astrojs/react`, `@astrojs/cloudflare`, `@astrojs/mdx`, `eslint-plugin-astro`, `@tailwindcss/vite`, and `@fumadocs/astro` to the catalogs in `pnpm-workspace.yaml`.
 - [ ] Pin `astro` to `^7.4.11` and `fumadocs-core` to `^16.18.3` (needed by `@fumadocs/astro`).
 - [ ] Add an Astro preset to `@seedcord/eslint-config` and write a changeset for it.
 - [ ] Verify Oxfmt formats `.astro` files (enable the `astro` option and install `@astrojs/compiler-rs`), and watch [oxc#29060](https://github.com/oxc-project/oxc/issues/29060) for frontmatter formatting bugs.
@@ -29,6 +29,7 @@ Ticking the entire checklist means that the site is functionally identical to th
 - [ ] Each route on the Next.js site exists at the same path on the Astro site. Enumerate pages with `getStaticPaths` fed by the site's existing route helpers (`docsRoutes()` for docs, the content collections for guide and home).
 - [ ] React components are mounted on their Astro equivalents. Static components render without a `client:` directive; only interactive ones hydrate (docs sidebar and command palette, guide search and table of contents, home hero). The command palette context collapses into the shared zustand store so separate islands share state.
 - [ ] Framework imports are replaced: `next/link` becomes `<a>`, `notFound()` becomes rendered 404 content, `next/image` becomes `<img>`, `next/script` becomes an inline script. Head metadata from `generateMetadata` and `generateViewport` becomes plain head tags.
+- [ ] Tailwind moves from PostCSS to the Vite plugin: delete `postcss.config.mjs` and the `@tailwindcss/postcss` dependency (plus the bare `postcss` dependency in docs' package.json), and wire `@tailwindcss/vite` from the catalog in `astro.config`. Astro's docs name the Vite plugin as the preferred way to run Tailwind 4, and the apps use PostCSS for Tailwind alone. The CSS entry keeps importing `@seedcord/ui/styles/globals.css`, which carries `@import 'tailwindcss'`.
 - [ ] Dev playgrounds collapse into one `src/pages/dev/[...playground].astro` with a registry, whose `getStaticPaths` returns `[]` when `import.meta.env.PROD`.
 - [ ] Endpoints exist for everything the old site served: `llms.txt`, `sitemap.xml`, `robots.txt`, `rss.xml`, OG images, icons, and the prerendered search shards on docs.
 - [ ] Env reads move from `NEXT_PUBLIC_*` to Astro's `import.meta.env.PUBLIC_*` so staging builds keep working.
@@ -40,11 +41,13 @@ Ticking the entire checklist means that the site is functionally identical to th
 Use this checklist when integrating more into Astro.
 Ticking the entire checklist means that the websites become more Astro-native.
 
-- [ ] Static React components become `.astro` components, converted bottom-up. Write the first conversion test-first through the Astro Container API. Only the hydrated islands keep React.
+- [ ] App-local static templating becomes `.astro` components, converted bottom-up. Write the first conversion test-first through the Astro Container API.
+- [ ] The shared components in `@seedcord/ui` ship as React components. Astro renders a React component without a `client:` directive as static HTML with zero client JavaScript, and the React bundle loads for the hydrated islands anyway, so the client ships the same bytes either way. An `.astro` component works only inside `.astro` files, while the islands and the `@fumadocs/astro` MDX components map import the kit as React element types. The React implementation also keeps the kit under `react-doctor` and the React lint rules, and costs only build time in the `react-dom/server` render.
 - [ ] `ClientRouter` replaces the SPA feel; docs page transitions use CSS transitions.
 - [ ] Content collections are set up:
     - **guide and home** use `@fumadocs/astro`: `pageLoader()` and `metaLoader()` feed `defineCollection`, and `toFumadocsSource()` plugs the collections into the existing `fumadocs-core/source` `loader({ baseUrl })`. Frontmatter schemas become zod schemas in the content config. `fumadocs-mdx` is removed. The integration runs on Astro's Sätteri processor and accepts only Sätteri plugins, so rewrite the six custom remark and rehype plugins in `apps/guide/source.config.ts` as Sätteri `mdastPlugins` and `hastPlugins`, and pass them through the integration's per-collection options. Markdown twin generation moves from `apps/guide/tests/twinPipeline.ts` into build-time endpoints. The twin pipeline can adopt `@fumadocs/satteri/remark-llms` or the integration's `includeProcessedMarkdown` option instead of driving `fumadocs-core`'s remark-llms directly.
     - **docs** keeps API Extractor exactly as it is. `vp run docs:extract` and `vp run docs:artifacts` are unchanged; the site consumes `generated/artifacts/` at build time through `getStaticPaths`, with an optional Content Loader wrapper around the engine if the collections pattern earns its keep.
+- [ ] Guide keeps twoslash, and its highlight moves from the React fence component into the Sätteri rehype-code pass. `apps/guide/src/lib/twoslash.ts` already drives `transformerTwoslash` from `@shikijs/twoslash`, a Shiki transformer that runs below the markdown pipeline, so the Sätteri switch leaves it untouched. Guide sets `rehypeCodeOptions: false` today and highlights inside an async React `Fence` that calls `twoslashBlock()`; flip to rehype-code with the guide's transformers, dispatched on the fence meta (`check`, `hovers`, `off`), and let the `CodeBlock` MDX component wrap the highlighted HTML. The prettier pass pre-warms the cache before the sync transformer reads it, which the existing one-entry caches already separate. Twoslash is the gate that fails the build when a sample stops compiling against the published packages, and the source of the `^?`, completions, and `hovers` output the guide's content leans on. Dev and build split the same way as today: the `TWOSLASH === '0'` gate inside `twoslashBlock()` moves to the transformer list, `dev` keeps `cross-env TWOSLASH=0` so samples render as plain highlighted text, the build compiles every sample and fails on a broken one, and a `dev:twoslash` script opts in with the 8 GB heap. Turbo already hashes `TWOSLASH` through `globalEnv`, so a plain build and a twoslash build cache separately. Fumadocs documents this exact wiring for Sätteri on [its Astro twoslash page](https://www.fumadocs.dev/docs/astro/markdown/twoslash), and the same page documents the `typesCache` option for caching. A filesystem cache backend is a follow-up investigation after the sites ship, recorded in the post-migration twoslash investigation.
 - [ ] The Cloudflare adapter (`@astrojs/cloudflare`) replaces the hand-rolled worker wiring. Sites keep worker code only where the platform requires it, written as advanced-routing stages in a custom `src/worker.ts` pointed at by wrangler's `main`: twin negotiation, then the adapter's `cf()` asset handler, then `finalize()` around `astro()`. Docs keeps `replacedVersion()` reading `artifacts/index.json` from the assets binding, and guide keeps its `WorkerEntrypoint` class exporting the `GuideService` RPC.
 - [ ] **docs only:** pages move from R2 to Workers Static Assets. Remove `r2_buckets` and `BUILD_ID` from the wrangler config, delete the R2 upload, prune, and purge scripts in `scripts/src/docs/` after grepping for consumers, and replace the rollback path with `wrangler versions upload`.
 - [ ] Redirects and headers move to static configuration: guide's `RENAMED_PAGES` table generates `public/_redirects` at build (`build.redirects: false`), per-page `Link` headers move to `<link rel>` tags in the head, and `x-robots-tag` moves to a `_headers` file.
@@ -90,8 +93,11 @@ Two serving questions still need the maintainer's call before work starts:
 
 - Vite's `ssr.external` configuration replaces Next's `serverExternalPackages` for the packages that read files off disk (`@seedcord/docs-engine`, `@seedcord/docs-generator`, `@microsoft/api-extractor-model`, `@microsoft/tsdoc`, `@microsoft/tsdoc-config`, `@takumi-rs/core`).
 - `@fumadocs/astro` requires Astro's Sätteri Markdown processor and rejects the unified pipeline, so `@astrojs/markdown-remark` is unavailable on guide and home. Confirm its compiled MDX renders without hydration. Confirm Sätteri's mdast exposes `mdxJsxFlowElement` to plugins, because `remarkNoMappedJsx` and `remarkPageLinks` walk those nodes.
+- The Sätteri rehype-code pass hands the fence meta to Shiki transformers, so the twoslash modes dispatch inside the highlight pass. The fallback is an async `Fence` component, which then needs `@astrojs/react` to render async server components.
+- `TypeHover` hydrates over the highlighted HTML the rehype-code pass emits, and `DocsLinks.load()` pre-warms once per build instead of once per fence.
 - `fetchFile` and wrangler's `main` cooperate when the entrypoint is a `WorkerEntrypoint` class.
 - The link checker handles Astro's output layout once the migration removes the Next navigation special case.
+- Tailwind's automatic source detection picks up the classes used in `tooling/ui/src`, which sits outside each app's root. Add `@source` entries to the CSS entry if a pilot page misses them.
 
 ## Post-migration experiment: build-time incremental builds
 
@@ -108,6 +114,27 @@ Adoption constraints:
 One check gates adoption: whether `@fumadocs/astro`'s `pageLoader()` exposes per-entry digests. The Content Loader API leaves digest updates to each loader, so confirm before guide and home inherit the flag. The docs site's loader computes its own digest, a content hash of each package's `project.json`.
 
 Route caching (stable in Astro 7) is the runtime half of ISR: `Astro.cache.set({ maxAge, swr, tags })`, config-level `routeRules`, and the experimental `cacheCloudflare()` provider from `@astrojs/cloudflare/cache`. It caches only on-demand routes. All three sites are fully prerendered, and Workers Static Assets already serves them from the edge. Guide's `/ask` is a POST endpoint, so nothing there is cacheable HTML. Don't configure route caching now. Revisit it only if a site moves pages on-demand.
+
+## Post-migration investigation: twoslash
+
+The migration keeps the guide's twoslash split exactly as it runs today; the Part 2 twoslash bullet records the shape. After the sites ship, two investigations follow.
+
+### A better dev/build split
+
+Investigate a better mechanism than the `TWOSLASH` env var:
+
+1. Gate the transformers on Astro's `command` in `defineConfig(({ command }) => ...)`, so twoslash runs on build by default, with an env override for a dev session that runs twoslash.
+2. A cheaper `hovers` mode, which triples a fence's compile cost today.
+
+### Caching twoslash runs
+
+Every build recompiles every fence today, and the seam to change that already exists: `transformerTwoslash` takes a `typesCache`, which `apps/guide/src/lib/twoslash.ts` implements in-memory as two one-entry caches. Swapping the backend for filesystem storage makes entries that keep their inputs skip the TypeScript compile, the expensive part of a fence; Shiki still renders per fence, and the prettier pass still learns hover formatting in-process. Fumadocs documents the option on the [Astro twoslash page](https://www.fumadocs.dev/docs/astro/markdown/twoslash) with `createFileSystemTypesCache()` from `fumadocs-twoslash/cache-fs` as the stock backend; `@shikijs/twoslash` defines the `TwoslashTypesCache` interface and hands `read` and `write` the compile options and meta, while the filesystem helper it documents ships from `@shikijs/vitepress-twoslash/cache-fs`.
+
+Three requirements shape the swap:
+
+1. Key entries on a fingerprint of the compile options, with code and language as part of that fingerprint. Identical sample text compiles differently when `tsconfig.samples.json`, the `seedcord-gen.ts` augmentation, or the seedcord packages it resolves against change, so a release would otherwise serve stale hovers. The options fingerprint covers `check` and `hovers` too, because they differ in `handbookOptions`. Verify what the stock filesystem cache keys on before adopting it, and wrap it with the fingerprint if it keys on code alone.
+2. The cache stores the compiled nodes with their attached `SymbolRef` values, and `DocsLinks` resolves hrefs at render, so href-shape changes leave entries valid. The docs artifacts still join the key, because they feed `SymbolRef.fromDeclaration`, and a changed mapping needs fresh refs.
+3. CI caches the twoslash directory next to `node_modules/.astro/`, which the incremental-build experiment needs restored anyway. Turbo handles the rest unchanged: it replays whole builds on unchanged inputs, and a correctly keyed cache is transparent to it.
 
 ## Deferred: Void (void.cloud)
 
