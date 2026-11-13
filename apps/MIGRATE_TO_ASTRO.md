@@ -46,9 +46,10 @@ Ticking the entire checklist means that the websites become more Astro-native.
 - [ ] `ClientRouter` replaces the SPA feel; docs page transitions use CSS transitions.
 - [ ] Content collections are set up:
     - **guide and home** use `@fumadocs/astro`: `pageLoader()` and `metaLoader()` feed `defineCollection`, and `toFumadocsSource()` plugs the collections into the existing `fumadocs-core/source` `loader({ baseUrl })`. Frontmatter schemas become zod schemas in the content config. `fumadocs-mdx` is removed. The integration runs on Astro's Sätteri processor and accepts only Sätteri plugins, so rewrite the six custom remark and rehype plugins in `apps/guide/source.config.ts` as Sätteri `mdastPlugins` and `hastPlugins`, and pass them through the integration's per-collection options. Markdown twin generation moves from `apps/guide/tests/twinPipeline.ts` into build-time endpoints. The twin pipeline can adopt `@fumadocs/satteri/remark-llms` or the integration's `includeProcessedMarkdown` option instead of driving `fumadocs-core`'s remark-llms directly.
+    - **home's blog** is home's content collection: `pageLoader()` and `metaLoader()` read `content/blog/*/index.mdx`, the collection derives the slug from the folder name, and `postSchema` carries over as the zod schema with its author-handle, date, and image validations. Home's `remarkPostFiles` joins the Sätteri port list, and it keeps enforcing the image rules at build: webp only, url-slug file names, inline images with alt text, the image inside the post folder, and the 500 KB ceiling. The `[image]` route becomes a prerendered endpoint that emits each post folder's webp files at `blog/<slug>/<name>`, with `getStaticPaths` enumerating them the way `generateStaticParams` does today. The migration keeps the `Post` class as the model over collection entries: `getText('processed')` becomes the entry's processed-markdown record, `readingMinutes` still sizes it, and the twin endpoints keep assembling `twinDocument`'s byline (authors, created, edited) on top of the processed markdown. `listedNewestFirst` still filters `unlisted` posts and sorts by `created` for the blog index and the feeds built on it.
     - **docs** keeps API Extractor exactly as it is. `vp run docs:extract` and `vp run docs:artifacts` are unchanged; the site consumes `generated/artifacts/` at build time through `getStaticPaths`, with an optional Content Loader wrapper around the engine if the collections pattern earns its keep.
 - [ ] Guide keeps twoslash, and its highlight moves from the React fence component into the Sätteri rehype-code pass. `apps/guide/src/lib/twoslash.ts` already drives `transformerTwoslash` from `@shikijs/twoslash`, a Shiki transformer that runs below the markdown pipeline, so the Sätteri switch leaves it untouched. Guide sets `rehypeCodeOptions: false` today and highlights inside an async React `Fence` that calls `twoslashBlock()`; flip to rehype-code with the guide's transformers, dispatched on the fence meta (`check`, `hovers`, `off`), and let the `CodeBlock` MDX component wrap the highlighted HTML. The prettier pass pre-warms the cache before the sync transformer reads it, which the existing one-entry caches already separate. Twoslash is the gate that fails the build when a sample stops compiling against the published packages, and the source of the `^?`, completions, and `hovers` output the guide's content leans on. Dev and build split the same way as today: the `TWOSLASH === '0'` gate inside `twoslashBlock()` moves to the transformer list, `dev` keeps `cross-env TWOSLASH=0` so samples render as plain highlighted text, the build compiles every sample and fails on a broken one, and a `dev:twoslash` script opts in with the 8 GB heap. Turbo already hashes `TWOSLASH` through `globalEnv`, so a plain build and a twoslash build cache separately. Fumadocs documents this exact wiring for Sätteri on [its Astro twoslash page](https://www.fumadocs.dev/docs/astro/markdown/twoslash), and the same page documents the `typesCache` option for caching. A filesystem cache backend is a follow-up investigation after the sites ship, recorded in the post-migration twoslash investigation.
-- [ ] The Cloudflare adapter (`@astrojs/cloudflare`) replaces the hand-rolled worker wiring. Sites keep worker code only where the platform requires it, written as advanced-routing stages in a custom `src/worker.ts` pointed at by wrangler's `main`: twin negotiation, then the adapter's `cf()` asset handler, then `finalize()` around `astro()`. Docs keeps `replacedVersion()` reading `artifacts/index.json` from the assets binding, and guide keeps its `WorkerEntrypoint` class exporting the `GuideService` RPC.
+- [ ] The Cloudflare adapter (`@astrojs/cloudflare`) replaces the hand-rolled worker wiring. Sites keep worker code only where the platform requires it, written as advanced-routing stages in a custom `src/worker.ts` pointed at by wrangler's `main`: twin negotiation, then the adapter's `cf()` asset handler, then `finalize()` around `astro()`. Docs ships without a worker: its asset count leaves room under the Static Assets caps, agents read twins through their `<link rel>` pointers and the `llms/` tree, and version redirects move into a build-generated `_redirects` file (see `The docs asset budget decides the worker` below). Guide keeps its `WorkerEntrypoint` class exporting the `GuideService` RPC. Home's entrypoint is thin: it redirects `www` requests to the apex and hands every other request to the asset handler.
 - [ ] **docs only:** pages move from R2 to Workers Static Assets. Remove `r2_buckets` and `BUILD_ID` from the wrangler config, delete the R2 upload, prune, and purge scripts in `scripts/src/docs/` after grepping for consumers, and replace the rollback path with `wrangler versions upload`.
 - [ ] Redirects and headers move to static configuration: guide's `RENAMED_PAGES` table generates `public/_redirects` at build (`build.redirects: false`), per-page `Link` headers move to `<link rel>` tags in the head, and `x-robots-tag` moves to a `_headers` file.
 
@@ -58,11 +59,22 @@ The site reads the artifacts as files, and no in-memory hand-off from the extrac
 
 1. API Extractor writes one `.api.json` per entry point itself, and its public API returns only success and warnings. Nothing hands the parsed model over in memory.
 2. `DocsEngine.fromManifest` skips the `manifest.json` read, but the engine still loads each `.api.json` from disk through `ApiModel.loadPackage`.
-3. The runtime worker reads `artifacts/index.json` from the assets binding for version redirects, so the deployed build needs the file.
-4. The artifacts carry `api.json` so a render-shape change can re-derive `project.json` without re-extracting.
-5. Turbo caches `docs:extract` and `docs:artifacts` as two tasks keyed on the built declaration files. Folding extraction into the Astro build would re-run API Extractor on every rebuild.
+3. The artifacts carry `api.json` so a render-shape change can re-derive `project.json` without re-extracting.
+4. Turbo caches `docs:extract` and `docs:artifacts` as two tasks keyed on the built declaration files. Folding extraction into the Astro build would re-run API Extractor on every rebuild.
 
 An Astro Content Loader can call the engine directly and feed it in-memory data, but the engine then reads the same files, so the loader saves nothing. Build the docs routes from `generated/artifacts/` and leave the pipeline as it is.
+
+### The docs asset budget decides the worker
+
+Workers Static Assets caps the files one Worker version carries at 20,000 on the free plan and 100,000 on paid, 25 MiB per file ([platform limits](https://developers.cloudflare.com/workers/platform/limits/)). The catalog pins `wrangler ^4.150.0`, past the 4.34.0 the raised cap needs.
+
+The count, from the deployed `index.json` and the route helpers, as an upper bound over every served version: the package pages total about 2,500 (16 packages serving 2-3 versions each, one page per entity, every version counted at the latest version's page count, `@seedcord/core` the largest at 265 entities), a `.md` twin per page doubles it, the `llms/` tree writes one markdown file per docs route, and the OG cards for the latest routes plus 37 search shards, bundles, and site files add about 900. The worst case totals about 8,500 files: 42% of the free cap and under 9% of the paid cap. Doubling the whole docs surface approaches the free cap and uses 17% of the paid cap.
+
+That headroom lets docs ship without a worker, and that settles the twin negotiation. Docs removes the `Accept: text/markdown` negotiation instead of deferring it, because the site doesn't have a worker to run it. Agents read each page's markdown through its `<link rel>` pointer or the `llms/` tree.
+
+Version redirects move into a `_redirects` file generated at build, replacing `replacedVersion()`. Production serves more than the current build emits: every minor-line head is live today (probed, `core` back to `0.1.4`, `eslint-config` back to `1.4.3`), because the deployed build predates the serving change that cut the version picker to major heads and two 0.x heads. That surplus totals about 6,600 pages at the same upper bound, which puts the deployed build near 9,200. The swap uploads the fresh build's output in place of the R2 bucket, and the first `_redirects` upload covers the versions the fresh build stops serving: about 93 redirect rules, one per package and pruned minor-line head; later releases append the heads they rotate out. Preserving the stale pages as assets instead pushes the worst case to about 15,000 files, 76% of the free cap, so redirect coverage is the accounting. The file caps at 2,100 rules, and the rule shape for patch versions inside served lines is an implementation decision.
+
+The docs app deploys as an assets-only project: its wrangler config sets `assets.directory` to the build's static output, and `@astrojs/cloudflare` joins guide and home alone.
 
 ## Part 3: Agent-readiness
 
@@ -71,23 +83,16 @@ Ticking the entire checklist means that the website can be used by both humans a
 
 - [ ] Each route has a `.md` twin. Guide pages and blog posts already have twins, and docs twins cover the packages pages; extend coverage where a route lacks one.
 - [ ] Each site generates `llms.txt` on each build. Home's `llms.txt` lists blog posts as links with their short description; it never inlines post contents.
-- [ ] The agent surface is checked in CI: crawl the preview deployment, request each page with `Accept: text/markdown`, and assert the twin, `llms.txt`, and head links respond.
+- [ ] The agent surface is checked in CI: crawl the preview deployment and assert each page's twin link, `llms.txt`, and head links respond. Guide's crawl also requests pages with `Accept: text/markdown` and asserts the markdown twin comes back.
 - [ ] The site was viewed as an agent through a local dev server.
 
 ## What replaces each worker job
 
 | Site  | Today                                                         | After                                                                                                                                       |
 | ----- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| home  | www redirect, staging noindex                                 | noindex moves to a per-environment generated `_headers` file. The www redirect is pending decision below.                                   |
+| home  | www redirect, staging noindex                                 | noindex moves to a per-environment generated `_headers` file. A thin worker entrypoint redirects `www` to the apex.                         |
 | guide | twin negotiation, `/ask`, redirects, `GuideService` RPC       | twin negotiation and `cf()` in the advanced-routing pipeline, `/ask` as an Astro endpoint, `_redirects` from `RENAMED_PAGES`, RPC unchanged |
-| docs  | R2 + `BUILD_ID`, version redirects, twin negotiation, headers | static assets, `replacedVersion()` against assets, twin negotiation in the pipeline, `_headers`                                             |
-
-## Open decisions
-
-Two serving questions still need the maintainer's call before work starts:
-
-1. **Home's www redirect.** Keep a thin worker entrypoint, or move the redirect to a Cloudflare zone rule?
-2. **Docs twin negotiation.** Keep serving `.md` at the page URL when a client sends `Accept: text/markdown`, or rely on the twin's `<link rel>` pointer? Guide keeps negotiation either way, and an external service consumes guide's `GuideService` RPC, so guide needs its worker entrypoint in both cases.
+| docs  | R2 + `BUILD_ID`, version redirects, twin negotiation, headers | static assets, version redirects in build-generated `_redirects`, `_headers`                                                                |
 
 ## Verify during implementation
 
@@ -95,6 +100,7 @@ Two serving questions still need the maintainer's call before work starts:
 - `@fumadocs/astro` requires Astro's Sätteri Markdown processor and rejects the unified pipeline, so `@astrojs/markdown-remark` is unavailable on guide and home. Confirm its compiled MDX renders without hydration. Confirm Sätteri's mdast exposes `mdxJsxFlowElement` to plugins, because `remarkNoMappedJsx` and `remarkPageLinks` walk those nodes.
 - The Sätteri rehype-code pass hands the fence meta to Shiki transformers, so the twoslash modes dispatch inside the highlight pass. The fallback is an async `Fence` component, which then needs `@astrojs/react` to render async server components.
 - `TypeHover` hydrates over the highlighted HTML the rehype-code pass emits, and `DocsLinks.load()` pre-warms once per build instead of once per fence.
+- The home blog's zod schema reads the entry's file path the way fumadocs-mdx's `MacroSchemaContext` passes it today, because the cover and thumbnail transforms validate the image against the post folder.
 - `fetchFile` and wrangler's `main` cooperate when the entrypoint is a `WorkerEntrypoint` class.
 - The link checker handles Astro's output layout once the migration removes the Next navigation special case.
 - Tailwind's automatic source detection picks up the classes used in `tooling/ui/src`, which sits outside each app's root. Add `@source` entries to the CSS entry if a pilot page misses them.
